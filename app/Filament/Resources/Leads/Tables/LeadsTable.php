@@ -11,6 +11,7 @@ use App\Support\Permissions\LeadAccess;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
@@ -150,6 +151,10 @@ class LeadsTable
                         ->icon(Heroicon::OutlinedPencilSquare)
                         ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin'))
                         ->url(fn (Lead $record): string => LeadResource::getUrl('edit', ['record' => $record])),
+                    DeleteAction::make()
+                        ->label('Xóa Lead')
+                        ->icon(Heroicon::OutlinedTrash)
+                        ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
                 ])
                     ->iconButton()
                     ->label('Hành động')
@@ -196,9 +201,9 @@ class LeadsTable
                     }, 'leads-'.now()->format('Ymd-His').'.csv')),
                 self::createLeadAction(),
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->label('Xóa đã chọn'),
-                    ForceDeleteBulkAction::make()->label('Xóa vĩnh viễn'),
-                    RestoreBulkAction::make()->label('Khôi phục'),
+                    DeleteBulkAction::make()->label('Xóa đã chọn')->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
+                    ForceDeleteBulkAction::make()->label('Xóa vĩnh viễn')->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
+                    RestoreBulkAction::make()->label('Khôi phục')->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
                 ]),
             ]);
     }
