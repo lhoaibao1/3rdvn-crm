@@ -47,6 +47,7 @@ class UserAuditObserver
         'sales_channel' => 'Kênh',
         'team_leader_id' => 'Team Leader',
         'am_id' => 'AM',
+        'courier_manager_id' => 'Courier Manager',
         'zd_id' => 'ZD',
         'address_line' => 'Địa chỉ chi tiết',
         'province_name' => 'Tỉnh/Thành phố',

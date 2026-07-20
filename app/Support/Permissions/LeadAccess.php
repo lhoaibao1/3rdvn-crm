@@ -47,7 +47,12 @@ class LeadAccess
             && blank($lead->converted_at)
             && ! $lead->trashed()
             && ! in_array($lead->status, ['Từ chối', 'Khách hàng bị trùng'], true)
-            && ($user->hasRole('Admin') || (int) $lead->assigned_sale_id === (int) $user->getKey());
+            && (
+                $user->hasRole('Admin')
+                || (int) $lead->assigned_sale_id === (int) $user->getKey()
+                || ($user->hasRole('Courier Manager')
+                    && (int) $lead->assignedSale?->courier_manager_id === (int) $user->getKey())
+            );
     }
 
     public static function canConvert(User $user, Lead $lead): bool

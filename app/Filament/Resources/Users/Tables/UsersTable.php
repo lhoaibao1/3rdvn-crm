@@ -59,6 +59,7 @@ class UsersTable
                     ->toggleable(),
                 TextColumn::make('sales_channel')->label('Kênh')->badge()->color('success')->toggleable(),
                 TextColumn::make('teamLeader.name')->label('Team Leader')->toggleable(),
+                TextColumn::make('courierManager.name')->label('Courier Manager')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('am.name')->label('AM')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('zd.name')->label('ZD')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('bank_code')->label('Ngân hàng')->toggleable(isToggledHiddenByDefault: true),

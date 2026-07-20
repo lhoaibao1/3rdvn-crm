@@ -34,7 +34,7 @@ const messageElement = (message, className) => {
     return element
 }
 
-window.crmSearchableSelectComponent = (config) => ({
+const crmSearchableSelectComponent = (config) => ({
     select: null,
     state: config.state,
     rawValues: new Map(),
@@ -614,3 +614,4 @@ window.crmSearchableSelectComponent = (config) => ({
     },
 })
 
+export default crmSearchableSelectComponent

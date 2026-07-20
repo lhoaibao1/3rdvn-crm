@@ -28,8 +28,26 @@ class ApplicationPolicy
 
     public function update(User $user, Application $application): bool
     {
-        return $user->can('application.update')
-            && $this->view($user, $application);
+        if (! $user->can('application.update') || ! $this->view($user, $application)) {
+            return false;
+        }
+
+        if ($user->hasRole('Admin')) {
+            return true;
+        }
+
+        $application->loadMissing(['salesProject:id,slug', 'lead:id,status']);
+
+        if (
+            $application->salesProject?->slug === 'acl-mix'
+            && (int) $application->created_by_id === (int) $user->getKey()
+        ) {
+            if ($application->lead && $application->lead->status !== 'Khách hàng thoả mãn điều kiện') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function delete(User $user, Application $application): bool

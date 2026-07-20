@@ -66,6 +66,21 @@ class RoleSeeder extends Seeder
                 'user.view', 'user.create', 'user.update', 'user.manage_team', 'user.assign_hierarchy',
                 'report.view', 'report.export',
             ],
+            'Courier Manager' => [
+                'dashboard.view',
+                'lead.view', 'lead.create', 'lead.update', 'lead.convert',
+                'hot_lead.view', 'hot_lead.create', 'hot_lead.process',
+                'application.view', 'application.update',
+                'profile.view', 'profile.create', 'profile.update', 'profile.submit',
+                'user.view', 'user.create', 'user.update', 'user.manage_team',
+            ],
+            'Courier' => [
+                'dashboard.view',
+                'lead.view', 'lead.create', 'lead.update', 'lead.convert',
+                'hot_lead.view', 'hot_lead.create', 'hot_lead.process',
+                'application.view', 'application.update',
+                'profile.view', 'profile.create', 'profile.update', 'profile.submit',
+            ],
             'Direct Sale' => [
                 'dashboard.view',
                 'lead.view', 'lead.create', 'lead.update', 'lead.convert',

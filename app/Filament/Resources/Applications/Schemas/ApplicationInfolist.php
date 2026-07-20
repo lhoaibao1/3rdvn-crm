@@ -115,7 +115,8 @@ class ApplicationInfolist
                             Section::make('Dữ liệu dự án')
                                 ->columnSpanFull()
                                 ->columns(2)
-                                ->schema(fn (Application $record): array => LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'module', 'payload.module_fields')),
+                                ->schema(fn (Application $record): array => $record->salesProject?->slug === 'acl-mix'
+                                    ? AclMixFields::entries() : LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'module', 'payload.module_fields')),
                         ]),
                     Tab::make('Lịch sử thao tác')
                         ->icon(Heroicon::Clock)
@@ -133,7 +134,6 @@ class ApplicationInfolist
                 ]),
         ];
     }
-
 
     private static function renderHistoryTimeline(Application $record): HtmlString
     {

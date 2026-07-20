@@ -10,6 +10,7 @@ use App\Support\Assignments\RecordAssignment;
 use App\Support\SalesLineSnapshot;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class LeadApplicationConverter
@@ -112,11 +113,94 @@ class LeadApplicationConverter
         $leadPayload = is_array($lead->payload) ? $lead->payload : [];
         $existingPayload = is_array($existingPayload) ? $existingPayload : [];
         $payload = array_replace_recursive($existingPayload, $leadPayload);
+        $fields = Arr::get($leadPayload, 'fields', Arr::get($existingPayload, 'fields', []));
+        $review = Arr::get($leadPayload, 'review', Arr::get($existingPayload, 'review', []));
 
-        $payload['fields'] = Arr::get($leadPayload, 'fields', Arr::get($existingPayload, 'fields', []));
-        $payload['review'] = Arr::get($leadPayload, 'review', Arr::get($existingPayload, 'review', []));
+        $payload['fields'] = is_array($fields) ? $fields : [];
+        $payload['review'] = is_array($review) ? $review : [];
         $payload['module_fields'] = Arr::get($existingPayload, 'module_fields', Arr::get($leadPayload, 'module_fields', []));
+        $payload['module_fields'] = is_array($payload['module_fields']) ? $payload['module_fields'] : [];
+
+        $payload['source_lead'] = Arr::get($existingPayload, 'source_lead', [
+            'id' => $lead->getKey(),
+            'lead_code' => $lead->lead_code,
+            'lead_name' => $lead->lead_name,
+            'phone' => $lead->phone,
+            'email' => $lead->email,
+            'source' => $lead->source,
+            'sales_project_id' => $lead->sales_project_id,
+            'created_by_id' => $lead->created_by_id,
+            'assigned_sale_id' => $lead->assigned_sale_id,
+            'team_id' => $lead->team_id,
+            'team_leader_id' => $lead->team_leader_id,
+            'am_id' => $lead->am_id,
+            'zd_id' => $lead->zd_id,
+            'status' => $lead->status,
+            'note' => $lead->note,
+            'fields' => $payload['fields'],
+            'review' => $payload['review'],
+            'created_at' => $lead->created_at?->toIso8601String(),
+            'updated_at' => $lead->updated_at?->toIso8601String(),
+            'captured_at' => now()->toIso8601String(),
+        ]);
+
+        if ($lead->salesProject?->slug === 'acl-mix') {
+            $payload = self::seedAclMixModuleFields($lead, $payload);
+        }
 
         return $payload;
+    }
+
+    private static function seedAclMixModuleFields(Lead $lead, array $payload): array
+    {
+        $fields = is_array($payload['fields'] ?? null) ? $payload['fields'] : [];
+        $moduleFields = is_array($payload['module_fields'] ?? null) ? $payload['module_fields'] : [];
+        $customerName = self::firstFilled([$fields['customer_name'] ?? null, $fields['lead_name'] ?? null, $lead->lead_name]);
+        $seed = [
+            'customer_name' => $customerName,
+            'cccd' => self::firstFilled([$fields['cccd'] ?? null, $fields['identity_number'] ?? null]),
+            'cmnd' => self::firstFilled([$fields['cmnd'] ?? null]),
+            'date_of_birth' => self::firstFilled([$fields['date_of_birth'] ?? null, $fields['birthday'] ?? null]),
+            'identity_issued_date' => self::firstFilled([$fields['identity_issued_date'] ?? null, $fields['identity_issue_date'] ?? null]),
+            'identity_issued_place' => self::firstFilled([$fields['identity_issued_place'] ?? null, $fields['identity_issue_place'] ?? null]),
+            'identity_expiry_date' => self::firstFilled([$fields['identity_expiry_date'] ?? null]),
+            'phone' => self::firstFilled([$fields['phone'] ?? null, $lead->phone]),
+            'bank_account_name' => filled($customerName) ? Str::upper(Str::ascii((string) $customerName)) : null,
+            'current_province_code' => self::firstFilled([$fields['current_province_code'] ?? null, $fields['province_code'] ?? null]),
+            'current_province_name' => self::firstFilled([$fields['current_province_name'] ?? null, $fields['province_name'] ?? null]),
+            'current_district_code' => self::firstFilled([$fields['current_district_code'] ?? null, $fields['district_code'] ?? null]),
+            'current_district_name' => self::firstFilled([$fields['current_district_name'] ?? null, $fields['district_name'] ?? null]),
+            'current_ward_code' => self::firstFilled([$fields['current_ward_code'] ?? null, $fields['ward_code'] ?? null]),
+            'current_ward_name' => self::firstFilled([$fields['current_ward_name'] ?? null, $fields['ward_name'] ?? null]),
+            'current_address_line' => self::firstFilled([$fields['current_address_line'] ?? null, $fields['current_address'] ?? null, $fields['address_line'] ?? null, $fields['address'] ?? null]),
+            'permanent_province_code' => self::firstFilled([$fields['permanent_province_code'] ?? null]),
+            'permanent_province_name' => self::firstFilled([$fields['permanent_province_name'] ?? null]),
+            'permanent_district_code' => self::firstFilled([$fields['permanent_district_code'] ?? null]),
+            'permanent_district_name' => self::firstFilled([$fields['permanent_district_name'] ?? null]),
+            'permanent_ward_code' => self::firstFilled([$fields['permanent_ward_code'] ?? null]),
+            'permanent_ward_name' => self::firstFilled([$fields['permanent_ward_name'] ?? null]),
+            'permanent_address_line' => self::firstFilled([$fields['permanent_address_line'] ?? null, $fields['permanent_address'] ?? null]),
+        ];
+
+        foreach ($seed as $key => $value) {
+            if (! array_key_exists($key, $moduleFields) && filled($value)) {
+                $moduleFields[$key] = $value;
+            }
+        }
+
+        $payload['module_fields'] = $moduleFields;
+
+        return $payload;
+    }
+
+    private static function firstFilled(array $values): mixed
+    {
+        foreach ($values as $value) {
+            if (filled($value)) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 }

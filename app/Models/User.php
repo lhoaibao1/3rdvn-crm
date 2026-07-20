@@ -27,7 +27,7 @@ use Wirechat\Wirechat\Traits\InteractsWithWirechat;
     'document_type', 'date_of_birth', 'gender', 'identity_number', 'identity_issued_date', 'identity_issued_place',
     'department', 'position', 'employment_status', 'hire_date', 'office', 'contract_type',
     'sales_projects', 'sales_codes', 'company_name', 'branch_name', 'branch_code', 'sales_channel',
-    'team_leader_id', 'am_id', 'zd_id', 'created_by_id',
+    'team_leader_id', 'courier_manager_id', 'am_id', 'zd_id', 'created_by_id',
     'address_line', 'province_code', 'province_name', 'district_code', 'district_name', 'ward_code', 'ward_name',
     'bank_code', 'bank_name', 'bank_account_number', 'bank_account_name', 'bank_branch',
     'tax_code', 'social_insurance_number', 'emergency_contact_name', 'emergency_contact_phone',
@@ -84,6 +84,7 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
         'branch_code' => 'Mã chi nhánh',
         'sales_channel' => 'Kênh',
         'team_leader_id' => 'Team Leader',
+        'courier_manager_id' => 'Courier Manager',
         'am_id' => 'AM',
         'zd_id' => 'ZD',
         'address_line' => 'Địa chỉ chi tiết',
@@ -434,6 +435,11 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
     public function teamLeader(): BelongsTo
     {
         return $this->belongsTo(self::class, 'team_leader_id');
+    }
+
+    public function courierManager(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'courier_manager_id');
     }
 
     public function am(): BelongsTo

@@ -8,15 +8,19 @@ use Illuminate\Validation\ValidationException;
 
 class RoleHierarchy
 {
-    public const ORDER = ['Admin', 'ZD', 'AM', 'Team Leader', 'Direct Sale', 'Telesale', 'CTV'];
+    public const ORDER = ['Admin', 'ZD', 'AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'];
 
     public const SALES_ROLES = ['Direct Sale', 'Telesale', 'CTV'];
 
+    public const COURIER_ROLES = ['Courier'];
+
     public const ASSIGNABLE = [
-        'Admin' => ['Admin', 'ZD', 'AM', 'Team Leader', 'Direct Sale', 'Telesale', 'CTV'],
-        'ZD' => ['AM', 'Team Leader', 'Direct Sale', 'Telesale', 'CTV'],
-        'AM' => ['Team Leader', 'Direct Sale', 'Telesale', 'CTV'],
+        'Admin' => ['Admin', 'ZD', 'AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'],
+        'ZD' => ['AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'],
+        'AM' => ['Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'],
         'Team Leader' => ['Direct Sale', 'Telesale', 'CTV'],
+        'Courier Manager' => ['Courier'],
+        'Courier' => [],
         'Direct Sale' => [],
         'Telesale' => [],
         'CTV' => [],
@@ -104,6 +108,10 @@ class RoleHierarchy
 
         if ($actor->hasRole('Team Leader')) {
             return self::targetBelongsToManager($target, 'team_leader_id', $actor->getKey());
+        }
+
+        if ($actor->hasRole('Courier Manager')) {
+            return self::targetBelongsToManager($target, 'courier_manager_id', $actor->getKey());
         }
 
         return false;
@@ -217,6 +225,17 @@ class RoleHierarchy
             });
         }
 
+        if ($actor->hasRole('Courier Manager')) {
+            return $query->where(function (Builder $query) use ($actor, $assignable): void {
+                $query->whereKey($actor->getKey())
+                    ->orWhere(function (Builder $query) use ($actor, $assignable): void {
+                        $query
+                            ->whereHas('roles', fn (Builder $roles): Builder => $roles->whereIn('name', $assignable))
+                            ->where('courier_manager_id', $actor->getKey());
+                    });
+            });
+        }
+
         return $query->whereKey($actor->getKey());
     }
 
@@ -226,6 +245,7 @@ class RoleHierarchy
             'zd_id' => null,
             'am_id' => null,
             'team_leader_id' => null,
+            'courier_manager_id' => null,
         ];
 
         if ($actor instanceof User) {
@@ -243,6 +263,12 @@ class RoleHierarchy
                 $data['am_id'] = $actor->am_id;
                 $data['team_leader_id'] = $actor->getKey();
             }
+
+            if ($actor->hasRole('Courier Manager')) {
+                $data['zd_id'] = $actor->zd_id;
+                $data['am_id'] = $actor->am_id;
+                $data['courier_manager_id'] = $actor->getKey();
+            }
         }
 
         if (in_array($role, ['Admin', 'ZD'], true)) {
@@ -250,16 +276,24 @@ class RoleHierarchy
                 'zd_id' => null,
                 'am_id' => null,
                 'team_leader_id' => null,
+                'courier_manager_id' => null,
             ];
         }
 
         if ($role === 'AM') {
             $data['am_id'] = null;
             $data['team_leader_id'] = null;
+            $data['courier_manager_id'] = null;
         }
 
         if ($role === 'Team Leader') {
             $data['team_leader_id'] = null;
+            $data['courier_manager_id'] = null;
+        }
+
+        if ($role === 'Courier Manager') {
+            $data['team_leader_id'] = null;
+            $data['courier_manager_id'] = null;
         }
 
         return $data;
@@ -284,21 +318,35 @@ class RoleHierarchy
                 $data['am_id'] = $actor->am_id;
                 $data['zd_id'] = $actor->zd_id;
             }
+
+            if ($actor->hasRole('Courier Manager')) {
+                $data['courier_manager_id'] = $actor->getKey();
+                $data['am_id'] = $actor->am_id;
+                $data['zd_id'] = $actor->zd_id;
+            }
         }
 
         if (in_array($role, ['Admin', 'ZD'], true)) {
             $data['zd_id'] = null;
             $data['am_id'] = null;
             $data['team_leader_id'] = null;
+            $data['courier_manager_id'] = null;
         }
 
         if ($role === 'AM') {
             $data['am_id'] = null;
             $data['team_leader_id'] = null;
+            $data['courier_manager_id'] = null;
         }
 
         if ($role === 'Team Leader') {
             $data['team_leader_id'] = null;
+            $data['courier_manager_id'] = null;
+        }
+
+        if ($role === 'Courier Manager') {
+            $data['team_leader_id'] = null;
+            $data['courier_manager_id'] = null;
         }
 
         return $data;
@@ -348,6 +396,50 @@ class RoleHierarchy
             return;
         }
 
+        if ($role === 'Courier Manager') {
+            $am = self::requiredManager($data['am_id'] ?? null, 'AM', 'am_id', 'Vui lòng chọn AM cho Courier Manager.');
+
+            if (blank($am->zd_id) || (int) ($data['zd_id'] ?? 0) !== (int) $am->zd_id) {
+                self::deny('am_id', 'AM không thuộc ZD đã chọn.');
+            }
+
+            if ($actor->hasRole('ZD') && (int) $am->zd_id !== (int) $actor->getKey()) {
+                self::deny('am_id', 'ZD chỉ được tạo Courier Manager thuộc tuyến của mình.');
+            }
+
+            if ($actor->hasRole('AM') && (int) $am->getKey() !== (int) $actor->getKey()) {
+                self::deny('am_id', 'AM chỉ được tạo Courier Manager thuộc chính mình.');
+            }
+
+            return;
+        }
+
+        if ($role === 'Courier') {
+            $manager = self::requiredManager($data['courier_manager_id'] ?? null, 'Courier Manager', 'courier_manager_id', 'Vui lòng chọn Courier Manager.');
+
+            if (blank($manager->am_id) || blank($manager->zd_id)) {
+                self::deny('courier_manager_id', 'Courier Manager chưa được gắn đủ AM/ZD.');
+            }
+
+            if ((int) ($data['am_id'] ?? 0) !== (int) $manager->am_id || (int) ($data['zd_id'] ?? 0) !== (int) $manager->zd_id) {
+                self::deny('courier_manager_id', 'Courier Manager không thuộc tuyến quản lý đã chọn.');
+            }
+
+            if ($actor->hasRole('ZD') && (int) $manager->zd_id !== (int) $actor->getKey()) {
+                self::deny('courier_manager_id', 'ZD chỉ được tạo Courier thuộc tuyến của mình.');
+            }
+
+            if ($actor->hasRole('AM') && (int) $manager->am_id !== (int) $actor->getKey()) {
+                self::deny('courier_manager_id', 'AM chỉ được tạo Courier thuộc tuyến của mình.');
+            }
+
+            if ($actor->hasRole('Courier Manager') && (int) $manager->getKey() !== (int) $actor->getKey()) {
+                self::deny('courier_manager_id', 'Courier Manager chỉ được tạo Courier thuộc chính mình.');
+            }
+
+            return;
+        }
+
         if (in_array($role, self::SALES_ROLES, true)) {
             $teamLeader = self::requiredManager($data['team_leader_id'] ?? null, 'Team Leader', 'team_leader_id', 'Vui lòng chọn Team Leader cho sale.');
 
@@ -383,6 +475,18 @@ class RoleHierarchy
 
     private static function applySelectedManagerChain(array $data): array
     {
+        if (filled($data['courier_manager_id'] ?? null)) {
+            $manager = User::query()->find($data['courier_manager_id']);
+
+            if ($manager instanceof User) {
+                $data['am_id'] = $manager->am_id;
+                $data['zd_id'] = $manager->zd_id;
+                $data['team_leader_id'] = null;
+            }
+
+            return $data;
+        }
+
         if (filled($data['team_leader_id'] ?? null)) {
             $teamLeader = User::query()->find($data['team_leader_id']);
 

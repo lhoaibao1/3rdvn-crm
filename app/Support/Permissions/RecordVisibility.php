@@ -49,6 +49,8 @@ class RecordVisibility
                     $scope->orWhere('team_leader_id', $user->getKey());
                 }
                 $scope->orWhereHas($ownerRelation, fn (Builder $owner): Builder => $owner->where('team_leader_id', $user->getKey()));
+            } elseif ($user->hasRole('Courier Manager')) {
+                $scope->orWhereHas($ownerRelation, fn (Builder $owner): Builder => $owner->where('courier_manager_id', $user->getKey()));
             }
         });
     }
@@ -94,6 +96,10 @@ class RecordVisibility
         if ($user->hasRole('Team Leader')) {
             return (int) ($record->team_leader_id ?? 0) === (int) $user->getKey()
                 || (int) $owner->team_leader_id === (int) $user->getKey();
+        }
+
+        if ($user->hasRole('Courier Manager')) {
+            return (int) $owner->courier_manager_id === (int) $user->getKey();
         }
 
         return false;

@@ -2,21 +2,21 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\SalesChannel;
+use App\Models\SalesProject;
 use App\Models\User;
 use App\Models\UserChangeLog;
-use App\Models\SalesProject;
+use App\Support\RoleHierarchy;
+use App\Support\UserSpecOptions;
 use App\Support\VietnamAddressCatalog;
 use App\Support\VietnamBankCatalog;
-use App\Support\UserSpecOptions;
-use App\Support\RoleHierarchy;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
-use App\Forms\Components\SearchableSelect as Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -26,7 +26,6 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Validation\ValidationException;
-use Spatie\Permission\Models\Role;
 
 class UserForm
 {
@@ -232,6 +231,23 @@ class UserForm
                                             ->columnSpanFull()
                                             ->columns(3)
                                             ->schema([
+                                                Select::make('courier_manager_id')
+                                                    ->label('Courier Manager')
+                                                    ->options(fn (Get $get): array => UserSpecOptions::roleUsers('Courier Manager', $get('zd_id'), $get('am_id')))
+                                                    ->default(fn (): ?int => auth()->user()?->hasRole('Courier Manager') ? auth()->id() : null)
+                                                    ->visible(fn (Get $get): bool => $get('roles') === 'Courier')
+                                                    ->disabled(fn ($record): bool => self::isEditingSelf($record) || auth()->user()?->hasRole('Courier Manager'))
+                                                    ->required(fn (Get $get): bool => $get('roles') === 'Courier')
+                                                    ->live()
+                                                    ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                                        foreach (UserSpecOptions::managerChainFor($state) as $field => $value) {
+                                                            $set($field, $value);
+                                                        }
+                                                    })
+                                                    ->dehydrated()
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->native(false),
                                                 Select::make('team_leader_id')
                                                     ->label('Team Leader')
                                                     ->options(fn (Get $get): array => UserSpecOptions::roleUsers('Team Leader', $get('zd_id'), $get('am_id')))
@@ -252,16 +268,17 @@ class UserForm
                                                 Select::make('am_id')
                                                     ->label('AM')
                                                     ->options(fn (Get $get): array => UserSpecOptions::roleUsers('AM', $get('zd_id')))
-                                                    ->default(fn (): ?int => auth()->user()?->hasRole('AM') ? auth()->id() : (auth()->user()?->hasRole('Team Leader') ? auth()->user()?->am_id : null))
-                                                    ->visible(fn (Get $get): bool => in_array($get('roles'), ['Team Leader', 'Direct Sale', 'Telesale', 'CTV'], true))
-                                                    ->disabled(fn ($record): bool => self::isEditingSelf($record) || auth()->user()?->hasAnyRole(['AM', 'Team Leader']))
-                                                    ->required(fn (Get $get): bool => in_array($get('roles'), ['Team Leader', 'Direct Sale', 'Telesale', 'CTV'], true))
+                                                    ->default(fn (): ?int => auth()->user()?->hasRole('AM') ? auth()->id() : (auth()->user()?->hasAnyRole(['Team Leader', 'Courier Manager']) ? auth()->user()?->am_id : null))
+                                                    ->visible(fn (Get $get): bool => in_array($get('roles'), ['Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'], true))
+                                                    ->disabled(fn ($record): bool => self::isEditingSelf($record) || auth()->user()?->hasAnyRole(['AM', 'Team Leader', 'Courier Manager']))
+                                                    ->required(fn (Get $get): bool => in_array($get('roles'), ['Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'], true))
                                                     ->live()
                                                     ->afterStateUpdated(function (Set $set, ?int $state): void {
                                                         $chain = UserSpecOptions::managerChainFor($state);
 
                                                         $set('zd_id', $chain['zd_id']);
                                                         $set('team_leader_id', null);
+                                                        $set('courier_manager_id', null);
                                                     })
                                                     ->dehydrated()
                                                     ->searchable()
@@ -270,14 +287,15 @@ class UserForm
                                                 Select::make('zd_id')
                                                     ->label('ZD')
                                                     ->options(fn (): array => UserSpecOptions::roleUsers('ZD'))
-                                                    ->default(fn (): ?int => auth()->user()?->hasRole('ZD') ? auth()->id() : (auth()->user()?->hasAnyRole(['AM', 'Team Leader']) ? auth()->user()?->zd_id : null))
-                                                    ->visible(fn (Get $get): bool => in_array($get('roles'), ['AM', 'Team Leader', 'Direct Sale', 'Telesale', 'CTV'], true))
+                                                    ->default(fn (): ?int => auth()->user()?->hasRole('ZD') ? auth()->id() : (auth()->user()?->hasAnyRole(['AM', 'Team Leader', 'Courier Manager']) ? auth()->user()?->zd_id : null))
+                                                    ->visible(fn (Get $get): bool => in_array($get('roles'), ['AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'], true))
                                                     ->disabled(fn ($record): bool => self::isEditingSelf($record) || ! auth()->user()?->hasRole('Admin'))
-                                                    ->required(fn (Get $get): bool => in_array($get('roles'), ['AM', 'Team Leader', 'Direct Sale', 'Telesale', 'CTV'], true))
+                                                    ->required(fn (Get $get): bool => in_array($get('roles'), ['AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'], true))
                                                     ->live()
                                                     ->afterStateUpdated(function (Set $set): void {
                                                         $set('am_id', null);
                                                         $set('team_leader_id', null);
+                                                        $set('courier_manager_id', null);
                                                     })
                                                     ->dehydrated()
                                                     ->searchable()
@@ -407,7 +425,6 @@ class UserForm
                                                     ->content(fn (?User $record): string => $record?->mail_provisioned_at?->format('H:i d/m/Y') ?: '-'),
                                             ]),
                                     ]),
-
 
                                 Tab::make('Phân quyền')
                                     ->icon(Heroicon::LockClosed)

@@ -11,7 +11,7 @@ class UserSpecOptions
 {
     public static function primaryRoleNames(): array
     {
-        return ['Admin', 'ZD', 'AM', 'Team Leader', 'Direct Sale', 'Telesale', 'CTV'];
+        return ['Admin', 'ZD', 'AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'];
     }
 
     public static function documentTypes(): array
@@ -129,7 +129,7 @@ class UserSpecOptions
             $query->where('zd_id', $zdId);
         }
 
-        if ($role === 'Team Leader') {
+        if (in_array($role, ['Team Leader', 'Courier Manager'], true)) {
             if (filled($amId)) {
                 $query->where('am_id', $amId);
             } elseif (filled($zdId)) {
@@ -145,22 +145,21 @@ class UserSpecOptions
 
     public static function managerChainFor(?int $userId): array
     {
+        $empty = [
+            'zd_id' => null,
+            'am_id' => null,
+            'team_leader_id' => null,
+            'courier_manager_id' => null,
+        ];
+
         if (blank($userId)) {
-            return [
-                'zd_id' => null,
-                'am_id' => null,
-                'team_leader_id' => null,
-            ];
+            return $empty;
         }
 
         $user = User::query()->find($userId);
 
         if (! $user instanceof User) {
-            return [
-                'zd_id' => null,
-                'am_id' => null,
-                'team_leader_id' => null,
-            ];
+            return $empty;
         }
 
         if ($user->hasRole('Team Leader')) {
@@ -168,6 +167,16 @@ class UserSpecOptions
                 'zd_id' => $user->zd_id,
                 'am_id' => $user->am_id,
                 'team_leader_id' => $user->getKey(),
+                'courier_manager_id' => null,
+            ];
+        }
+
+        if ($user->hasRole('Courier Manager')) {
+            return [
+                'zd_id' => $user->zd_id,
+                'am_id' => $user->am_id,
+                'team_leader_id' => null,
+                'courier_manager_id' => $user->getKey(),
             ];
         }
 
@@ -176,6 +185,7 @@ class UserSpecOptions
                 'zd_id' => $user->zd_id,
                 'am_id' => $user->getKey(),
                 'team_leader_id' => null,
+                'courier_manager_id' => null,
             ];
         }
 
@@ -184,14 +194,11 @@ class UserSpecOptions
                 'zd_id' => $user->getKey(),
                 'am_id' => null,
                 'team_leader_id' => null,
+                'courier_manager_id' => null,
             ];
         }
 
-        return [
-            'zd_id' => null,
-            'am_id' => null,
-            'team_leader_id' => null,
-        ];
+        return $empty;
     }
 
     private static function lookupOptions(string $type, array $fallback): array

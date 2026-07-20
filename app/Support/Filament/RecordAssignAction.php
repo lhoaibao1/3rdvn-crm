@@ -2,13 +2,13 @@
 
 namespace App\Support\Filament;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Lead;
 use App\Models\User;
 use App\Support\Assignments\RecordAssignment;
 use App\Support\HotLeads\HotLeadConverter;
 use App\Support\Permissions\HotLeadAccess;
 use Filament\Actions\Action;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
@@ -64,6 +64,12 @@ class RecordAssignAction
                 if (! $assignee instanceof User) {
                     throw ValidationException::withMessages([
                         'assignee_id' => 'Vui lòng chọn nhân viên xử lý.',
+                    ]);
+                }
+
+                if (! RecordAssignment::canAssignTo(auth()->user(), $record, $assignee)) {
+                    throw ValidationException::withMessages([
+                        'assignee_id' => 'Bạn không được phép gán hồ sơ cho nhân viên này.',
                     ]);
                 }
 

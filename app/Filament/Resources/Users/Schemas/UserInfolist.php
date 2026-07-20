@@ -131,6 +131,7 @@ class UserInfolist
                                             ->columns(3)
                                             ->schema([
                                                 TextEntry::make('teamLeader.name')->label('Team Leader')->placeholder('-'),
+                                                TextEntry::make('courierManager.name')->label('Courier Manager')->placeholder('-'),
                                                 TextEntry::make('am.name')->label('AM')->placeholder('-'),
                                                 TextEntry::make('zd.name')->label('ZD')->placeholder('-'),
                                             ]),
@@ -254,7 +255,6 @@ class UserInfolist
                                     ]),
                                     ]),
 
-
                                 Tab::make('Lịch sử thay đổi')
                                     ->icon(Heroicon::Clock)
                                     ->schema([
@@ -363,7 +363,7 @@ class UserInfolist
             return UserSpecOptions::labelFor('contract_type', (string) $value);
         }
 
-        if (in_array($field, ['team_leader_id', 'am_id', 'zd_id', 'created_by_id'], true)) {
+        if (in_array($field, ['team_leader_id', 'courier_manager_id', 'am_id', 'zd_id', 'created_by_id'], true)) {
             return User::query()->whereKey($value)->value('name') ?: (string) $value;
         }
 
@@ -391,5 +391,4 @@ class UserInfolist
 
         return (string) $value;
     }
-
 }

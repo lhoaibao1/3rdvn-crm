@@ -60,7 +60,7 @@
         >
             <div
                 x-load
-                x-load-src="{{ \Illuminate\Support\Facades\Vite::asset('resources/js/components/searchable-select.js') }}"
+                x-load-src="{{ Vite::asset('resources/js/components/searchable-select.js') }}"
                 x-data="crmSearchableSelectComponent({
                     canOptionLabelsWrap: @js($canOptionLabelsWrap),
                     canSelectPlaceholder: @js($canSelectPlaceholder),

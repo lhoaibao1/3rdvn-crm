@@ -60,7 +60,7 @@ class LeadNotificationSender
     private static function sendToRecipients(Lead $lead, string $eventLabel, string $actorLabel, string $status, Heroicon $icon, ?string $extraLine, string $occurredAt): void
     {
         try {
-            $lead->loadMissing(['salesProject', 'createdBy', 'assignedSale', 'teamLeader', 'am', 'zd']);
+            $lead->loadMissing(['salesProject', 'createdBy', 'assignedSale.courierManager', 'teamLeader', 'am', 'zd']);
             $recipients = self::recipients($lead);
 
             if ($recipients->isEmpty()) {
@@ -104,6 +104,7 @@ class LeadNotificationSender
             $lead->team_leader_id,
             $lead->am_id,
             $lead->zd_id,
+            $lead->assignedSale?->courier_manager_id,
         ])->filter()->map(fn (mixed $id): int => (int) $id);
 
         $adminIds = User::role('Admin')->pluck('id');

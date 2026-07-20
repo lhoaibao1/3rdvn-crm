@@ -2,13 +2,13 @@
 
 namespace App\Filament\Resources\Applications\Schemas;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Models\Lead;
 use App\Models\SalesProject;
 use App\Models\User;
 use App\Support\Filament\LeadFormFieldFactory;
 use Filament\Forms\Components\DateTimePicker;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -145,7 +145,9 @@ class ApplicationForm
                             Section::make('Dữ liệu dự án')
                                 ->columnSpanFull()
                                 ->columns(2)
-                                ->schema(fn (Get $get): array => LeadFormFieldFactory::componentsForProject($get('sales_project_id'), 'module', 'payload.module_fields')),
+                                ->schema(fn (Get $get): array => SalesProject::query()->whereKey($get('sales_project_id'))->value('slug') === 'acl-mix'
+                                    ? AclMixFields::components()
+                                    : LeadFormFieldFactory::componentsForProject($get('sales_project_id'), 'module', 'payload.module_fields')),
                         ]),
                 ]),
         ];
@@ -158,6 +160,9 @@ class ApplicationForm
         $isAdmin = self::adminCanEdit();
 
         $data['payload'] = array_replace_recursive($existingPayload, $incomingPayload);
+        if ($record->salesProject?->slug === 'acl-mix') {
+            $data['payload'] = AclMixFields::normalize($data['payload']);
+        }
 
         if ($isAdmin) {
             foreach (['sales_project_id', 'lead_id', 'created_by_id', 'assigned_sale_id', 'created_at', 'updated_at', 'application_code', 'applicant_name', 'phone', 'identity_number'] as $field) {

@@ -1,2 +1,2 @@
-@vite(['resources/css/searchable-select.css'])
+@vite('resources/css/searchable-select.css')
 

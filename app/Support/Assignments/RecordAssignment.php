@@ -16,9 +16,22 @@ class RecordAssignment
 {
     public static function canAssign(?User $actor, Model $record): bool
     {
-        return $actor instanceof User
-            && $actor->hasRole('Admin')
-            && ($record instanceof Lead || $record instanceof Application || $record instanceof SaleProfile);
+        if (! $actor instanceof User) {
+            return false;
+        }
+
+        if ($actor->hasRole('Admin')) {
+            return $record instanceof Lead || $record instanceof Application || $record instanceof SaleProfile;
+        }
+
+        if (! $actor->hasRole('Courier Manager') || ! ($record instanceof Lead || $record instanceof Application)) {
+            return false;
+        }
+
+        $record->loadMissing('assignedSale');
+
+        return (int) $record->assigned_sale_id === (int) $actor->getKey()
+            || (int) $record->assignedSale?->courier_manager_id === (int) $actor->getKey();
     }
 
     public static function currentAssigneeId(Model $record): ?int
@@ -32,6 +45,16 @@ class RecordAssignment
 
     public static function assigneeOptions(Model|SalesProject|null $recordOrProject, ?string $search = null): array
     {
+        $actor = auth()->user();
+
+        if ($actor?->hasRole('Courier Manager')) {
+            return self::eligibleUsers($recordOrProject, includeAdmins: false, search: $search)
+                ->filter(fn (User $user): bool => $user->hasRole('Courier')
+                    && (int) $user->courier_manager_id === (int) $actor->getKey())
+                ->mapWithKeys(fn (User $user): array => [$user->getKey() => self::userLabel($user)])
+                ->all();
+        }
+
         $project = $recordOrProject instanceof SalesProject ? $recordOrProject : self::projectFor($recordOrProject);
         $config = self::configFor($project);
 
@@ -49,6 +72,15 @@ class RecordAssignment
         return self::eligibleUsers($recordOrProject, includeAdmins: true, search: $search)
             ->mapWithKeys(fn (User $user): array => [$user->getKey() => self::userLabel($user)])
             ->all();
+    }
+
+    public static function canAssignTo(?User $actor, Model $record, User $assignee): bool
+    {
+        if (! self::canAssign($actor, $record)) {
+            return false;
+        }
+
+        return array_key_exists($assignee->getKey(), self::assigneeOptions($record));
     }
 
     public static function autoAssigneeForProject(?SalesProject $project, ?User $fallback = null): ?User

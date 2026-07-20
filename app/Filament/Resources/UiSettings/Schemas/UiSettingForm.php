@@ -192,7 +192,7 @@ class UiSettingForm
                                                 'custom' => 'Âm thanh tải lên',
                                                 'off' => 'Tắt âm thanh',
                                             ])
-                                            ->native(true)
+                                            ->native(false)
                                             ->live()
                                             ->default('outlook'),
                                         FileUpload::make('notification_sound_path')
