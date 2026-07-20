@@ -9,12 +9,10 @@ use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Facades\Filament;
 use Filament\Models\Contracts\FilamentUser;
-use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class Login extends BaseLogin
@@ -27,67 +25,13 @@ class Login extends BaseLogin
         'remember' => false,
     ];
 
-    public ?int $identifiedUserId = null;
-
-    public function getMaxWidth(): Width | string | null
+    public function getMaxWidth(): Width|string|null
     {
         return '100%';
     }
 
-    public function identify(): void
-    {
-        try {
-            $this->rateLimit(8);
-        } catch (TooManyRequestsException $exception) {
-            $this->getRateLimitedNotification($exception)?->send();
-
-            return;
-        }
-
-        $identifier = trim((string) ($this->data['identifier'] ?? ''));
-
-        if ($identifier === '') {
-            $this->addError('data.identifier', 'Vui lòng nhập Username, UID, CCCD, SĐT, Employee Code hoặc email.');
-
-            return;
-        }
-
-        $user = $this->findUserByIdentifier($identifier);
-
-        if (! $user) {
-            $this->addError('data.identifier', 'Không tìm thấy tài khoản phù hợp.');
-
-            return;
-        }
-
-        if (! $user->canAccessPanel(Filament::getCurrentOrDefaultPanel())) {
-            $this->addError('data.identifier', 'Tài khoản này hiện chưa được phép truy cập CRM.');
-
-            return;
-        }
-
-        $this->resetErrorBag();
-        $this->identifiedUserId = $user->getKey();
-        $this->data['password'] = '';
-    }
-
-    public function changeIdentifier(): void
-    {
-        $this->identifiedUserId = null;
-        $this->data['password'] = '';
-        $this->resetErrorBag();
-    }
-
     public function authenticate(): ?LoginResponse
     {
-        $user = $this->identifiedUser();
-
-        if (! $user) {
-            $this->identify();
-
-            return null;
-        }
-
         try {
             $this->rateLimit(5);
         } catch (TooManyRequestsException $exception) {
@@ -96,12 +40,33 @@ class Login extends BaseLogin
             return null;
         }
 
+        $identifier = trim((string) ($this->data['identifier'] ?? ''));
         $password = (string) ($this->data['password'] ?? '');
+
+        if ($identifier === '') {
+            $this->addError('data.identifier', 'Vui lòng nhập User/UID.');
+
+            return null;
+        }
 
         if ($password === '') {
             $this->addError('data.password', 'Vui lòng nhập mật khẩu.');
 
             return null;
+        }
+
+        $user = $this->findUserByIdentifier($identifier);
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'data.identifier' => 'Thông tin đăng nhập không đúng.',
+            ]);
+        }
+
+        if (! $user->canAccessPanel(Filament::getCurrentOrDefaultPanel())) {
+            throw ValidationException::withMessages([
+                'data.identifier' => 'Tài khoản này hiện chưa được phép truy cập CRM.',
+            ]);
         }
 
         $credentials = [
@@ -125,7 +90,7 @@ class Login extends BaseLogin
             ]));
 
             throw ValidationException::withMessages([
-                'data.password' => 'Mật khẩu không đúng.',
+                'data.password' => 'Thông tin đăng nhập không đúng.',
             ]);
         }
 
@@ -135,41 +100,17 @@ class Login extends BaseLogin
         return app(LoginResponse::class);
     }
 
-    public function identifiedUser(): ?User
-    {
-        if (! $this->identifiedUserId) {
-            return null;
-        }
-
-        return User::query()->find($this->identifiedUserId);
-    }
-
-    public function identifiedUserAvatarUrl(): ?string
-    {
-        $user = $this->identifiedUser();
-
-        if (! $user) {
-            return null;
-        }
-
-        if ($user->avatar_path) {
-            return Storage::url($user->avatar_path);
-        }
-
-        return filament()->getUserAvatarUrl($user);
-    }
-
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return 'Đăng nhập';
     }
 
-    public function getHeading(): string | Htmlable | null
+    public function getHeading(): string|Htmlable|null
     {
         return null;
     }
 
-    public function getSubheading(): string | Htmlable | null
+    public function getSubheading(): string|Htmlable|null
     {
         return null;
     }
