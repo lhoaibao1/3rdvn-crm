@@ -5,7 +5,7 @@ namespace App\Support\Filament;
 use App\Models\SalesProject;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
+use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;

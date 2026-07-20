@@ -4,7 +4,7 @@ namespace App\Filament\Resources\SaleProfiles\Schemas;
 
 use App\Models\User;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Select;
+use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;

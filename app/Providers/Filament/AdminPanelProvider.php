@@ -3291,23 +3291,60 @@ HTML);
 
     protected function sidebarDefaultScript(): HtmlString
     {
-        $settings = UiSetting::current();
-        $isOpen = ! (bool) $settings->sidebar_default_collapsed;
-        $version = (string) optional($settings->updated_at)->timestamp;
-
-        return new HtmlString(<<<HTML
-<script data-navigate-once>
-    (() => {
-        const version = '{$version}';
-        const key = '3rdvn:sidebar-default-version';
-
-        if (localStorage.getItem(key) === version) {
-            return;
+        if (! filament()->auth()->check()) {
+            return new HtmlString('');
         }
 
-        localStorage.setItem('isOpen', JSON.stringify({$this->jsBool($isOpen)}));
-        localStorage.setItem('isOpenDesktop', JSON.stringify({$this->jsBool($isOpen)}));
-        localStorage.setItem(key, version);
+        $settings = UiSetting::current();
+        $isOpen = ! (bool) $settings->sidebar_default_collapsed;
+        $userId = (string) filament()->auth()->id();
+        $userStorageKey = json_encode(
+            '3rdvn:sidebar:'.hash('sha256', $userId).':desktop-open',
+            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT,
+        );
+
+        return new HtmlString(<<<HTML
+<script>
+    (() => {
+        const userStorageKey = {$userStorageKey};
+        const persistedState = localStorage.getItem(userStorageKey);
+        const isOpen = persistedState === null
+            ? {$this->jsBool($isOpen)}
+            : persistedState === 'true';
+        const savedState = JSON.stringify(isOpen);
+
+        localStorage.setItem('isOpen', savedState);
+        localStorage.setItem('isOpenDesktop', savedState);
+        localStorage.setItem(userStorageKey, savedState);
+
+        const bindSidebarPersistence = () => {
+            const sidebar = window.Alpine?.store('sidebar');
+
+            if (! sidebar || sidebar.__crmStorageKey === userStorageKey) {
+                return false;
+            }
+
+            sidebar.__crmStorageKey = userStorageKey;
+            sidebar.isOpen = isOpen;
+            sidebar.isOpenDesktop = isOpen;
+
+            window.Alpine.effect(() => {
+                localStorage.setItem(
+                    userStorageKey,
+                    JSON.stringify(Boolean(sidebar.isOpenDesktop)),
+                );
+            });
+
+            return true;
+        };
+
+        if (! bindSidebarPersistence()) {
+            document.addEventListener(
+                'alpine:initialized',
+                bindSidebarPersistence,
+                { once: true },
+            );
+        }
     })();
 </script>
 HTML);

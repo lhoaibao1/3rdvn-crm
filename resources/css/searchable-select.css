@@ -30,6 +30,17 @@
     cursor: pointer;
 }
 
+.crm-searchable-select-control.plugin-dropdown_input .items-placeholder {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #94a3b8;
+    font: inherit;
+}
+
 .crm-searchable-select-control.focus .ts-control {
     box-shadow: none;
 }
@@ -107,6 +118,33 @@
     overflow: hidden;
 }
 
+.crm-searchable-select-dropdown .dropdown-input-wrap {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    padding: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    background: inherit;
+}
+
+.crm-searchable-select-dropdown .dropdown-input {
+    display: block;
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #0f172a;
+    font: inherit;
+    outline: none;
+}
+
+.crm-searchable-select-dropdown .dropdown-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .14);
+}
+
 .crm-searchable-select-dropdown .ts-dropdown-content {
     max-height: min(320px, 46dvh);
     overflow-x: hidden;
@@ -168,6 +206,12 @@
     color: #f8fafc;
 }
 
+.dark .crm-searchable-select-dropdown .dropdown-input {
+    border-color: #475569;
+    background: #111827;
+    color: #f8fafc;
+}
+
 .dark .crm-searchable-select-dropdown .option,
 .dark .crm-searchable-select-dropdown [data-selectable] {
     color: #e2e8f0;
@@ -200,18 +244,33 @@
         overscroll-behavior: none;
     }
 
+    body.crm-searchable-select-open::before {
+        position: fixed;
+        z-index: 99999;
+        inset: 0;
+        background: rgba(15, 23, 42, .24);
+        content: '';
+        pointer-events: none;
+    }
+
     .crm-searchable-select-dropdown {
         position: fixed !important;
-        inset: auto 8px max(8px, env(safe-area-inset-bottom)) 8px !important;
+        z-index: 100000 !important;
+        inset: auto 10px max(10px, env(safe-area-inset-bottom)) 10px !important;
         width: auto !important;
-        max-height: min(64dvh, 520px);
+        max-height: min(70dvh, 560px);
         margin: 0 !important;
         border-radius: 14px;
         box-shadow: 0 24px 70px rgba(15, 23, 42, .34);
     }
 
+    .crm-searchable-select-dropdown .dropdown-input {
+        min-height: 46px;
+        font-size: 16px !important;
+    }
+
     .crm-searchable-select-dropdown .ts-dropdown-content {
-        max-height: min(60dvh, 480px);
+        max-height: min(58dvh, 460px);
         padding-block: 5px;
     }
 

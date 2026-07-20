@@ -8,7 +8,7 @@ use App\Models\SalesProject;
 use App\Models\User;
 use App\Support\Filament\LeadFormFieldFactory;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Select;
+use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;

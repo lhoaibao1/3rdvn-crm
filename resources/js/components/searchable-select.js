@@ -59,6 +59,10 @@ window.crmSearchableSelectComponent = (config) => ({
 
         const plugins = {}
 
+        if (config.isSearchable) {
+            plugins.dropdown_input = {}
+        }
+
         if (config.canSelectPlaceholder && !config.isMultiple) {
             plugins.clear_button = { title: 'Xóa lựa chọn' }
         }
@@ -80,7 +84,7 @@ window.crmSearchableSelectComponent = (config) => ({
             create: false,
             disabledField: 'isDisabled',
             dropdownParent: 'body',
-            hidePlaceholder: false,
+            hidePlaceholder: true,
             labelField: 'label',
             loadThrottle: Number(config.searchDebounce) || 300,
             lockOptgroupOrder: true,

@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\CrmModules\Schemas;
 
 use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Select;
+use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;

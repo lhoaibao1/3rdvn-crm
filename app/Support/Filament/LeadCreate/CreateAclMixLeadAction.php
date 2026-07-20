@@ -3,7 +3,7 @@
 namespace App\Support\Filament\LeadCreate;
 
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
+use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Icons\Heroicon;

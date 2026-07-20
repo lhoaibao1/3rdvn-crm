@@ -8,7 +8,7 @@ use App\Support\Assignments\RecordAssignment;
 use App\Support\HotLeads\HotLeadConverter;
 use App\Support\Permissions\HotLeadAccess;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
+use App\Forms\Components\SearchableSelect as Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
