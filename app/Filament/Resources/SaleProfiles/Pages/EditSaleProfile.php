@@ -22,4 +22,10 @@ class EditSaleProfile extends EditRecord
             RestoreAction::make()->icon(\Filament\Support\Icons\Heroicon::OutlinedArrowUturnLeft),
         ];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
 }
