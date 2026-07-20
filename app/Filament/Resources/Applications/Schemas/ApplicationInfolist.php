@@ -8,7 +8,6 @@ use App\Support\Applications\AclMixWorkflow;
 use App\Support\Filament\DocumentPreview;
 use App\Support\Filament\LeadFormFieldFactory;
 use App\Support\Filament\ProcessTimeline;
-use App\Support\Filament\RecordViewChrome;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -27,11 +26,6 @@ class ApplicationInfolist
     public static function components(): array
     {
         return [
-            TextEntry::make('application_record_view_header')
-                ->hiddenLabel()
-                ->state(fn (Application $record): HtmlString => RecordViewChrome::application($record))
-                ->html()
-                ->columnSpanFull(),
             Tabs::make('Application detail')
                 ->columnSpanFull()
                 ->persistTabInQueryString('application_tab')
@@ -60,6 +54,11 @@ class ApplicationInfolist
                                     TextEntry::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->placeholder('-'),
                                     TextEntry::make('note')->label('Ghi chú')->placeholder('-'),
                                 ]),
+                            Section::make('Thông tin hồ sơ')
+                                ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix')
+                                ->columnSpanFull()
+                                ->columns(2)
+                                ->schema(AclMixFields::entries()),
                             Section::make('Dữ liệu Lead')
                                 ->visible(fn (Application $record): bool => $record->salesProject?->slug !== 'acl-mix')
                                 ->columnSpanFull()
@@ -110,15 +109,15 @@ class ApplicationInfolist
                                     TextEntry::make('payload.review.review_note')->label('Ghi chú kiểm tra')->placeholder('-')->columnSpanFull(),
                                 ]),
                         ]),
-                    Tab::make(fn (Application $record): string => $record->salesProject?->slug === 'acl-mix' ? 'Thông tin bổ sung' : 'Xử lý dự án')
+                    Tab::make('Xử lý dự án')
                         ->icon(Heroicon::Briefcase)
+                        ->visible(fn (Application $record): bool => $record->salesProject?->slug !== 'acl-mix')
                         ->columns(12)
                         ->schema([
-                            Section::make(fn (Application $record): string => $record->salesProject?->slug === 'acl-mix' ? 'Thông tin hoàn thiện hồ sơ' : 'Dữ liệu dự án')
+                            Section::make('Dữ liệu dự án')
                                 ->columnSpanFull()
                                 ->columns(2)
-                                ->schema(fn (Application $record): array => $record->salesProject?->slug === 'acl-mix'
-                                    ? AclMixFields::entries() : LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'module', 'payload.module_fields')),
+                                ->schema(fn (Application $record): array => LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'module', 'payload.module_fields')),
                         ]),
                     Tab::make('Lịch sử thao tác')
                         ->icon(Heroicon::Clock)
