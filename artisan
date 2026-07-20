@@ -1,0 +1,32 @@
+#!/usr/bin/env php
+<?php
+
+use Illuminate\Foundation\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+
+define('LARAVEL_START', microtime(true));
+
+
+if (function_exists('posix_geteuid') && posix_geteuid() === 0 && in_array($argv[1] ?? null, ['tinker', 'test'], true)) {
+    $cliViewPath = __DIR__.'/storage/framework/views-cli';
+
+    if (! is_dir($cliViewPath)) {
+        mkdir($cliViewPath, 0755, true);
+    }
+
+    putenv('VIEW_COMPILED_PATH='.$cliViewPath);
+    $_ENV['VIEW_COMPILED_PATH'] = $cliViewPath;
+    $_SERVER['VIEW_COMPILED_PATH'] = $cliViewPath;
+}
+
+// Register the Composer autoloader...
+require __DIR__.'/vendor/autoload.php';
+
+// Bootstrap Laravel and handle the command...
+/** @var Application $app */
+$app = require_once __DIR__.'/bootstrap/app.php';
+
+
+$status = $app->handleCommand(new ArgvInput);
+
+exit($status);

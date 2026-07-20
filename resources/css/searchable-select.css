@@ -1,0 +1,226 @@
+@import 'tom-select/dist/css/tom-select.css';
+
+.crm-searchable-select {
+    width: 100%;
+    min-width: 0;
+}
+
+.crm-searchable-select-control {
+    width: 100%;
+    min-width: 0;
+}
+
+.crm-searchable-select-control.single,
+.crm-searchable-select-control.multi {
+    min-height: 40px;
+}
+
+.crm-searchable-select-control .ts-control {
+    width: 100%;
+    min-height: 40px;
+    padding: 7px 10px;
+    gap: 5px;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.crm-searchable-select-control.focus .ts-control {
+    box-shadow: none;
+}
+
+.crm-searchable-select-control .ts-control > input {
+    min-width: 4rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1.4;
+    outline: none;
+}
+
+.crm-searchable-select-control.dropdown-active .ts-control > input {
+    min-width: min(12rem, 55vw);
+}
+
+.crm-searchable-select-control .item {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.crm-searchable-select-item {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.crm-searchable-select-control.multi .item {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 3px 8px;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.crm-searchable-select-control .clear-button,
+.crm-searchable-select-control .remove {
+    display: inline-grid;
+    place-items: center;
+    min-width: 28px;
+    min-height: 28px;
+    color: #64748b;
+    text-decoration: none;
+}
+
+.crm-searchable-select-control:not(.has-items) .clear-button {
+    display: none;
+}
+
+.crm-searchable-select-control.disabled {
+    cursor: not-allowed;
+    opacity: .62;
+}
+
+.fi-input-wrp:has(.crm-searchable-select-control.focus) {
+    outline: 2px solid color-mix(in srgb, var(--primary-600, #2563eb) 55%, transparent);
+    outline-offset: -1px;
+}
+
+.crm-searchable-select-dropdown {
+    z-index: 100000 !important;
+    margin-top: 6px;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, .18);
+    color: #0f172a;
+    overflow: hidden;
+}
+
+.crm-searchable-select-dropdown .ts-dropdown-content {
+    max-height: min(320px, 46dvh);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
+
+.crm-searchable-select-dropdown .option,
+.crm-searchable-select-dropdown [data-selectable] {
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    padding: 9px 12px;
+    color: #1e293b;
+    font-size: .9rem;
+    line-height: 1.35;
+    cursor: pointer;
+}
+
+.crm-searchable-select-dropdown .option:hover,
+.crm-searchable-select-dropdown .active {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.crm-searchable-select-dropdown .selected {
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 650;
+}
+
+.crm-searchable-select-dropdown [aria-disabled='true'],
+.crm-searchable-select-dropdown .option.disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+    opacity: .7;
+}
+
+.crm-searchable-select-group {
+    padding: 8px 12px 5px;
+    color: #64748b;
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.crm-searchable-select-message {
+    padding: 12px;
+    color: #64748b;
+    font-size: .875rem;
+    text-align: center;
+}
+
+.dark .crm-searchable-select-dropdown {
+    border-color: #334155;
+    background: #0f172a;
+    color: #f8fafc;
+}
+
+.dark .crm-searchable-select-dropdown .option,
+.dark .crm-searchable-select-dropdown [data-selectable] {
+    color: #e2e8f0;
+}
+
+.dark .crm-searchable-select-dropdown .option:hover,
+.dark .crm-searchable-select-dropdown .active,
+.dark .crm-searchable-select-dropdown .selected {
+    background: #1e3a5f;
+    color: #bfdbfe;
+}
+
+@media (max-width: 767px) {
+    .crm-searchable-select-control.single,
+    .crm-searchable-select-control.multi,
+    .crm-searchable-select-control .ts-control {
+        min-height: 44px;
+    }
+
+    .crm-searchable-select-control .ts-control {
+        padding: 9px 11px;
+    }
+
+    .crm-searchable-select-control .ts-control > input {
+        min-height: 24px;
+        font-size: 16px !important;
+    }
+
+    body.crm-searchable-select-open {
+        overscroll-behavior: none;
+    }
+
+    .crm-searchable-select-dropdown {
+        position: fixed !important;
+        inset: auto 8px max(8px, env(safe-area-inset-bottom)) 8px !important;
+        width: auto !important;
+        max-height: min(64dvh, 520px);
+        margin: 0 !important;
+        border-radius: 14px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, .34);
+    }
+
+    .crm-searchable-select-dropdown .ts-dropdown-content {
+        max-height: min(60dvh, 480px);
+        padding-block: 5px;
+    }
+
+    .crm-searchable-select-dropdown .option,
+    .crm-searchable-select-dropdown [data-selectable] {
+        min-height: 48px;
+        padding: 12px 14px;
+        font-size: 16px;
+        touch-action: pan-y;
+    }
+}
+

@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ProjectReport extends Model
+{
+    public const ORIGIN_MANUAL = 'manual';
+
+    public const ORIGIN_APPLICATION = 'application';
+
+    public const STATUS_PENDING = 'Chờ xử lý';
+
+    public const STATUS_PROCESSED = 'Đã xử lý';
+
+    public const STATUS_REJECTED = 'Từ chối';
+
+    protected $fillable = [
+        'sales_project_id',
+        'created_by_id',
+        'customer_name',
+        'application_id',
+        'origin',
+        'province_code',
+        'province_name',
+        'district_code',
+        'district_name',
+        'identity_number',
+        'phone',
+        'product_code',
+        'product_name',
+        'loan_amount',
+        'sales_code',
+        'status',
+        'status_updated_by_id',
+        'status_updated_at',
+        'converted_by_id',
+        'converted_at',
+    ];
+
+    protected $casts = [
+        'loan_amount' => 'integer',
+        'status_updated_at' => 'datetime',
+        'converted_at' => 'datetime',
+    ];
+
+    public static function statusOptions(): array
+    {
+        return [
+            self::STATUS_PENDING => self::STATUS_PENDING,
+            self::STATUS_PROCESSED => self::STATUS_PROCESSED,
+            self::STATUS_REJECTED => self::STATUS_REJECTED,
+        ];
+    }
+
+    public function salesProject(): BelongsTo
+    {
+        return $this->belongsTo(SalesProject::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    public function application(): BelongsTo
+    {
+        return $this->belongsTo(Application::class);
+    }
+
+    public function statusUpdatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'status_updated_by_id');
+    }
+
+    public function convertedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'converted_by_id');
+    }
+}
