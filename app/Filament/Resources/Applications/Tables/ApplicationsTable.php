@@ -121,9 +121,9 @@ class ApplicationsTable
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when($data['date'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '<=', $date))),
-            ], layout: FiltersLayout::AboveContent)
+            ], layout: FiltersLayout::Modal)
             ->filtersFormColumns(3)
-            ->filtersFormWidth('7xl')
+            ->filtersFormWidth('4xl')
             ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
             ->deferFilters()
             ->filtersTriggerAction(fn (Action $action): Action => $action->label('Bộ lọc')->icon(Heroicon::OutlinedFunnel)->button()->color('gray'))
@@ -176,6 +176,12 @@ class ApplicationsTable
                     ->icon(Heroicon::EllipsisVertical),
             ])
             ->toolbarActions([
+                Action::make('createApplication')
+                    ->label('Tạo hồ sơ')
+                    ->icon(Heroicon::OutlinedDocumentPlus)
+                    ->color('primary')
+                    ->url(fn (): string => $resourceClass::getUrl('create'))
+                    ->visible(fn (): bool => $resourceClass::canCreate()),
                 Action::make('exportApplications')
                     ->label('Xuất báo cáo')
                     ->icon(Heroicon::OutlinedArrowDownTray)
