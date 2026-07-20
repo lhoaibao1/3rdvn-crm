@@ -7,7 +7,6 @@ use App\Models\RecordChangeLog;
 use App\Support\Filament\DocumentPreview;
 use App\Support\Filament\LeadFormFieldFactory;
 use App\Support\Filament\ProcessTimeline;
-use App\Support\Filament\RecordViewChrome;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -26,11 +25,6 @@ class LeadInfolist
     public static function components(): array
     {
         return [
-            TextEntry::make('lead_record_view_header')
-                ->hiddenLabel()
-                ->state(fn (Lead $record): HtmlString => RecordViewChrome::lead($record))
-                ->html()
-                ->columnSpanFull(),
             Tabs::make('Lead detail')
                 ->columnSpanFull()
                 ->persistTabInQueryString('lead_tab')
