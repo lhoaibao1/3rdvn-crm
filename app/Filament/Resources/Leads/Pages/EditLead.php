@@ -68,4 +68,10 @@ class EditLead extends EditRecord
         return [];
     }
 
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
 }
