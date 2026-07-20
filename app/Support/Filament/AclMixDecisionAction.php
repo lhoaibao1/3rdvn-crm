@@ -20,13 +20,13 @@ class AclMixDecisionAction
     public static function make(string $name = 'processAclMix'): Action
     {
         return Action::make($name)
-            ->label('Cập nhật trạng thái')
+            ->label('Xử lý hồ sơ')
             ->icon(Heroicon::OutlinedClipboardDocumentCheck)
             ->color('warning')
             ->visible(fn (Application $record): bool => AclMixWorkflow::canProcess(auth()->user(), $record))
             ->modalHeading(fn (Application $record): string => 'Xử lý '.$record->application_code)
             ->modalWidth('2xl')
-            ->modalSubmitActionLabel('Lưu trạng thái')
+            ->modalSubmitActionLabel('Chuyển bước')
             ->modalCancelActionLabel('Hủy')
             ->schema(fn (Application $record): array => self::form($record))
             ->action(function (Application $record, array $data): void {
@@ -73,9 +73,11 @@ class AclMixDecisionAction
                     ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION),
                 $note,
             ],
-            AclMixWorkflow::SALE_COMPLETION, AclMixWorkflow::RETURNED_TO_SALE => [
+            AclMixWorkflow::CALL_RECORDING => [
                 Hidden::make('next_status')->default(AclMixWorkflow::UNDERWRITING),
-                Placeholder::make('transition')->label('Chuyển bước')->content('Gửi hồ sơ sang Đang thẩm định'),
+                Placeholder::make('transition')
+                    ->label('Chuyển bước')
+                    ->content('Courier xác nhận hoàn tất cuộc gọi ghi âm và chuyển hồ sơ sang Đang thẩm định'),
                 $note,
             ],
             AclMixWorkflow::UNDERWRITING => [
