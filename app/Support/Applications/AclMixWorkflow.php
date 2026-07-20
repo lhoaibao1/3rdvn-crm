@@ -18,6 +18,8 @@ class AclMixWorkflow
 
     public const SALE_COMPLETION = 'sale_completion';
 
+    public const CALL_RECORDING = 'call_recording';
+
     public const UNDERWRITING = 'underwriting';
 
     public const RETURNED_TO_SALE = 'returned_to_sale';
@@ -33,6 +35,7 @@ class AclMixWorkflow
         return [
             self::PENDING_INITIAL_REVIEW => 'Đang kiểm tra',
             self::SALE_COMPLETION => 'Chờ Sale hoàn thiện thông tin',
+            self::CALL_RECORDING => 'Đang thực hiện cuộc gọi ghi âm với Khách hàng',
             self::UNDERWRITING => 'Đang thẩm định',
             self::RETURNED_TO_SALE => 'Trả về Sale',
             self::AWAITING_CONTRACT => 'Chờ khách hàng ký hợp đồng',
@@ -51,7 +54,7 @@ class AclMixWorkflow
         return match ($status) {
             self::PENDING_INITIAL_REVIEW => 'warning',
             self::SALE_COMPLETION, self::RETURNED_TO_SALE => 'info',
-            self::UNDERWRITING, self::AWAITING_CONTRACT => 'primary',
+            self::CALL_RECORDING, self::UNDERWRITING, self::AWAITING_CONTRACT => 'primary',
             self::COMPLETED => 'success',
             self::REJECTED => 'danger',
             default => 'gray',
@@ -159,14 +162,19 @@ class AclMixWorkflow
         }
 
         if ($user->hasRole('Admin')) {
-            return true;
+            return ! in_array($application->status, [
+                self::SALE_COMPLETION,
+                self::RETURNED_TO_SALE,
+                self::COMPLETED,
+            ], true);
         }
 
-        if (in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE], true)) {
-            return self::canEditData($user, $application);
-        }
-
-        if ($application->status === self::REJECTED) {
+        if (! in_array($application->status, [
+            self::PENDING_INITIAL_REVIEW,
+            self::CALL_RECORDING,
+            self::UNDERWRITING,
+            self::AWAITING_CONTRACT,
+        ], true)) {
             return false;
         }
 
@@ -244,6 +252,41 @@ class AclMixWorkflow
         });
     }
 
+    public static function submitSaleInformation(Application $application, User $actor): Application
+    {
+        return DB::transaction(function () use ($application, $actor): Application {
+            $application = Application::query()
+                ->lockForUpdate()
+                ->with(['salesProject', 'assignedSale'])
+                ->findOrFail($application->getKey());
+
+            if (! in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE], true)
+                || ! self::canEditData($actor, $application)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Bạn không được phép cập nhật và chuyển bước hồ sơ này.',
+                ]);
+            }
+
+            $payload = is_array($application->payload) ? $application->payload : [];
+            $workflow = is_array($payload['workflow'] ?? null) ? $payload['workflow'] : [];
+            $workflow['last_transition'] = [
+                'from' => $application->status,
+                'to' => self::CALL_RECORDING,
+                'actor_id' => $actor->getKey(),
+                'at' => now()->toDateTimeString(),
+                'note' => 'Sale đã cập nhật đầy đủ thông tin hồ sơ.',
+            ];
+            $payload['workflow'] = $workflow;
+
+            $application->forceFill([
+                'status' => self::CALL_RECORDING,
+                'payload' => $payload,
+            ])->save();
+
+            return $application->refresh();
+        });
+    }
+
     public static function isAclMix(?Application $application): bool
     {
         if (! $application instanceof Application) {
@@ -265,7 +308,7 @@ class AclMixWorkflow
     {
         $allowed = match ($application->status) {
             self::PENDING_INITIAL_REVIEW => [self::SALE_COMPLETION, self::REJECTED],
-            self::SALE_COMPLETION, self::RETURNED_TO_SALE => [self::UNDERWRITING],
+            self::CALL_RECORDING => [self::UNDERWRITING],
             self::UNDERWRITING => [self::RETURNED_TO_SALE, self::AWAITING_CONTRACT, self::REJECTED],
             self::AWAITING_CONTRACT => [self::RETURNED_TO_SALE, self::COMPLETED, self::REJECTED],
             self::REJECTED => $actor->hasRole('Admin') ? [self::RETURNED_TO_SALE] : [],
