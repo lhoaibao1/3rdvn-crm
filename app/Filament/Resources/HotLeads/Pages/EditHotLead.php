@@ -19,4 +19,10 @@ class EditHotLead extends EditRecord
     {
         return LeadForm::normalizeDataForSave($this->record, $data);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
 }
