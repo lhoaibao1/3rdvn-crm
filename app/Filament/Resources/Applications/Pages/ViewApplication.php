@@ -14,6 +14,16 @@ class ViewApplication extends ViewRecord
 {
     protected static string $resource = ApplicationResource::class;
 
+    public function getTitle(): string
+    {
+        return $this->record->applicant_name ?: $this->record->application_code;
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return 'Xem';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
