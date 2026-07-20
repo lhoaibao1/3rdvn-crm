@@ -8,14 +8,28 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 use Throwable;
 
 class EditUiSetting extends EditRecord
 {
     protected static string $resource = UiSettingResource::class;
 
+    private const SMTP_FIELDS = [
+        'smtp_enabled',
+        'smtp_host',
+        'smtp_port',
+        'smtp_encryption',
+        'smtp_username',
+        'smtp_password',
+    ];
+
     protected function afterSave(): void
     {
+        if (! $this->record->wasChanged(self::SMTP_FIELDS)) {
+            return;
+        }
+
         try {
             app(StalwartMailService::class)->configureOutboundRelay($this->record);
 
@@ -36,15 +50,13 @@ class EditUiSetting extends EditRecord
                 ->persistent()
                 ->send();
         }
-
-        $this->js('setTimeout(() => window.location.reload(), 900)');
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make()->icon(\Filament\Support\Icons\Heroicon::OutlinedEye),
-            DeleteAction::make()->icon(\Filament\Support\Icons\Heroicon::OutlinedTrash),
+            ViewAction::make()->icon(Heroicon::OutlinedEye),
+            DeleteAction::make()->icon(Heroicon::OutlinedTrash),
         ];
     }
 }

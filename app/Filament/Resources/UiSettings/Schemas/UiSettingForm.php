@@ -2,12 +2,12 @@
 
 namespace App\Filament\Resources\UiSettings\Schemas;
 
+use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
-use App\Forms\Components\SearchableSelect as Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -15,7 +15,9 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class UiSettingForm
 {
@@ -53,6 +55,7 @@ class UiSettingForm
                                                 ->imagePreviewHeight('72')
                                                 ->openable()
                                                 ->downloadable()
+                                                ->deleteUploadedFileUsing(fn (string|TemporaryUploadedFile $file) => self::deleteUploadedFile($file))
                                                 ->live(),
                                             FileUpload::make('favicon_path')
                                                 ->label('Favicon')
@@ -62,6 +65,7 @@ class UiSettingForm
                                                 ->imagePreviewHeight('48')
                                                 ->openable()
                                                 ->downloadable()
+                                                ->deleteUploadedFileUsing(fn (string|TemporaryUploadedFile $file) => self::deleteUploadedFile($file))
                                                 ->live(),
                                         ]),
                                     ]),
@@ -102,6 +106,7 @@ class UiSettingForm
                                             ->image()
                                             ->imagePreviewHeight('120')
                                             ->openable()
+                                            ->deleteUploadedFileUsing(fn (string|TemporaryUploadedFile $file) => self::deleteUploadedFile($file))
                                             ->live(),
                                     ]),
                                 Section::make('Preview login')
@@ -209,6 +214,7 @@ class UiSettingForm
                                             ->maxSize(5120)
                                             ->openable()
                                             ->downloadable()
+                                            ->deleteUploadedFileUsing(fn (string|TemporaryUploadedFile $file) => self::deleteUploadedFile($file))
                                             ->visible(fn (Get $get): bool => $get('notification_sound') === 'custom'),
                                         TextInput::make('notification_sound_volume')
                                             ->label('Âm lượng (%)')
@@ -227,7 +233,6 @@ class UiSettingForm
                                             ->content(fn (Get $get): HtmlString => self::topbarPreview($get)),
                                     ]),
                             ]),
-
 
                         Tab::make('Mail/OTP')
                             ->columns(12)
@@ -303,6 +308,7 @@ class UiSettingForm
                                                 ->label('SMTP Password')
                                                 ->password()
                                                 ->revealable()
+                                                ->afterStateHydrated(fn (TextInput $component) => $component->state(''))
                                                 ->dehydrated(fn (?string $state): bool => filled($state))
                                                 ->placeholder('Đã lưu trên máy chủ - để trống nếu không đổi'),
                                             TextInput::make('mail_from_address')
@@ -325,12 +331,12 @@ class UiSettingForm
                                         Textarea::make('password_reset_mail_body')
                                             ->label('Nội dung mail')
                                             ->rows(11)
-                                            ->default("Xin chào {{name}},
+                                            ->default('Xin chào {{name}},
 
 Mã OTP đặt lại mật khẩu {{app_name}} của bạn là: {{otp}}
 OTP có hiệu lực trong {{ttl}} phút.
 
-Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.")
+Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.')
                                             ->required(),
                                         Placeholder::make('mail_template_preview')
                                             ->label('Preview')
@@ -350,6 +356,15 @@ Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua emai
             'Noto Sans' => 'Noto Sans - tiếng Việt ổn định',
             'Roboto' => 'Roboto - sạch, quen thuộc',
         ];
+    }
+
+    private static function deleteUploadedFile(string|TemporaryUploadedFile $file): bool
+    {
+        if ($file instanceof TemporaryUploadedFile) {
+            return $file->delete();
+        }
+
+        return Storage::disk('public')->delete($file);
     }
 
     private static function fontStack(?string $font): string
@@ -404,9 +419,9 @@ Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua emai
     private static function mailTemplatePreview(Get $get): HtmlString
     {
         $subject = e($get('password_reset_mail_subject') ?: 'OTP đặt lại mật khẩu 3RDVN CRM');
-        $body = (string) ($get('password_reset_mail_body') ?: "Xin chào {{name}},
+        $body = (string) ($get('password_reset_mail_body') ?: 'Xin chào {{name}},
 
-Mã OTP đặt lại mật khẩu {{app_name}} của bạn là: {{otp}}");
+Mã OTP đặt lại mật khẩu {{app_name}} của bạn là: {{otp}}');
         $body = strtr($body, [
             '{{app_name}}' => e($get('app_name') ?: '3RDVN CRM'),
             '{{name}}' => 'Nguyễn Văn A',
