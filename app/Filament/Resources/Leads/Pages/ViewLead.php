@@ -18,7 +18,7 @@ class ViewLead extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Lead';
+        return $this->record->lead_name ?: $this->record->lead_code;
     }
 
     public function getBreadcrumb(): string
