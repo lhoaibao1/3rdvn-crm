@@ -139,4 +139,10 @@ class EditUser extends EditRecord
                 ->scheduleCredentialSync($this->getRecord(), $this->plainPassword);
         }
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
 }
