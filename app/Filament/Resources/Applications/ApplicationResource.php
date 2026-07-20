@@ -2,14 +2,17 @@
 
 namespace App\Filament\Resources\Applications;
 
+use App\Filament\Resources\Applications\Pages\CreateApplication;
 use App\Filament\Resources\Applications\Pages\EditApplication;
 use App\Filament\Resources\Applications\Pages\ListApplications;
 use App\Filament\Resources\Applications\Pages\ViewApplication;
+use App\Filament\Resources\Applications\Schemas\AclMixApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationInfolist;
 use App\Filament\Resources\Applications\Tables\ApplicationsTable;
 use App\Models\Application;
 use App\Models\SalesProject;
+use App\Support\Applications\AclMixWorkflow;
 use App\Support\Permissions\RecordVisibility;
 use App\Support\Permissions\SalesProjectAccess;
 use BackedEnum;
@@ -64,7 +67,9 @@ class ApplicationResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return ApplicationForm::configure($schema);
+        return static::projectSlug() === 'acl-mix'
+            ? AclMixApplicationForm::configure($schema)
+            : ApplicationForm::configure($schema);
     }
 
     public static function infolist(Schema $schema): Schema
@@ -108,9 +113,15 @@ class ApplicationResource extends Resource
     {
         return [
             'index' => ListApplications::route('/'),
+            'create' => CreateApplication::route('/create'),
             'view' => ViewApplication::route('/{record}'),
             'edit' => EditApplication::route('/{record}/edit'),
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        return static::projectSlug() === 'acl-mix' && AclMixWorkflow::canCreate(Auth::user());
     }
 
     protected static function projectSlug(): string

@@ -57,6 +57,7 @@ class RecordAssignment
 
         $project = $recordOrProject instanceof SalesProject ? $recordOrProject : self::projectFor($recordOrProject);
         $config = self::configFor($project);
+        $requiresCourier = $project?->slug === 'acl-mix';
 
         if ($config?->is_enabled && filled($config->user_ids)) {
             return $config->configuredUsers()
@@ -70,6 +71,8 @@ class RecordAssignment
         }
 
         return self::eligibleUsers($recordOrProject, includeAdmins: true, search: $search)
+            ->when($requiresCourier, fn (Collection $users): Collection => $users
+                ->filter(fn (User $user): bool => $user->hasRole('Courier')))
             ->mapWithKeys(fn (User $user): array => [$user->getKey() => self::userLabel($user)])
             ->all();
     }
@@ -145,6 +148,14 @@ class RecordAssignment
         }
 
         if ($record instanceof Application) {
+            $record->loadMissing('salesProject:id,slug');
+
+            if ($record->salesProject?->slug === 'acl-mix') {
+                $record->forceFill(['assigned_sale_id' => $assignee->getKey()])->save();
+
+                return;
+            }
+
             $record->forceFill(self::leadLikeAssignmentAttributes($assignee))->save();
 
             return;

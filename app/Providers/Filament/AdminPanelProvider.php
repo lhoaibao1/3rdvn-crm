@@ -48,10 +48,10 @@ class AdminPanelProvider extends PanelProvider
             ->loginRouteSlug('authen/login')
             ->brandName(fn () => UiSetting::current()->app_name ?: '3RDVN CRM')
             ->brandLogo(fn () => ($path = UiSetting::current()->logo_path)
-                ? asset('storage/'.$path)
+                ? $this->versionedPublicAsset($path)
                 : new HtmlString('<div style="height:2rem;width:2rem;border-radius:.65rem;background:#2563eb;color:#fff;display:grid;place-items:center;font-weight:800;line-height:1">3</div>'))
-            ->brandLogoHeight('2rem')
-            ->favicon(fn () => ($path = UiSetting::current()->favicon_path) ? asset('storage/'.$path) : null)
+            ->brandLogoHeight('2.75rem')
+            ->favicon(fn () => $this->versionedPublicAsset(UiSetting::current()->favicon_path))
             ->font(fn () => $this->fontFamilyName(UiSetting::current()->font_family ?: 'Inter'))
             ->globalSearch((bool) UiSetting::current()->show_search)
             ->databaseNotifications(
@@ -129,6 +129,18 @@ class AdminPanelProvider extends PanelProvider
             ]);
     }
 
+    protected function versionedPublicAsset(?string $path): ?string
+    {
+        if (blank($path)) {
+            return null;
+        }
+
+        $absolutePath = storage_path('app/public/'.$path);
+        $version = is_file($absolutePath) ? '?v='.filemtime($absolutePath) : '';
+
+        return asset('storage/'.$path).$version;
+    }
+
     protected function settingsStyles(): HtmlString
     {
         $settings = UiSetting::current();
@@ -165,6 +177,13 @@ class AdminPanelProvider extends PanelProvider
 
     html.fi, .fi-body {
         font-family: {$font};
+    }
+
+    .fi-logo {
+        width: auto !important;
+        max-width: min(190px, 38vw) !important;
+        max-height: 2.75rem !important;
+        object-fit: contain !important;
     }
 
     .fi-body {

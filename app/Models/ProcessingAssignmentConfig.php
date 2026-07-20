@@ -33,6 +33,7 @@ class ProcessingAssignmentConfig extends Model
     public function configuredUsers(): Collection
     {
         $projectSlugs = self::leadProjectSlugs();
+        $projectSlug = $this->salesProject()->value('slug');
         $ids = collect($this->user_ids ?? [])
             ->map(fn (mixed $id): int => (int) $id)
             ->filter()
@@ -48,19 +49,24 @@ class ProcessingAssignmentConfig extends Model
             ->with(['permissions', 'roles.permissions'])
             ->orderBy('name')
             ->get()
-            ->filter(fn (User $user): bool => self::canReceiveLead($user, $projectSlugs))
+            ->filter(fn (User $user): bool => self::canReceiveLead($user, $projectSlugs)
+                && self::canReceiveProjectProcessing($user, $projectSlug))
             ->values();
     }
 
-    public static function selectableUserOptions(): array
+    public static function selectableUserOptions(?int $salesProjectId = null): array
     {
         $projectSlugs = self::leadProjectSlugs();
+        $projectSlug = $salesProjectId
+            ? SalesProject::query()->whereKey($salesProjectId)->value('slug')
+            : null;
 
         return self::activeUsersQuery()
             ->with(['permissions', 'roles.permissions'])
             ->orderBy('name')
             ->get()
             ->filter(fn (User $user): bool => self::canReceiveLead($user, $projectSlugs))
+            ->filter(fn (User $user): bool => self::canReceiveProjectProcessing($user, $projectSlug))
             ->mapWithKeys(fn (User $user): array => [
                 $user->getKey() => implode(' · ', array_filter([
                     $user->name,
@@ -83,6 +89,11 @@ class ProcessingAssignmentConfig extends Model
         }
 
         return $projectSlugs->intersect($user->sales_projects ?? [])->isNotEmpty();
+    }
+
+    private static function canReceiveProjectProcessing(User $user, ?string $projectSlug): bool
+    {
+        return $projectSlug !== 'acl-mix' || $user->hasRole('Courier');
     }
 
     private static function leadProjectSlugs(): Collection

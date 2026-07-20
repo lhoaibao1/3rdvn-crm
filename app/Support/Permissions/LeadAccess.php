@@ -196,6 +196,7 @@ class LeadAccess
     {
         return SalesProject::query()
             ->where('is_active', true)
+            ->where('slug', '!=', 'acl-mix')
             ->whereHas('crmModule', fn (Builder $query): Builder => $query->where('slug', 'applications'))
             ->orderBy('sort_order')
             ->orderBy('name');

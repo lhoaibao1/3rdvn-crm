@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Application;
 use App\Models\User;
+use App\Support\Applications\AclMixWorkflow;
 use App\Support\Permissions\RecordVisibility;
 use App\Support\Permissions\SalesProjectAccess;
 
@@ -23,31 +24,17 @@ class ApplicationPolicy
 
     public function create(User $user): bool
     {
-        return false;
+        return $user->can('application.create');
     }
 
     public function update(User $user, Application $application): bool
     {
-        if (! $user->can('application.update') || ! $this->view($user, $application)) {
-            return false;
+        if ($application->salesProject?->slug === 'acl-mix') {
+            return AclMixWorkflow::canEditData($user, $application);
         }
 
-        if ($user->hasRole('Admin')) {
-            return true;
-        }
-
-        $application->loadMissing(['salesProject:id,slug', 'lead:id,status']);
-
-        if (
-            $application->salesProject?->slug === 'acl-mix'
-            && (int) $application->created_by_id === (int) $user->getKey()
-        ) {
-            if ($application->lead && $application->lead->status !== 'Khách hàng thoả mãn điều kiện') {
-                return false;
-            }
-        }
-
-        return true;
+        return $user->can('application.update')
+            && $this->view($user, $application);
     }
 
     public function delete(User $user, Application $application): bool

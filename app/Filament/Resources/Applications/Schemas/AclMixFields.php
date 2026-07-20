@@ -29,11 +29,12 @@ class AclMixFields
         'Khác' => 'Khác',
     ];
 
-    public static function components(): array
+    public static function components(bool|\Closure $disabled = false): array
     {
         return [
             Section::make('Thông tin khách hàng')
-                ->columns(3)
+                ->disabled($disabled)
+                ->columns(2)
                 ->schema([
                     self::text('customer_name', 'Họ tên')
                         ->required()
@@ -63,8 +64,9 @@ class AclMixFields
                         'Góa' => 'Góa',
                     ]),
                 ]),
-            self::addressSection('Thông tin cư trú hiện tại', 'current'),
+            self::addressSection('Thông tin cư trú hiện tại', 'current', $disabled),
             Section::make('Thông tin thường trú')
+                ->disabled($disabled)
                 ->columns(2)
                 ->schema([
                     Toggle::make(self::path('permanent_same_as_current'))
@@ -79,7 +81,8 @@ class AclMixFields
                     ...self::addressFields('permanent', true),
                 ]),
             Section::make('Thông tin công việc')
-                ->columns(3)
+                ->disabled($disabled)
+                ->columns(2)
                 ->schema([
                     self::text('employer_name', 'Tên đơn vị/Công việc'),
                     self::text('employer_tax_code', 'Mã số thuế'),
@@ -93,23 +96,35 @@ class AclMixFields
                     self::number('working_months', 'Thời gian làm việc - Tháng')->minValue(0)->maxValue(11),
                     self::number('experience_years', 'Kinh nghiệm làm việc - Năm'),
                     self::number('experience_months', 'Kinh nghiệm làm việc - Tháng')->minValue(0)->maxValue(11),
-                    ...self::addressFields('work'),
                 ]),
-            Section::make('Thông tin hôn phối và tham chiếu')
-                ->columns(3)
+            self::addressSection('Địa chỉ nơi làm việc', 'work', $disabled),
+            Section::make('Thông tin hôn phối')
+                ->disabled($disabled)
+                ->columns(2)
                 ->schema([
                     self::text('spouse_name', 'Họ tên hôn phối'),
                     self::text('spouse_identity_number', 'CCCD/CMND hôn phối'),
                     self::text('spouse_phone', 'Số điện thoại hôn phối')->tel(),
+                ]),
+            Section::make('Thông tin tham chiếu 1')
+                ->disabled($disabled)
+                ->columns(2)
+                ->schema([
                     self::text('reference_1_name', 'Họ tên tham chiếu 1'),
                     self::select('reference_1_relationship', 'Mối quan hệ tham chiếu 1', self::RELATIONSHIPS),
                     self::text('reference_1_phone', 'Số điện thoại tham chiếu 1')->tel(),
+                ]),
+            Section::make('Thông tin tham chiếu 2')
+                ->disabled($disabled)
+                ->columns(2)
+                ->schema([
                     self::text('reference_2_name', 'Họ tên tham chiếu 2'),
                     self::select('reference_2_relationship', 'Mối quan hệ tham chiếu 2', self::RELATIONSHIPS),
                     self::text('reference_2_phone', 'Số điện thoại tham chiếu 2')->tel(),
                 ]),
             Section::make('Thông tin giải ngân')
-                ->columns(3)
+                ->disabled($disabled)
+                ->columns(2)
                 ->schema([
                     self::select('disbursement_method', 'Hình thức giải ngân', [
                         'agent' => 'Giải ngân tại đại lý chi hộ',
@@ -209,9 +224,10 @@ class AclMixFields
         return $payload;
     }
 
-    private static function addressSection(string $title, string $prefix): Section
+    private static function addressSection(string $title, string $prefix, bool|\Closure $disabled = false): Section
     {
         return Section::make($title)
+            ->disabled($disabled)
             ->columns(2)
             ->schema(self::addressFields($prefix));
     }

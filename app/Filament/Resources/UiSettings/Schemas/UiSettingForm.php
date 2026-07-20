@@ -367,6 +367,14 @@ Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua emai
         return Storage::disk('public')->delete($file);
     }
 
+    private static function versionedPublicAsset(string $path): string
+    {
+        $absolutePath = Storage::disk('public')->path($path);
+        $version = is_file($absolutePath) ? '?v='.filemtime($absolutePath) : '';
+
+        return asset('storage/'.$path).$version;
+    }
+
     private static function fontStack(?string $font): string
     {
         return match ($font ?: 'Inter') {
@@ -391,8 +399,8 @@ Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua emai
         $appName = e($get('app_name') ?: $record?->app_name ?: '3RDVN CRM');
         $logoPath = $get('logo_path') ?: $record?->logo_path;
         $faviconPath = $get('favicon_path') ?: $record?->favicon_path;
-        $logo = is_string($logoPath) ? asset('storage/'.$logoPath) : null;
-        $favicon = is_string($faviconPath) ? asset('storage/'.$faviconPath) : null;
+        $logo = is_string($logoPath) ? self::versionedPublicAsset($logoPath) : null;
+        $favicon = is_string($faviconPath) ? self::versionedPublicAsset($faviconPath) : null;
         $logoHtml = $logo ? '<img src="'.$logo.'" style="height:42px;max-width:180px;object-fit:contain;border-radius:8px">' : '<div style="height:42px;width:42px;border-radius:12px;background:#2563eb;color:white;display:grid;place-items:center;font-weight:800">3</div>';
         $faviconHtml = $favicon ? '<img src="'.$favicon.'" style="height:24px;width:24px;object-fit:contain;border-radius:5px">' : '<div style="height:24px;width:24px;border-radius:6px;background:#2563eb"></div>';
 

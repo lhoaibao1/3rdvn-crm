@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProcessingAssignmentConfigs;
 use App\Filament\Resources\ProcessingAssignmentConfigs\Pages\CreateProcessingAssignmentConfig;
 use App\Filament\Resources\ProcessingAssignmentConfigs\Pages\EditProcessingAssignmentConfig;
 use App\Filament\Resources\ProcessingAssignmentConfigs\Pages\ListProcessingAssignmentConfigs;
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\ProcessingAssignmentConfig;
 use App\Models\SalesProject;
 use App\Support\Permissions\HotLeadAccess;
@@ -14,7 +15,6 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -81,7 +81,7 @@ class ProcessingAssignmentConfigResource extends Resource
                         ->helperText('Khi bật, hệ thống random một người trong danh sách đã chọn.'),
                     CheckboxList::make('user_ids')
                         ->label('Nhân viên được phép nhận xử lý')
-                        ->options(fn (): array => ProcessingAssignmentConfig::selectableUserOptions())
+                        ->options(fn (Get $get): array => ProcessingAssignmentConfig::selectableUserOptions((int) $get('sales_project_id')))
                         ->searchable()
                         ->bulkToggleable()
                         ->columns(2)

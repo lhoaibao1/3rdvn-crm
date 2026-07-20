@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Applications\Schemas;
 
 use App\Models\Application;
 use App\Models\RecordChangeLog;
+use App\Support\Applications\AclMixWorkflow;
 use App\Support\Filament\DocumentPreview;
 use App\Support\Filament\LeadFormFieldFactory;
 use App\Support\Filament\ProcessTimeline;
@@ -48,9 +49,9 @@ class ApplicationInfolist
                                     TextEntry::make('applicant_name')->label('Khách hàng')->placeholder('-'),
                                     TextEntry::make('phone')->label('SĐT')->placeholder('-'),
                                     TextEntry::make('identity_number')->label('CCCD/CMND')->placeholder('-'),
-                                    TextEntry::make('assignedSale.name')->label('Sale phụ trách')->placeholder('-'),
-                                    TextEntry::make('lead.lead_code')->label('Lead ID')->placeholder('-'),
-                                    TextEntry::make('status')->label('Trạng thái')->badge()->formatStateUsing(fn (?string $state): string => self::statusLabel($state))->placeholder('-'),
+                                    TextEntry::make('assignedSale.name')->label(fn (Application $record): string => $record->salesProject?->slug === 'acl-mix' ? 'Người xử lý' : 'Sale phụ trách')->placeholder('-'),
+                                    TextEntry::make('lead.lead_code')->label('Lead ID')->placeholder('-')->visible(fn (Application $record): bool => $record->salesProject?->slug !== 'acl-mix'),
+                                    TextEntry::make('status')->label('Trạng thái')->badge()->color(fn (?string $state, Application $record): string => $record->salesProject?->slug === 'acl-mix' ? AclMixWorkflow::statusColor($state) : 'gray')->formatStateUsing(fn (?string $state, Application $record): string => $record->salesProject?->slug === 'acl-mix' ? AclMixWorkflow::statusLabel($state) : self::statusLabel($state))->placeholder('-'),
                                 ]),
                             Section::make('Hệ thống')
                                 ->columnSpan(4)
@@ -60,6 +61,7 @@ class ApplicationInfolist
                                     TextEntry::make('note')->label('Ghi chú')->placeholder('-'),
                                 ]),
                             Section::make('Dữ liệu Lead')
+                                ->visible(fn (Application $record): bool => $record->salesProject?->slug !== 'acl-mix')
                                 ->columnSpanFull()
                                 ->columns(3)
                                 ->schema(fn (Application $record): array => LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'lead', 'payload.fields')),
@@ -108,11 +110,11 @@ class ApplicationInfolist
                                     TextEntry::make('payload.review.review_note')->label('Ghi chú kiểm tra')->placeholder('-')->columnSpanFull(),
                                 ]),
                         ]),
-                    Tab::make('Xử lý dự án')
+                    Tab::make(fn (Application $record): string => $record->salesProject?->slug === 'acl-mix' ? 'Thông tin bổ sung' : 'Xử lý dự án')
                         ->icon(Heroicon::Briefcase)
                         ->columns(12)
                         ->schema([
-                            Section::make('Dữ liệu dự án')
+                            Section::make(fn (Application $record): string => $record->salesProject?->slug === 'acl-mix' ? 'Thông tin hoàn thiện hồ sơ' : 'Dữ liệu dự án')
                                 ->columnSpanFull()
                                 ->columns(2)
                                 ->schema(fn (Application $record): array => $record->salesProject?->slug === 'acl-mix'
@@ -251,7 +253,7 @@ class ApplicationInfolist
 
     private static function statusLabel(?string $state): string
     {
-        return match ($state) {
+        return AclMixWorkflow::statusOptions()[$state] ?? match ($state) {
             'processing' => 'Đang xử lý',
             'pending_approval' => 'Chờ duyệt',
             'approved' => 'Đã duyệt',

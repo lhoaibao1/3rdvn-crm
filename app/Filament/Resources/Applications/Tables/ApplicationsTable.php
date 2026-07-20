@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Applications\Tables;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\ProjectReports\Schemas\ProjectReportForm;
 use App\Models\Application;
+use App\Support\Applications\AclMixWorkflow;
+use App\Support\Filament\AclMixDecisionAction;
 use App\Support\Filament\RecordAssignAction;
 use App\Support\Filament\TableColumnPreferences;
 use App\Support\Reports\ProjectReportWorkflow;
@@ -46,14 +48,18 @@ class ApplicationsTable
                 TextColumn::make('status')
                     ->label('Trạng thái')
                     ->badge()
-                    ->color(fn (?string $state): string => match ($state) {
-                        'processing' => 'info',
-                        'pending_approval' => 'warning',
-                        'approved' => 'success',
-                        'rejected' => 'danger',
-                        default => 'gray',
-                    })
-                    ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
+                    ->color(fn (?string $state): string => $projectSlug === 'acl-mix'
+                        ? AclMixWorkflow::statusColor($state)
+                        : match ($state) {
+                            'processing' => 'info',
+                            'pending_approval' => 'warning',
+                            'approved' => 'success',
+                            'rejected' => 'danger',
+                            default => 'gray',
+                        })
+                    ->formatStateUsing(fn (?string $state): string => $projectSlug === 'acl-mix'
+                        ? AclMixWorkflow::statusLabel($state)
+                        : self::statusLabel($state))
                     ->sortable(),
                 TextColumn::make('assignedSale.name')->label('Người xử lý')->placeholder('-')->toggleable(),
                 TextColumn::make('createdBy.name')->label('Người tạo')->placeholder('-')->toggleable(),
@@ -88,7 +94,7 @@ class ApplicationsTable
                         }))),
                 SelectFilter::make('status')
                     ->label('Trạng thái')
-                    ->options([
+                    ->options($projectSlug === 'acl-mix' ? AclMixWorkflow::statusOptions() : [
                         'processing' => 'Đang xử lý',
                         'pending_approval' => 'Chờ duyệt',
                         'approved' => 'Đã duyệt',
@@ -153,9 +159,12 @@ class ApplicationsTable
                                 ->success()
                                 ->send();
                         }),
+                    AclMixDecisionAction::make(),
                     RecordAssignAction::make('assignApplicationProcessor'),
                     EditAction::make()
-                        ->label('Xử lý')
+                        ->label('Cập nhật thông tin')
+                        ->visible(fn (Application $record): bool => $projectSlug !== 'acl-mix'
+                            || AclMixWorkflow::canEditData(auth()->user(), $record))
                         ->url(fn (Application $record): string => $resourceClass::getUrl('edit', ['record' => $record])),
                 ])
                     ->iconButton()

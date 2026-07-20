@@ -44,10 +44,10 @@ class UatPanelProvider extends AdminPanelProvider
             ->loginRouteSlug('authen/login')
             ->brandName(fn () => 'UAT · '.(UiSetting::current()->app_name ?: '3RDVN CRM'))
             ->brandLogo(fn () => ($path = UiSetting::current()->logo_path)
-                ? asset('storage/'.$path)
+                ? $this->versionedPublicAsset($path)
                 : new HtmlString('<div style="height:2rem;width:2rem;border-radius:.65rem;background:#2563eb;color:#fff;display:grid;place-items:center;font-weight:800;line-height:1">3</div>'))
-            ->brandLogoHeight('2rem')
-            ->favicon(fn () => ($path = UiSetting::current()->favicon_path) ? asset('storage/'.$path) : null)
+            ->brandLogoHeight('2.75rem')
+            ->favicon(fn () => $this->versionedPublicAsset(UiSetting::current()->favicon_path))
             ->font(fn () => $this->fontFamilyName(UiSetting::current()->font_family ?: 'Inter'))
             ->globalSearch((bool) UiSetting::current()->show_search)
             ->databaseNotifications(
