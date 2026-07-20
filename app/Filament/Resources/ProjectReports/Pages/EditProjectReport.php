@@ -20,4 +20,10 @@ class EditProjectReport extends EditRecord
     {
         return ProjectReportsTable::saveAsAdmin($record, $data);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
 }
