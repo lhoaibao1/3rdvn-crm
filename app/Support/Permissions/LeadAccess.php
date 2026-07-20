@@ -67,8 +67,7 @@ class LeadAccess
     public static function canDelete(User $user, Lead $lead): bool
     {
         return $user->hasRole('Admin')
-            && $user->can('lead.delete')
-            && self::canView($user, $lead);
+            && ! $lead->trashed();
     }
 
     public static function canAccessLeadModule(User $user): bool
