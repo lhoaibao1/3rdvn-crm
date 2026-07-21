@@ -8,12 +8,23 @@ use App\Filament\Resources\Applications\Schemas\ApplicationForm;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
 
 class EditApplication extends EditRecord
 {
     protected static string $resource = ApplicationResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            DeleteAction::make()
+                ->label('Xóa')
+                ->icon(Heroicon::OutlinedTrash)
+                ->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
+        ];
+    }
 
     protected function getSaveFormAction(): Action
     {

@@ -7,8 +7,10 @@ use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Filament\AclMixDecisionAction;
 use App\Support\Filament\RecordAssignAction;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Icons\Heroicon;
 
 class ViewApplication extends ViewRecord
 {
@@ -33,6 +35,10 @@ class ViewApplication extends ViewRecord
                 ->label('Cập nhật thông tin')
                 ->visible(fn (Application $record): bool => $record->salesProject?->slug !== 'acl-mix'
                     || AclMixWorkflow::canEditData(auth()->user(), $record)),
+            DeleteAction::make()
+                ->label('Xóa')
+                ->icon(Heroicon::OutlinedTrash)
+                ->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
         ];
     }
 }

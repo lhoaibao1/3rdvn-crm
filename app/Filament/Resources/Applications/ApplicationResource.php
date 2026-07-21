@@ -124,6 +124,11 @@ class ApplicationResource extends Resource
         return static::projectSlug() === 'acl-mix' && AclMixWorkflow::canCreate(Auth::user());
     }
 
+    public static function canDelete(mixed $record): bool
+    {
+        return $record instanceof Application && (bool) Auth::user()?->hasRole('Admin');
+    }
+
     protected static function projectSlug(): string
     {
         return 'acl-mix';
