@@ -2,6 +2,7 @@
 
 namespace App\Support\Filament;
 
+use App\Support\LotteFinanceDocuments;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 
@@ -16,6 +17,13 @@ class DocumentPreview
             ['CCCD mặt trước', $front],
             ['CCCD mặt sau', $back],
         ];
+
+        foreach (LotteFinanceDocuments::definitions() as $key => $label) {
+            $paths = self::paths(data_get($payload, 'documents.'.$key));
+            foreach ($paths as $index => $path) {
+                $items[] = [$label.(count($paths) > 1 ? ' '.($index + 1) : ''), $path];
+            }
+        }
 
         $hasDocument = false;
 
@@ -43,21 +51,24 @@ class DocumentPreview
 
         foreach ($items as [$label, $path]) {
             $url = self::fileUrl($path);
+            $isImage = in_array(strtolower(pathinfo((string) $path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
             $html .= '<div style="border:1px solid #e2e8f0;border-radius:16px;background:#fff;overflow:hidden;box-shadow:0 8px 22px rgba(15,23,42,.06)">';
             $html .= '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #eef2f7">';
             $html .= '<strong style="font-size:14px;color:#0f172a">'.e($label).'</strong>';
 
             if ($url) {
-                $html .= '<a href="'.e($url).'" target="_blank" rel="noopener" style="font-size:13px;font-weight:800;color:#2563eb;text-decoration:none">Mở ảnh</a>';
+                $html .= '<a href="'.e($url).'" target="_blank" rel="noopener" style="font-size:13px;font-weight:800;color:#2563eb;text-decoration:none">Mở chứng từ</a>';
             }
 
             $html .= '</div>';
             $html .= '<div style="min-height:220px;background:#f8fafc;display:grid;place-items:center;padding:10px">';
 
-            if ($url) {
+            if ($url && $isImage) {
                 $html .= '<img src="'.e($url).'" alt="'.e($label).'" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:12px">';
+            } elseif ($url) {
+                $html .= '<a href="'.e($url).'" target="_blank" rel="noopener" style="display:grid;place-items:center;gap:8px;color:#2563eb;font-weight:800;text-decoration:none"><span style="font-size:38px">▣</span><span>Xem hoặc tải chứng từ</span></a>';
             } else {
-                $html .= '<span style="color:#94a3b8;font-weight:700">Chưa có ảnh</span>';
+                $html .= '<span style="color:#94a3b8;font-weight:700">Chưa có chứng từ</span>';
             }
 
             $html .= '</div></div>';
@@ -76,6 +87,16 @@ class DocumentPreview
         $html .= '</div></div>';
 
         return new HtmlString($html);
+    }
+
+    private static function paths(mixed $value): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_filter(
+            array_map(fn (mixed $path): string => trim((string) $path), $values),
+            fn (string $path): bool => $path !== '',
+        ));
     }
 
     private static function firstPath(mixed $value): ?string

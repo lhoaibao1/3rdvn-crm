@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Application;
 use App\Models\User;
 use App\Support\Applications\AclMixWorkflow;
+use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Permissions\RecordVisibility;
 use App\Support\Permissions\SalesProjectAccess;
 
@@ -31,6 +32,10 @@ class ApplicationPolicy
     {
         if ($application->salesProject?->slug === 'acl-mix') {
             return AclMixWorkflow::canEditData($user, $application);
+        }
+
+        if ($application->salesProject?->slug === 'lotte-finance') {
+            return LotteFinanceWorkflow::canEditData($user, $application);
         }
 
         return $user->can('application.update')

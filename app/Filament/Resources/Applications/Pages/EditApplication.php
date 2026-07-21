@@ -5,8 +5,10 @@ namespace App\Filament\Resources\Applications\Pages;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\Applications\Schemas\AclMixApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationForm;
+use App\Filament\Resources\Applications\Schemas\LotteFinanceApplicationForm;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
+use App\Support\Applications\LotteFinanceWorkflow;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -28,12 +30,11 @@ class EditApplication extends EditRecord
 
     protected function getSaveFormAction(): Action
     {
-        $isSaleStep = $this->record instanceof Application
-            && $this->record->salesProject?->slug === 'acl-mix'
-            && in_array($this->record->status, [
-                AclMixWorkflow::SALE_COMPLETION,
-                AclMixWorkflow::RETURNED_TO_SALE,
-            ], true);
+        $isSaleStep = $this->record instanceof Application && match ($this->record->salesProject?->slug) {
+            'acl-mix' => in_array($this->record->status, [AclMixWorkflow::SALE_COMPLETION, AclMixWorkflow::RETURNED_TO_SALE], true),
+            'lotte-finance' => $this->record->status === LotteFinanceWorkflow::SALE_COMPLETION,
+            default => false,
+        };
 
         return parent::getSaveFormAction()
             ->label($isSaleStep ? 'Cập nhật và chuyển bước' : 'Lưu thay đổi')
@@ -50,6 +51,12 @@ class EditApplication extends EditRecord
             ], true)) {
             $this->record = AclMixWorkflow::submitSaleInformation($this->record, auth()->user());
         }
+
+        if ($this->record instanceof Application
+            && $this->record->salesProject?->slug === 'lotte-finance'
+            && $this->record->status === LotteFinanceWorkflow::SALE_COMPLETION) {
+            $this->record = LotteFinanceWorkflow::submitSaleInformation($this->record, auth()->user());
+        }
     }
 
     protected function getRedirectUrl(): string
@@ -63,8 +70,10 @@ class EditApplication extends EditRecord
             return $data;
         }
 
-        return $this->record->salesProject?->slug === 'acl-mix'
-            ? AclMixApplicationForm::normalizeDataForSave($this->record, $data)
-            : ApplicationForm::normalizeDataForSave($this->record, $data);
+        return match ($this->record->salesProject?->slug) {
+            'acl-mix' => AclMixApplicationForm::normalizeDataForSave($this->record, $data),
+            'lotte-finance' => LotteFinanceApplicationForm::normalizeDataForSave($this->record, $data),
+            default => ApplicationForm::normalizeDataForSave($this->record, $data),
+        };
     }
 }

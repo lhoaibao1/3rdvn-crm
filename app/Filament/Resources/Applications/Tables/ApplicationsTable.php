@@ -6,7 +6,9 @@ use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\Applications\Schemas\AclMixFields;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
+use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Filament\AclMixDecisionAction;
+use App\Support\Filament\LotteFinanceDecisionAction;
 use App\Support\Filament\ProjectSchemaColumns;
 use App\Support\Filament\RecordAssignAction;
 use App\Support\Filament\TableColumnPreferences;
@@ -48,18 +50,18 @@ class ApplicationsTable
                 TextColumn::make('status')
                     ->label('Trạng thái')
                     ->badge()
-                    ->color(fn (?string $state): string => $projectSlug === 'acl-mix'
-                        ? AclMixWorkflow::statusColor($state)
-                        : match ($state) {
+                    ->color(fn (?string $state): string => match ($projectSlug) {
+                        'acl-mix' => AclMixWorkflow::statusColor($state),
+                        'lotte-finance' => LotteFinanceWorkflow::statusColor($state),
+                        default => match ($state) {
                             'processing' => 'info',
                             'pending_approval' => 'warning',
                             'approved' => 'success',
                             'rejected' => 'danger',
                             default => 'gray',
-                        })
-                    ->formatStateUsing(fn (?string $state): string => $projectSlug === 'acl-mix'
-                        ? AclMixWorkflow::statusLabel($state)
-                        : self::statusLabel($state))
+                        },
+                    })
+                    ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
                     ->sortable(),
                 TextColumn::make('assignedSale.name')->label('Người xử lý')->placeholder('-')->toggleable(),
                 TextColumn::make('createdBy.name')->label('Người tạo')->placeholder('-')->toggleable(),
@@ -74,7 +76,7 @@ class ApplicationsTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payload.review.pre_approved_months')->label('Số tháng phê duyệt')->suffix(' tháng')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payload.review.pre_approved_interest_rate')->label('Lãi suất phê duyệt')->suffix('%')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
-                ...($projectSlug === 'acl-mix' ? self::aclMixDataColumns() : []),
+                ...(in_array($projectSlug, ['acl-mix', 'lotte-finance'], true) ? self::aclMixDataColumns() : []),
                 ...ProjectSchemaColumns::forApplication($projectSlug, [
                     'customer_name', 'applicant_name', 'phone', 'identity_number',
                     'cccd', 'product', 'pre_approved_amount', 'pre_approved_months',
@@ -102,12 +104,16 @@ class ApplicationsTable
                         }))),
                 SelectFilter::make('status')
                     ->label('Trạng thái')
-                    ->options($projectSlug === 'acl-mix' ? AclMixWorkflow::statusOptions() : [
-                        'processing' => 'Đang xử lý',
-                        'pending_approval' => 'Chờ duyệt',
-                        'approved' => 'Đã duyệt',
-                        'rejected' => 'Từ chối',
-                    ])
+                    ->options(match ($projectSlug) {
+                        'acl-mix' => AclMixWorkflow::statusOptions(),
+                        'lotte-finance' => LotteFinanceWorkflow::statusOptions(),
+                        default => [
+                            'processing' => 'Đang xử lý',
+                            'pending_approval' => 'Chờ duyệt',
+                            'approved' => 'Đã duyệt',
+                            'rejected' => 'Từ chối',
+                        ],
+                    })
                     ->native(false),
                 SelectFilter::make('assigned_sale_id')
                     ->label('Sale')
@@ -150,6 +156,7 @@ class ApplicationsTable
                         ->label('Xem')
                         ->url(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record])),
                     AclMixDecisionAction::make(),
+                    LotteFinanceDecisionAction::make(),
                     RecordAssignAction::make('assignApplicationProcessor'),
                     DeleteAction::make()
                         ->label('Xóa')
@@ -157,8 +164,11 @@ class ApplicationsTable
                         ->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                     EditAction::make()
                         ->label('Cập nhật thông tin')
-                        ->visible(fn (Application $record): bool => $projectSlug !== 'acl-mix'
-                            || AclMixWorkflow::canEditData(auth()->user(), $record))
+                        ->visible(fn (Application $record): bool => match ($projectSlug) {
+                            'acl-mix' => AclMixWorkflow::canEditData(auth()->user(), $record),
+                            'lotte-finance' => LotteFinanceWorkflow::canEditData(auth()->user(), $record),
+                            default => true,
+                        })
                         ->url(fn (Application $record): string => $resourceClass::getUrl('edit', ['record' => $record])),
                 ])
                     ->iconButton()
@@ -245,6 +255,14 @@ class ApplicationsTable
 
     private static function statusLabel(?string $state): string
     {
+        if (array_key_exists((string) $state, AclMixWorkflow::statusOptions())) {
+            return AclMixWorkflow::statusLabel($state);
+        }
+
+        if (array_key_exists((string) $state, LotteFinanceWorkflow::statusOptions())) {
+            return LotteFinanceWorkflow::statusLabel($state);
+        }
+
         return match ($state) {
             'processing' => 'Đang xử lý',
             'pending_approval' => 'Chờ duyệt',

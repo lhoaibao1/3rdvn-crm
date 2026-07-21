@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LotteFinanceApplications;
 
 use App\Filament\Resources\Applications\ApplicationResource;
+use App\Filament\Resources\LotteFinanceApplications\Pages\CreateLotteFinanceApplication;
 use App\Filament\Resources\LotteFinanceApplications\Pages\EditLotteFinanceApplication;
 use App\Filament\Resources\LotteFinanceApplications\Pages\ListLotteFinanceApplications;
 use App\Filament\Resources\LotteFinanceApplications\Pages\ViewLotteFinanceApplication;
@@ -19,6 +20,7 @@ class LotteFinanceApplicationResource extends ApplicationResource
     {
         return [
             'index' => ListLotteFinanceApplications::route('/'),
+            'create' => CreateLotteFinanceApplication::route('/create'),
             'view' => ViewLotteFinanceApplication::route('/{record}'),
             'edit' => EditLotteFinanceApplication::route('/{record}/edit'),
         ];

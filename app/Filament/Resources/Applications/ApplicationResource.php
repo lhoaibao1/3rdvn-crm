@@ -9,10 +9,12 @@ use App\Filament\Resources\Applications\Pages\ViewApplication;
 use App\Filament\Resources\Applications\Schemas\AclMixApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationInfolist;
+use App\Filament\Resources\Applications\Schemas\LotteFinanceApplicationForm;
 use App\Filament\Resources\Applications\Tables\ApplicationsTable;
 use App\Models\Application;
 use App\Models\SalesProject;
 use App\Support\Applications\AclMixWorkflow;
+use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Permissions\RecordVisibility;
 use App\Support\Permissions\SalesProjectAccess;
 use BackedEnum;
@@ -67,9 +69,11 @@ class ApplicationResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return static::projectSlug() === 'acl-mix'
-            ? AclMixApplicationForm::configure($schema)
-            : ApplicationForm::configure($schema);
+        return match (static::projectSlug()) {
+            'acl-mix' => AclMixApplicationForm::configure($schema),
+            'lotte-finance' => LotteFinanceApplicationForm::configure($schema),
+            default => ApplicationForm::configure($schema),
+        };
     }
 
     public static function infolist(Schema $schema): Schema
@@ -121,7 +125,11 @@ class ApplicationResource extends Resource
 
     public static function canCreate(): bool
     {
-        return static::projectSlug() === 'acl-mix' && AclMixWorkflow::canCreate(Auth::user());
+        return match (static::projectSlug()) {
+            'acl-mix' => AclMixWorkflow::canCreate(Auth::user()),
+            'lotte-finance' => LotteFinanceWorkflow::canCreate(Auth::user()),
+            default => false,
+        };
     }
 
     public static function canDelete(mixed $record): bool

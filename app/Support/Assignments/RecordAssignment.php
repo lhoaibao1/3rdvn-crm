@@ -120,7 +120,7 @@ class RecordAssignment
         if ($record instanceof Application) {
             $record->loadMissing('salesProject:id,slug');
 
-            if ($record->salesProject?->slug === 'acl-mix') {
+            if (in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true)) {
                 $record->forceFill(['assigned_sale_id' => $assignee->getKey()])->save();
 
                 return;
