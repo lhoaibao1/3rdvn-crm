@@ -55,24 +55,7 @@ class RecordAssignment
                 ->all();
         }
 
-        $project = $recordOrProject instanceof SalesProject ? $recordOrProject : self::projectFor($recordOrProject);
-        $config = self::configFor($project);
-        $requiresCourier = $project?->slug === 'acl-mix';
-
-        if ($config?->is_enabled && filled($config->user_ids)) {
-            return $config->configuredUsers()
-                ->when(filled($search), fn (Collection $users): Collection => $users
-                    ->filter(fn (User $user): bool => str_contains(
-                        mb_strtolower(implode(' ', [$user->name, $user->uid, $user->employee_code, $user->email])),
-                        mb_strtolower((string) $search),
-                    )))
-                ->mapWithKeys(fn (User $user): array => [$user->getKey() => self::userLabel($user)])
-                ->all();
-        }
-
         return self::eligibleUsers($recordOrProject, search: $search)
-            ->when($requiresCourier, fn (Collection $users): Collection => $users
-                ->filter(fn (User $user): bool => $user->hasRole('Courier')))
             ->mapWithKeys(fn (User $user): array => [$user->getKey() => self::userLabel($user)])
             ->all();
     }
@@ -100,11 +83,7 @@ class RecordAssignment
             return $candidates->isEmpty() ? null : $candidates->random();
         }
 
-        if (! $project instanceof SalesProject || $project->slug === 'hot-lead') {
-            return null;
-        }
-
-        return self::leastLoadedUser(self::eligibleUsers($project));
+        return null;
     }
 
     public static function autoAssigneeForRecord(Model $record, ?User $fallback = null): ?User
@@ -196,7 +175,9 @@ class RecordAssignment
             })
             ->orderBy('name')
             ->get()
-            ->filter(fn (User $user): bool => ProcessingAssignmentConfig::canReceiveProject($user, $slug))
+            ->filter(fn (User $user): bool => blank($slug)
+                ? ! $user->hasRole('Admin')
+                : ProcessingAssignmentConfig::canReceiveProject($user, $slug))
             ->values();
     }
 

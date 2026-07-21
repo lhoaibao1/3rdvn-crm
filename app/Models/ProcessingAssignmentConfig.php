@@ -80,10 +80,7 @@ class ProcessingAssignmentConfig extends Model
             return false;
         }
 
-        return $user->can('lead.view')
-            && $user->can('lead.convert')
-            && in_array($projectSlug, $user->sales_projects ?? [], true)
-            && ($projectSlug !== 'acl-mix' || $user->hasRole('Courier'));
+        return in_array($projectSlug, $user->sales_projects ?? [], true);
     }
 
     private static function activeUsersQuery(): Builder
