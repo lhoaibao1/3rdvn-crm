@@ -49,7 +49,7 @@ class CandidateApplicationController extends Controller
     public function store(CandidateApplicationRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $vacancy = JobVacancy::query()->find($data['job_vacancy_id']);
+        $vacancy = JobVacancy::query()->with('autoAssignee.roles')->find($data['job_vacancy_id']);
 
         if (! $vacancy?->isOpenForApplications()) {
             throw ValidationException::withMessages([
@@ -76,7 +76,7 @@ class CandidateApplicationController extends Controller
 
         try {
             $candidate = DB::transaction(function () use ($data, $location, $path, $request, $vacancy): CandidateApplication {
-                return CandidateApplication::create([
+                $candidate = CandidateApplication::create([
                     ...collect($data)->except([
                         'website', 'cv', 'consent', 'province_code', 'district_code',
                         'ward_code', 'job_vacancy_id',
@@ -96,6 +96,8 @@ class CandidateApplicationController extends Controller
                     'ip_address' => $request->ip(),
                     'user_agent' => Str::limit((string) $request->userAgent(), 1000, ''),
                 ]);
+
+                return CandidateWorkflow::autoAssign($candidate, $vacancy->autoAssignee);
             });
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($path);

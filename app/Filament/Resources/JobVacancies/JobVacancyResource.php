@@ -8,6 +8,7 @@ use App\Filament\Resources\JobVacancies\Pages\ListJobVacancies;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\JobVacancy;
 use App\Models\SalesProject;
+use App\Support\Candidates\CandidateWorkflow;
 use App\Support\UserSpecOptions;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
@@ -94,7 +95,7 @@ class JobVacancyResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with('salesProject')->withCount('applications');
+        return parent::getEloquentQuery()->with(['salesProject', 'autoAssignee'])->withCount('applications');
     }
 
     public static function form(Schema $schema): Schema
@@ -124,6 +125,11 @@ class JobVacancyResource extends Resource
                 TextInput::make('salary_max')->label('Lương tối đa')->numeric()->minValue(0)->gte('salary_min')->suffix('VNĐ'),
                 Toggle::make('salary_negotiable')->label('Lương thỏa thuận')->default(true)->inline(false),
                 TextInput::make('contact_email')->label('Email tuyển dụng')->email()->maxLength(190),
+                Select::make('auto_assignee_id')
+                    ->label('Người tự động nhận CV')
+                    ->options(fn (): array => CandidateWorkflow::assigneeOptions())
+                    ->searchable()->preload()->native(false)
+                    ->helperText('Chỉ chọn được ZD, AM hoặc Team Leader đang hoạt động.'),
                 FileUpload::make('banner_path')
                     ->label('Banner tuyển dụng')
                     ->disk('public')->directory('recruitment/banners')->image()
@@ -161,6 +167,7 @@ class JobVacancyResource extends Resource
                 SelectColumn::make('status')->label('Tình trạng')->options(JobVacancy::statusOptions())->sortable(),
                 ToggleColumn::make('is_published')->label('Hiển thị')->sortable(),
                 TextColumn::make('applications_count')->label('CV đã nhận')->numeric()->sortable(),
+                TextColumn::make('autoAssignee.name')->label('Người nhận CV')->placeholder('Chưa phân công')->searchable()->toggleable(),
                 TextColumn::make('application_deadline')->label('Hạn nhận CV')->date('d/m/Y')->placeholder('Không giới hạn')->sortable(),
                 TextColumn::make('updated_at')->label('Cập nhật')->since()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])

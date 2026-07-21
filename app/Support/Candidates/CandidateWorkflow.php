@@ -150,6 +150,41 @@ class CandidateWorkflow
             ->all();
     }
 
+    public static function isEligibleInterviewer(?User $user): bool
+    {
+        return $user instanceof User
+            && $user->employment_status === User::STATUS_ACTIVE
+            && $user->hasAnyRole(self::INTERVIEWER_ROLES);
+    }
+
+    public static function autoAssign(CandidateApplication $candidate, ?User $assignee): CandidateApplication
+    {
+        if (! self::isEligibleInterviewer($assignee) || $candidate->converted_user_id) {
+            return $candidate;
+        }
+
+        DB::transaction(function () use ($candidate, $assignee): void {
+            $candidate->forceFill([
+                'status' => CandidateApplication::STATUS_ASSIGNED,
+                'assigned_to_id' => $assignee->getKey(),
+                'assigned_by_id' => null,
+                'assigned_at' => now(),
+            ])->save();
+        });
+
+        $candidate->refresh()->loadMissing('assignedTo');
+        self::deliver(
+            self::assigneeAndAdmins($assignee),
+            $candidate,
+            'Bạn được tự động phân công ứng viên mới',
+            null,
+            'info',
+            Heroicon::OutlinedUserPlus,
+        );
+
+        return $candidate;
+    }
+
     public static function assign(CandidateApplication $candidate, int $assigneeId, User $actor): CandidateApplication
     {
         if (! self::canAssign($candidate, $actor)) {
@@ -331,7 +366,7 @@ class CandidateWorkflow
         Collection $recipients,
         CandidateApplication $candidate,
         string $event,
-        User $actor,
+        ?User $actor,
         string $tone,
         Heroicon $icon,
     ): void {
@@ -341,7 +376,7 @@ class CandidateWorkflow
             $body = new HtmlString(implode('<br>', [
                 '<span class="crm-notification-category" data-category="he-thong">Hệ thống</span>',
                 '<strong>'.e($event).'</strong>',
-                'Người thao tác: '.e($actor->name ?: $actor->uid ?: 'Hệ thống'),
+                'Người thao tác: '.e($actor?->name ?: $actor?->uid ?: 'Hệ thống tuyển dụng'),
                 'Thời gian: '.e(now()->format('H:i d/m/Y')),
             ]));
 

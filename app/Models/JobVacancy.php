@@ -14,6 +14,7 @@ class JobVacancy extends Model
     use SoftDeletes;
 
     public const STATUS_OPEN = 'open';
+
     public const STATUS_CLOSED = 'closed';
 
     protected $fillable = [
@@ -21,7 +22,7 @@ class JobVacancy extends Model
         'work_location', 'employment_type', 'quantity', 'experience_level', 'salary_min', 'salary_max', 'salary_negotiable',
         'application_deadline', 'status', 'is_published', 'is_featured', 'sort_order',
         'contact_email', 'short_description', 'description', 'requirements', 'benefits',
-        'published_at', 'created_by_id', 'updated_by_id',
+        'published_at', 'auto_assignee_id', 'created_by_id', 'updated_by_id',
     ];
 
     protected function casts(): array
@@ -147,6 +148,11 @@ class JobVacancy extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(CandidateApplication::class);
+    }
+
+    public function autoAssignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'auto_assignee_id');
     }
 
     public function createdBy(): BelongsTo
