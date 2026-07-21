@@ -32,8 +32,7 @@ class ProcessingAssignmentConfig extends Model
 
     public function configuredUsers(): Collection
     {
-        $projectSlugs = self::leadProjectSlugs();
-        $projectSlug = $this->salesProject()->value('slug');
+        $projectSlug = (string) $this->salesProject()->value('slug');
         $ids = collect($this->user_ids ?? [])
             ->map(fn (mixed $id): int => (int) $id)
             ->filter()
@@ -49,24 +48,21 @@ class ProcessingAssignmentConfig extends Model
             ->with(['permissions', 'roles.permissions'])
             ->orderBy('name')
             ->get()
-            ->filter(fn (User $user): bool => self::canReceiveLead($user, $projectSlugs)
-                && self::canReceiveProjectProcessing($user, $projectSlug))
+            ->filter(fn (User $user): bool => self::canReceiveProject($user, $projectSlug))
             ->values();
     }
 
     public static function selectableUserOptions(?int $salesProjectId = null): array
     {
-        $projectSlugs = self::leadProjectSlugs();
-        $projectSlug = $salesProjectId
+        $projectSlug = (string) ($salesProjectId
             ? SalesProject::query()->whereKey($salesProjectId)->value('slug')
-            : null;
+            : '');
 
         return self::activeUsersQuery()
             ->with(['permissions', 'roles.permissions'])
             ->orderBy('name')
             ->get()
-            ->filter(fn (User $user): bool => self::canReceiveLead($user, $projectSlugs))
-            ->filter(fn (User $user): bool => self::canReceiveProjectProcessing($user, $projectSlug))
+            ->filter(fn (User $user): bool => self::canReceiveProject($user, $projectSlug))
             ->mapWithKeys(fn (User $user): array => [
                 $user->getKey() => implode(' · ', array_filter([
                     $user->name,
@@ -78,30 +74,16 @@ class ProcessingAssignmentConfig extends Model
             ->all();
     }
 
-    private static function canReceiveLead(User $user, Collection $projectSlugs): bool
+    public static function canReceiveProject(User $user, ?string $projectSlug): bool
     {
-        if ($user->hasRole('Admin')) {
-            return true;
-        }
-
-        if (! $user->can('lead.view') || ! $user->can('lead.convert')) {
+        if (blank($projectSlug) || $user->hasRole('Admin')) {
             return false;
         }
 
-        return $projectSlugs->intersect($user->sales_projects ?? [])->isNotEmpty();
-    }
-
-    private static function canReceiveProjectProcessing(User $user, ?string $projectSlug): bool
-    {
-        return $projectSlug !== 'acl-mix' || $user->hasRole('Courier');
-    }
-
-    private static function leadProjectSlugs(): Collection
-    {
-        return SalesProject::query()
-            ->where('is_active', true)
-            ->whereHas('crmModule', fn (Builder $query): Builder => $query->where('slug', 'applications'))
-            ->pluck('slug');
+        return $user->can('lead.view')
+            && $user->can('lead.convert')
+            && in_array($projectSlug, $user->sales_projects ?? [], true)
+            && ($projectSlug !== 'acl-mix' || $user->hasRole('Courier'));
     }
 
     private static function activeUsersQuery(): Builder

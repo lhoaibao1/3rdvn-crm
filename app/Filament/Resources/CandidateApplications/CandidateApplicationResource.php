@@ -5,14 +5,15 @@ namespace App\Filament\Resources\CandidateApplications;
 use App\Filament\Resources\CandidateApplications\Pages\EditCandidateApplication;
 use App\Filament\Resources\CandidateApplications\Pages\ListCandidateApplications;
 use App\Filament\Resources\CandidateApplications\Pages\ViewCandidateApplication;
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\CandidateApplication;
 use App\Support\Candidates\CandidateWorkflow;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
@@ -30,6 +31,7 @@ use Illuminate\Database\Eloquent\Builder;
 class CandidateApplicationResource extends Resource
 {
     protected static ?string $model = CandidateApplication::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedIdentification;
 
     public static function getModelLabel(): string
@@ -86,7 +88,8 @@ class CandidateApplicationResource extends Resource
 
     public static function canDelete(mixed $record): bool
     {
-        return false;
+        return $record instanceof CandidateApplication
+            && (auth()->user()?->hasRole('Admin') ?? false);
     }
 
     public static function getEloquentQuery(): Builder
@@ -264,6 +267,7 @@ class CandidateApplicationResource extends Resource
                     EditAction::make()
                         ->label('Cập nhật thông tin')
                         ->visible(fn (CandidateApplication $record): bool => CandidateWorkflow::canEdit($record, auth()->user())),
+                    DeleteAction::make()->label('Xóa')->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])->iconButton()->label('Hành động')->icon(Heroicon::EllipsisVertical),
             ]);
     }

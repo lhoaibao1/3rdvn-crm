@@ -74,7 +74,7 @@ class DataCenterLeadResource extends Resource
 
     public static function canDelete(mixed $record): bool
     {
-        return false;
+        return $record instanceof DataCenterLead && (bool) Auth::user()?->hasRole('Admin');
     }
 
     public static function infolist(Schema $schema): Schema

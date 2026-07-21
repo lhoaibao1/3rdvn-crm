@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Reports\ProjectReportWorkflow;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -64,6 +65,8 @@ class Application extends Model
                 $application->writeChangeLog('updated', $changes);
             }
         });
+
+        static::saved(fn (Application $application): mixed => ProjectReportWorkflow::syncFromApplication($application, auth()->user()));
 
         static::deleted(fn (Application $application): mixed => $application->writeChangeLog('deleted', []));
         static::restored(fn (Application $application): mixed => $application->writeChangeLog('restored', []));

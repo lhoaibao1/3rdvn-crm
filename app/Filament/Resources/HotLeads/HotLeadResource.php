@@ -6,9 +6,9 @@ use App\Filament\Resources\HotLeads\Pages\CreateHotLead;
 use App\Filament\Resources\HotLeads\Pages\EditHotLead;
 use App\Filament\Resources\HotLeads\Pages\ListHotLeads;
 use App\Filament\Resources\HotLeads\Pages\ViewHotLead;
-use App\Filament\Resources\Leads\Schemas\LeadForm;
 use App\Filament\Resources\HotLeads\Schemas\HotLeadInfolist;
 use App\Filament\Resources\HotLeads\Tables\HotLeadsTable;
+use App\Filament\Resources\Leads\Schemas\LeadForm;
 use App\Models\Lead;
 use App\Support\Filament\ModuleNavigation;
 use App\Support\Permissions\HotLeadAccess;
@@ -80,7 +80,7 @@ class HotLeadResource extends Resource
 
     public static function canDelete(mixed $record): bool
     {
-        return false;
+        return $record instanceof Lead && (bool) Auth::user()?->hasRole('Admin');
     }
 
     public static function form(Schema $schema): Schema

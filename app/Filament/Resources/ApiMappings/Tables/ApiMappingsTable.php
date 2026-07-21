@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\ApiMappings\Tables;
 
+use App\Filament\Resources\ApiMappings\ApiMappingResource;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
@@ -52,8 +54,9 @@ class ApiMappingsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    ViewAction::make()->label('Xem')->url(fn ($record): string => \App\Filament\Resources\ApiMappings\ApiMappingResource::getUrl('view', ['record' => $record])),
+                    ViewAction::make()->label('Xem')->url(fn ($record): string => ApiMappingResource::getUrl('view', ['record' => $record])),
                     EditAction::make()->label('Sửa'),
+                    DeleteAction::make()->label('Xóa')->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])
                     ->iconButton()
                     ->label('Hành động')

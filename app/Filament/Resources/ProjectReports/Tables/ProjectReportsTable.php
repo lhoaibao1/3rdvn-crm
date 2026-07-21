@@ -3,23 +3,24 @@
 namespace App\Filament\Resources\ProjectReports\Tables;
 
 use App\Filament\Resources\ProjectReports\ProjectReportResource;
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\ProjectReport;
 use App\Models\User;
+use App\Support\Filament\ProjectSchemaColumns;
 use App\Support\Reports\ProjectReportAccess;
 use App\Support\Reports\ProjectReportProductCatalog;
 use App\Support\Reports\ProjectReportWorkflow;
 use App\Support\VietnamAddressCatalog;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ProjectReportsTable
@@ -45,13 +46,23 @@ class ProjectReportsTable
                 TextColumn::make('phone')->label('SĐT')->searchable()->toggleable(),
                 TextColumn::make('product_name')->label('Sản phẩm/Scheme')->limit(42)->tooltip(fn (ProjectReport $record): string => $record->product_name)->searchable()->toggleable(),
                 TextColumn::make('loan_amount')->label('Số tiền vay')->alignEnd()->formatStateUsing(fn (int|string|null $state): string => number_format((int) $state, 0, ',', '.').' VNĐ')->sortable(),
+                TextColumn::make('approved_months')->label('Kỳ hạn duyệt')->suffix(' tháng')->placeholder('-')->sortable()->toggleable(),
+                TextColumn::make('approved_interest_rate')->label('Lãi suất duyệt')->suffix('%')->placeholder('-')->sortable()->toggleable(),
                 TextColumn::make('sales_code')->label('Code')->badge()->color('info')->searchable(),
                 TextColumn::make('status')->label('Trạng thái')->badge()->color(fn (?string $state): string => match ($state) {
                     ProjectReport::STATUS_PROCESSED => 'success',
                     ProjectReport::STATUS_REJECTED => 'danger',
                     default => 'warning',
                 })->sortable(),
+                ...ProjectSchemaColumns::forReports([
+                    'customer_name', 'applicant_name', 'identity_number', 'cccd', 'phone',
+                    'province_code', 'district_code', 'product_code', 'product_name',
+                    'scheme_code', 'scheme_name', 'loan_amount', 'approved_limit',
+                    'approved_amount', 'approved_months', 'approved_interest_rate',
+                ]),
                 TextColumn::make('createdBy.name')->label('Người tạo')->searchable()->toggleable(),
+                TextColumn::make('createdBy.uid')->label('UID người tạo')->placeholder('-')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('sales_project_id')
@@ -75,8 +86,8 @@ class ProjectReportsTable
                         ->icon(Heroicon::OutlinedPencilSquare)
                         ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin'))
                         ->url(fn (ProjectReport $record): string => ProjectReportResource::getUrl('edit', ['record' => $record])),
-                    self::convertToApplicationAction(),
                     self::statusAction(),
+                    DeleteAction::make()->label('Xóa')->icon(Heroicon::OutlinedTrash)->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])
                     ->iconButton()
                     ->label('Hành động')
@@ -86,9 +97,7 @@ class ProjectReportsTable
                     ->dropdownPlacement('bottom-end')
                     ->icon(Heroicon::EllipsisVertical),
             ])
-            ->toolbarActions([
-                self::createAction(),
-            ]);
+            ->toolbarActions([]);
     }
 
     public static function saveAsAdmin(ProjectReport $record, array $data): ProjectReport
@@ -136,38 +145,6 @@ class ProjectReportsTable
         }
 
         return $record->refresh();
-    }
-
-    private static function createAction(): Action
-    {
-        return Action::make('createProjectReport')
-            ->label('Tạo báo cáo')
-            ->icon(Heroicon::OutlinedDocumentPlus)
-            ->color('primary')
-            ->visible(fn (): bool => ProjectReportAccess::creatableProjectOptions(auth()->user()) !== [])
-            ->url(fn (): string => ProjectReportResource::getUrl('create'));
-    }
-
-    private static function convertToApplicationAction(): Action
-    {
-        return Action::make('convertReportToApplication')
-            ->label('Chuyển về Dự án')
-            ->icon(Heroicon::OutlinedArrowRightCircle)
-            ->color('gray')
-            ->visible(fn (ProjectReport $record): bool => ProjectReportWorkflow::canConvertToApplication($record, auth()->user()))
-            ->requiresConfirmation()
-            ->modalHeading('Chuyển báo cáo về dự án')
-            ->modalDescription('Hệ thống sẽ tạo hồ sơ mới trong dự án đã chọn. Trạng thái hồ sơ tiếp tục đồng bộ theo Báo cáo.')
-            ->modalSubmitActionLabel('Xác nhận chuyển')
-            ->action(function (ProjectReport $record): void {
-                $application = ProjectReportWorkflow::convertToApplication($record, auth()->user());
-
-                Notification::make()
-                    ->title('Đã chuyển về dự án')
-                    ->body('Mã hồ sơ: '.$application->application_code)
-                    ->success()
-                    ->send();
-            });
     }
 
     private static function statusAction(): Action

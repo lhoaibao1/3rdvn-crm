@@ -39,6 +39,6 @@ class ApplicationPolicy
 
     public function delete(User $user, Application $application): bool
     {
-        return false;
+        return $user->hasRole('Admin');
     }
 }

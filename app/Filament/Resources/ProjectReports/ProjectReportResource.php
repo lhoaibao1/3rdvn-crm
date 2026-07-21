@@ -72,7 +72,7 @@ class ProjectReportResource extends Resource
 
     public static function canCreate(): bool
     {
-        return ProjectReportAccess::creatableProjectOptions(Auth::user()) !== [];
+        return false;
     }
 
     public static function canEdit(mixed $record): bool
@@ -82,7 +82,7 @@ class ProjectReportResource extends Resource
 
     public static function canDelete(mixed $record): bool
     {
-        return false;
+        return $record instanceof ProjectReport && (bool) Auth::user()?->hasRole('Admin');
     }
 
     public static function form(Schema $schema): Schema

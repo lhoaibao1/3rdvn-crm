@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\HotLeads\Tables;
 
 use App\Filament\Resources\HotLeads\HotLeadResource;
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Lead;
 use App\Models\User;
 use App\Support\Assignments\RecordAssignment;
@@ -15,10 +16,10 @@ use App\Support\Permissions\HotLeadAccess;
 use App\Support\SalesLineSnapshot;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -153,6 +154,7 @@ class HotLeadsTable
                         ->icon(Heroicon::OutlinedPencilSquare)
                         ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin'))
                         ->url(fn (Lead $record): string => HotLeadResource::getUrl('edit', ['record' => $record])),
+                    DeleteAction::make()->label('Xóa')->icon(Heroicon::OutlinedTrash)->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])
                     ->iconButton()
                     ->label('Hành động')

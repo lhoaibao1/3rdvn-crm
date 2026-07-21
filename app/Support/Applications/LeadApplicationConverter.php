@@ -65,7 +65,11 @@ class LeadApplicationConverter
                 ]);
             }
 
-            $assignee = $lead->assignedSale ?: RecordAssignment::autoAssigneeForProject($project, $actor) ?: $actor;
+            $assignee = $lead->assignedSale;
+
+            if (! $assignee instanceof User || ! RecordAssignment::isEligibleForProject($assignee, $project)) {
+                $assignee = RecordAssignment::autoAssigneeForProject($project);
+            }
 
             $application = Application::query()->create([
                 'sales_project_id' => $project->getKey(),
@@ -76,8 +80,8 @@ class LeadApplicationConverter
                 'identity_number' => LeadPayload::identityNumber($payload),
                 'status' => 'processing',
                 ...SalesLineSnapshot::fromLeadLike($lead),
-                ...RecordAssignment::leadLikeAssignmentAttributes($assignee),
-                'assigned_sale_id' => $assignee->getKey(),
+                ...($assignee ? RecordAssignment::leadLikeAssignmentAttributes($assignee) : []),
+                'assigned_sale_id' => $assignee?->getKey(),
                 'payload' => $payload,
                 'note' => $lead->note,
             ]);
@@ -94,7 +98,14 @@ class LeadApplicationConverter
     public static function syncApplicationFromLead(Application $application, Lead $lead): void
     {
         $payload = self::applicationPayloadFromLead($lead, $application->payload);
+        $application->loadMissing('salesProject');
+        $project = $application->salesProject;
         $assignee = $lead->assignedSale ?: $application->assignedSale;
+
+        if ($project instanceof SalesProject
+            && (! $assignee instanceof User || ! RecordAssignment::isEligibleForProject($assignee, $project))) {
+            $assignee = RecordAssignment::autoAssigneeForProject($project);
+        }
 
         $application->forceFill([
             'applicant_name' => LeadPayload::primaryName($payload, $lead->lead_name) ?: $application->applicant_name,
@@ -102,7 +113,7 @@ class LeadApplicationConverter
             'identity_number' => LeadPayload::identityNumber($payload, $application->identity_number),
             ...SalesLineSnapshot::fromLeadLike($lead),
             ...($assignee ? RecordAssignment::leadLikeAssignmentAttributes($assignee) : []),
-            'assigned_sale_id' => $assignee?->getKey() ?: $application->assigned_sale_id,
+            'assigned_sale_id' => $assignee?->getKey(),
             'payload' => $payload,
             'note' => $lead->note,
         ])->save();

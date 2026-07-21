@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Roles\Tables;
 
+use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\Roles\Schemas\RoleForm;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -47,8 +49,9 @@ class RolesTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    ViewAction::make()->label('Xem')->url(fn ($record): string => \App\Filament\Resources\Roles\RoleResource::getUrl('view', ['record' => $record])),
+                    ViewAction::make()->label('Xem')->url(fn ($record): string => RoleResource::getUrl('view', ['record' => $record])),
                     EditAction::make()->label('Sửa'),
+                    DeleteAction::make()->label('Xóa')->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])
                     ->iconButton()
                     ->label('Hành động')

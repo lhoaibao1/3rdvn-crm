@@ -32,6 +32,9 @@ class ProjectReport extends Model
         'product_code',
         'product_name',
         'loan_amount',
+        'approved_months',
+        'approved_interest_rate',
+        'source_data',
         'sales_code',
         'status',
         'status_updated_by_id',
@@ -42,6 +45,9 @@ class ProjectReport extends Model
 
     protected $casts = [
         'loan_amount' => 'integer',
+        'approved_months' => 'integer',
+        'approved_interest_rate' => 'decimal:4',
+        'source_data' => 'array',
         'status_updated_at' => 'datetime',
         'converted_at' => 'datetime',
     ];

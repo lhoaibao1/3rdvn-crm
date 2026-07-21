@@ -4,20 +4,19 @@ namespace App\Filament\Resources\Applications\Tables;
 
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\Applications\Schemas\AclMixFields;
-use App\Filament\Resources\ProjectReports\Schemas\ProjectReportForm;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Filament\AclMixDecisionAction;
+use App\Support\Filament\ProjectSchemaColumns;
 use App\Support\Filament\RecordAssignAction;
 use App\Support\Filament\TableColumnPreferences;
-use App\Support\Reports\ProjectReportWorkflow;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
@@ -76,6 +75,11 @@ class ApplicationsTable
                 TextColumn::make('payload.review.pre_approved_months')->label('Số tháng phê duyệt')->suffix(' tháng')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payload.review.pre_approved_interest_rate')->label('Lãi suất phê duyệt')->suffix('%')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 ...($projectSlug === 'acl-mix' ? self::aclMixDataColumns() : []),
+                ...ProjectSchemaColumns::forApplication($projectSlug, [
+                    'customer_name', 'applicant_name', 'phone', 'identity_number',
+                    'cccd', 'product', 'pre_approved_amount', 'pre_approved_months',
+                    'pre_approved_interest_rate', 'status',
+                ]),
                 TextColumn::make('created_at')->label('Ngày tạo')->dateTime('H:i d/m/Y')->sortable(),
                 TextColumn::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),
             ]))
@@ -145,29 +149,12 @@ class ApplicationsTable
                     ViewAction::make()
                         ->label('Xem')
                         ->url(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record])),
-                    Action::make('convertApplicationToReport')
-                        ->label('Chuyển Báo cáo')
-                        ->icon(Heroicon::OutlinedArrowRightCircle)
-                        ->color('gray')
-                        ->visible(fn (Application $record): bool => ProjectReportWorkflow::canConvertApplication($record, auth()->user()))
-                        ->modalHeading(fn (Application $record): string => 'Chuyển '.$record->application_code.' sang Báo cáo')
-                        ->modalWidth('4xl')
-                        ->extraModalWindowAttributes(['class' => 'crm-lead-modal crm-report-create-modal'])
-                        ->modalSubmitActionLabel('Chuyển sang Báo cáo')
-                        ->modalCancelActionLabel('Hủy')
-                        ->fillForm(fn (Application $record): array => ProjectReportWorkflow::applicationDefaults($record, auth()->user()))
-                        ->schema(fn (): array => ProjectReportForm::components(true))
-                        ->action(function (Application $record, array $data): void {
-                            $report = ProjectReportWorkflow::convertApplication($record, auth()->user(), $data);
-
-                            Notification::make()
-                                ->title('Đã chuyển sang Báo cáo')
-                                ->body('Báo cáo #'.$report->getKey().' đang chờ Admin xử lý.')
-                                ->success()
-                                ->send();
-                        }),
                     AclMixDecisionAction::make(),
                     RecordAssignAction::make('assignApplicationProcessor'),
+                    DeleteAction::make()
+                        ->label('Xóa')
+                        ->icon(Heroicon::OutlinedTrash)
+                        ->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                     EditAction::make()
                         ->label('Cập nhật thông tin')
                         ->visible(fn (Application $record): bool => $projectSlug !== 'acl-mix'

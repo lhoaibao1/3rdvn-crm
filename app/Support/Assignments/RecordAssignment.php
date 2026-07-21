@@ -48,7 +48,7 @@ class RecordAssignment
         $actor = auth()->user();
 
         if ($actor?->hasRole('Courier Manager')) {
-            return self::eligibleUsers($recordOrProject, includeAdmins: false, search: $search)
+            return self::eligibleUsers($recordOrProject, search: $search)
                 ->filter(fn (User $user): bool => $user->hasRole('Courier')
                     && (int) $user->courier_manager_id === (int) $actor->getKey())
                 ->mapWithKeys(fn (User $user): array => [$user->getKey() => self::userLabel($user)])
@@ -70,7 +70,7 @@ class RecordAssignment
                 ->all();
         }
 
-        return self::eligibleUsers($recordOrProject, includeAdmins: true, search: $search)
+        return self::eligibleUsers($recordOrProject, search: $search)
             ->when($requiresCourier, fn (Collection $users): Collection => $users
                 ->filter(fn (User $user): bool => $user->hasRole('Courier')))
             ->mapWithKeys(fn (User $user): array => [$user->getKey() => self::userLabel($user)])
@@ -100,30 +100,21 @@ class RecordAssignment
             return $candidates->isEmpty() ? null : $candidates->random();
         }
 
-        if ($project?->slug === 'hot-lead') {
+        if (! $project instanceof SalesProject || $project->slug === 'hot-lead') {
             return null;
         }
 
-        $candidates = self::eligibleUsers($project, includeAdmins: false);
-
-        if ($candidates->isEmpty()) {
-            $candidates = self::eligibleUsers($project, includeAdmins: true);
-        }
-
-        if ($candidates->isEmpty() && $fallback instanceof User && self::isActive($fallback)) {
-            return $fallback;
-        }
-
-        if ($candidates->isEmpty()) {
-            return self::activeUsersQuery()->role('Admin')->orderBy('id')->first();
-        }
-
-        return self::leastLoadedUser($candidates);
+        return self::leastLoadedUser(self::eligibleUsers($project));
     }
 
     public static function autoAssigneeForRecord(Model $record, ?User $fallback = null): ?User
     {
         return self::autoAssigneeForProject(self::projectFor($record), $fallback);
+    }
+
+    public static function isEligibleForProject(User $user, SalesProject $project): bool
+    {
+        return self::isActive($user) && ProcessingAssignmentConfig::canReceiveProject($user, $project->slug);
     }
 
     public static function assign(Model $record, User $assignee): void
@@ -187,7 +178,7 @@ class RecordAssignment
         };
     }
 
-    private static function eligibleUsers(Model|SalesProject|null $recordOrProject, bool $includeAdmins, ?string $search = null): Collection
+    private static function eligibleUsers(Model|SalesProject|null $recordOrProject, ?string $search = null): Collection
     {
         $project = $recordOrProject instanceof SalesProject ? $recordOrProject : self::projectFor($recordOrProject);
         $slug = $project?->slug;
@@ -205,17 +196,7 @@ class RecordAssignment
             })
             ->orderBy('name')
             ->get()
-            ->filter(function (User $user) use ($slug, $includeAdmins): bool {
-                if ($includeAdmins && $user->hasRole('Admin')) {
-                    return true;
-                }
-
-                if (blank($slug)) {
-                    return ! $user->hasRole('Admin');
-                }
-
-                return in_array($slug, $user->sales_projects ?? [], true);
-            })
+            ->filter(fn (User $user): bool => ProcessingAssignmentConfig::canReceiveProject($user, $slug))
             ->values();
     }
 

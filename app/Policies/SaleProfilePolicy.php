@@ -32,13 +32,13 @@ class SaleProfilePolicy
 
     public function delete(User $user, SaleProfile $saleProfile): bool
     {
-        return $user->can('profile.delete')
-            && $this->view($user, $saleProfile);
+        return $user->hasRole('Admin')
+            || ($user->can('profile.delete') && $this->view($user, $saleProfile));
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->can('profile.delete');
+        return $user->hasRole('Admin') || $user->can('profile.delete');
     }
 
     public function restore(User $user, SaleProfile $saleProfile): bool

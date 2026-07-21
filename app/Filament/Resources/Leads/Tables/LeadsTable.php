@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Leads\Tables;
 use App\Filament\Resources\Leads\LeadResource;
 use App\Filament\Resources\Leads\Schemas\LeadForm;
 use App\Models\Lead;
+use App\Support\Filament\ProjectSchemaColumns;
 use App\Support\Filament\RecordAssignAction;
 use App\Support\Filament\TableColumnPreferences;
 use App\Support\Permissions\LeadAccess;
@@ -70,6 +71,10 @@ class LeadsTable
                     ->sortable(),
                 TextColumn::make('application.application_code')->label('Mã hồ sơ')->badge()->color('success')->placeholder('-')->toggleable(),
                 TextColumn::make('converted_at')->label('Đã chuyển')->dateTime('H:i d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),
+                ...ProjectSchemaColumns::forLeads([
+                    'customer_name', 'lead_name', 'phone', 'email', 'identity_number',
+                    'cccd', 'status', 'source',
+                ]),
                 TextColumn::make('created_at')->label('Ngày tạo')->dateTime('H:i d/m/Y')->sortable(),
                 TextColumn::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('deleted_at')->label('Đã xóa')->dateTime('H:i d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DataCenterLeads\Tables;
 
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\DataCenterLead;
 use App\Support\DataCenter\DataCenterCsvImporter;
 use App\Support\DataCenter\DataCenterLeadService;
@@ -10,9 +11,9 @@ use App\Support\DataCenter\DataCenterStatus;
 use App\Support\Permissions\DataCenterAccess;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -118,6 +119,7 @@ class DataCenterLeadsTable
                         ->url(fn (DataCenterLead $record): string => DataCenterLeadResource::getUrl('view', ['record' => $record])),
                     self::resultAction(),
                     self::convertAction(),
+                    DeleteAction::make()->label('Xóa')->icon(Heroicon::OutlinedTrash)->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])
                     ->iconButton()
                     ->label('Hành động')

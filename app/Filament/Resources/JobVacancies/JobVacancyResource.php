@@ -5,15 +5,16 @@ namespace App\Filament\Resources\JobVacancies;
 use App\Filament\Resources\JobVacancies\Pages\CreateJobVacancy;
 use App\Filament\Resources\JobVacancies\Pages\EditJobVacancy;
 use App\Filament\Resources\JobVacancies\Pages\ListJobVacancies;
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\JobVacancy;
 use App\Models\SalesProject;
 use App\Support\UserSpecOptions;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -33,19 +34,63 @@ use Spatie\Permission\Models\Role;
 class JobVacancyResource extends Resource
 {
     protected static ?string $model = JobVacancy::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;
 
-    public static function getModelLabel(): string { return 'Tin tuyển dụng'; }
-    public static function getPluralModelLabel(): string { return 'Tin tuyển dụng'; }
-    public static function getNavigationLabel(): string { return 'Tin tuyển dụng'; }
-    public static function getNavigationGroup(): ?string { return 'Employee - Work'; }
-    public static function getNavigationSort(): ?int { return 82; }
-    public static function shouldRegisterNavigation(array $parameters = []): bool { return (bool) auth()->user()?->hasRole('Admin'); }
-    public static function canViewAny(): bool { return (bool) auth()->user()?->hasRole('Admin'); }
-    public static function canView(mixed $record): bool { return (bool) auth()->user()?->hasRole('Admin'); }
-    public static function canCreate(): bool { return (bool) auth()->user()?->hasRole('Admin'); }
-    public static function canEdit(mixed $record): bool { return (bool) auth()->user()?->hasRole('Admin'); }
-    public static function canDelete(mixed $record): bool { return (bool) auth()->user()?->hasRole('Admin'); }
+    public static function getModelLabel(): string
+    {
+        return 'Tin tuyển dụng';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Tin tuyển dụng';
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Tin tuyển dụng';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Employee - Work';
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return 82;
+    }
+
+    public static function shouldRegisterNavigation(array $parameters = []): bool
+    {
+        return (bool) auth()->user()?->hasRole('Admin');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return (bool) auth()->user()?->hasRole('Admin');
+    }
+
+    public static function canView(mixed $record): bool
+    {
+        return (bool) auth()->user()?->hasRole('Admin');
+    }
+
+    public static function canCreate(): bool
+    {
+        return (bool) auth()->user()?->hasRole('Admin');
+    }
+
+    public static function canEdit(mixed $record): bool
+    {
+        return (bool) auth()->user()?->hasRole('Admin');
+    }
+
+    public static function canDelete(mixed $record): bool
+    {
+        return (bool) auth()->user()?->hasRole('Admin');
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -132,6 +177,7 @@ class JobVacancyResource extends Resource
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()->label('Chỉnh sửa tin'),
+                    DeleteAction::make()->label('Xóa')->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])->iconButton()->label('Hành động')->icon(Heroicon::EllipsisVertical),
             ]);
     }

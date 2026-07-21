@@ -52,11 +52,11 @@ class HotLeadConverter
                 'stage' => self::STAGE_LEAD,
                 'promoted_at' => now()->toDateTimeString(),
                 'promoted_by_id' => $actor->getKey(),
-                'assigned_user_id' => $assignee->getKey(),
+                'assigned_user_id' => $assignee?->getKey(),
             ]);
 
             $lead->forceFill([
-                ...RecordAssignment::leadLikeAssignmentAttributes($assignee),
+                ...($assignee ? RecordAssignment::leadLikeAssignmentAttributes($assignee) : []),
                 'status' => HotLeadStatus::PENDING_PROCESSING,
                 'payload' => $payload,
             ])->save();
@@ -179,7 +179,11 @@ class HotLeadConverter
                 ]);
             }
 
-            $assignee = $lead->assignedSale ?: RecordAssignment::autoAssigneeForProject($targetProject, $actor) ?: $actor;
+            $assignee = $lead->assignedSale;
+
+            if (! $assignee instanceof User || ! RecordAssignment::isEligibleForProject($assignee, $targetProject)) {
+                $assignee = RecordAssignment::autoAssigneeForProject($targetProject);
+            }
             $payload['source_hot_lead'] = [
                 'id' => $lead->getKey(),
                 'code' => $lead->lead_code,
@@ -195,8 +199,8 @@ class HotLeadConverter
                 'identity_number' => LeadPayload::identityNumber($payload),
                 'status' => 'processing',
                 ...SalesLineSnapshot::fromLeadLike($lead),
-                ...RecordAssignment::leadLikeAssignmentAttributes($assignee),
-                'assigned_sale_id' => $assignee->getKey(),
+                ...($assignee ? RecordAssignment::leadLikeAssignmentAttributes($assignee) : []),
+                'assigned_sale_id' => $assignee?->getKey(),
                 'payload' => $payload,
                 'note' => $note ?: $lead->note,
             ]);

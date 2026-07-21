@@ -10,6 +10,7 @@ use App\Support\Filament\TableColumnPreferences;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
@@ -163,6 +164,7 @@ class SaleProfilesTable
                     RecordAssignAction::make('assignSaleProfileProcessor'),
                     SaleProfileProcessAction::make(),
                     EditAction::make()->label('Sửa')->icon(Heroicon::OutlinedPencilSquare),
+                    DeleteAction::make()->label('Xóa')->icon(Heroicon::OutlinedTrash)->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])
                     ->iconButton()
                     ->label('Hành động')

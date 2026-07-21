@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\SalesChannels\Tables;
 
+use App\Filament\Resources\SalesChannels\SalesChannelResource;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -29,8 +31,9 @@ class SalesChannelsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    ViewAction::make()->label('Xem')->url(fn ($record): string => \App\Filament\Resources\SalesChannels\SalesChannelResource::getUrl('view', ['record' => $record])),
+                    ViewAction::make()->label('Xem')->url(fn ($record): string => SalesChannelResource::getUrl('view', ['record' => $record])),
                     EditAction::make()->label('Sửa'),
+                    DeleteAction::make()->label('Xóa')->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
                 ])
                     ->iconButton()
                     ->label('Hành động')
