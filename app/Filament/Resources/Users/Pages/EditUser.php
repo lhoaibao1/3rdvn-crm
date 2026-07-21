@@ -21,8 +21,6 @@ class EditUser extends EditRecord
 
     protected static string $resource = UserResource::class;
 
-    private ?string $plainPassword = null;
-
     public function getTitle(): string
     {
         return 'Sửa người dùng';
@@ -38,6 +36,37 @@ class EditUser extends EditRecord
         return [
             ActionGroup::make([
                 ...$this->mailboxActions(),
+                Action::make('regenerateLoginPassword')
+                    ->icon(Heroicon::OutlinedKey)
+                    ->label('Tạo lại mật khẩu mới')
+                    ->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false)
+                    ->modalHeading('Tạo lại mật khẩu đăng nhập')
+                    ->modalDescription(fn (): string => $this->getRecord()->name.' - '.($this->getRecord()->uid ?: $this->getRecord()->username))
+                    ->modalSubmitActionLabel('Tạo lại mật khẩu')
+                    ->modalCancelActionLabel('Hủy')
+                    ->schema([
+                        \Filament\Forms\Components\TextInput::make('new_password')
+                            ->label('Mật khẩu mới')
+                            ->password()
+                            ->revealable()
+                            ->required()
+                            ->rules([\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()])
+                            ->same('new_password_confirmation')
+                            ->validationMessages(['same' => 'Xác nhận mật khẩu mới không khớp.']),
+                        \Filament\Forms\Components\TextInput::make('new_password_confirmation')
+                            ->label('Xác nhận mật khẩu mới')
+                            ->password()
+                            ->revealable()
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $this->getRecord()->forceFill([
+                            'password' => \Illuminate\Support\Facades\Hash::make($data['new_password']),
+                        ])->save();
+                        app(StalwartMailService::class)
+                            ->scheduleCredentialSync($this->getRecord(), $data['new_password']);
+                        Notification::make()->title('Đã tạo lại mật khẩu đăng nhập')->success()->send();
+                    }),
                 Action::make('saveUser')
                     ->icon(Heroicon::OutlinedCheck)
                     ->label('Lưu thay đổi')
@@ -106,7 +135,6 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $this->plainPassword = filled($data['password'] ?? null) ? (string) $data['password'] : null;
         $record = $this->getRecord();
         $role = $this->form->getRawState()['roles'] ?? $record->roles()->value('name');
 
@@ -130,14 +158,6 @@ class EditUser extends EditRecord
         }
 
         return UserResource::normalizeSalesCodes($data);
-    }
-
-    protected function afterSave(): void
-    {
-        if (filled($this->plainPassword)) {
-            app(StalwartMailService::class)
-                ->scheduleCredentialSync($this->getRecord(), $this->plainPassword);
-        }
     }
 
     protected function getRedirectUrl(): string

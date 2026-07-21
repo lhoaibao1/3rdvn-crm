@@ -437,7 +437,7 @@ class UserForm
                                             ->label('Mật khẩu')
                                             ->password()
                                             ->revealable()
-                                            ->visible(fn (string $operation): bool => $operation === 'create' || auth()->user()?->hasRole('Admin'))
+                                            ->visible(fn (string $operation): bool => $operation === 'create')
                                             ->required(fn (string $operation): bool => $operation === 'create')
                                             ->dehydrated(fn (?string $state): bool => filled($state))
                                             ->maxLength(255),
