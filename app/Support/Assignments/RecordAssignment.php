@@ -139,6 +139,34 @@ class RecordAssignment
         }
     }
 
+    public static function unassign(Model $record): void
+    {
+        if ($record instanceof Lead) {
+            $record->forceFill(['assigned_sale_id' => null])->save();
+            $record->loadMissing(['application', 'convertedSaleProfile']);
+
+            if ($record->application instanceof Application) {
+                $record->application->forceFill(['assigned_sale_id' => null])->save();
+            }
+
+            if ($record->convertedSaleProfile instanceof SaleProfile) {
+                $record->convertedSaleProfile->forceFill(['processing_owner_id' => null])->save();
+            }
+
+            return;
+        }
+
+        if ($record instanceof Application) {
+            $record->forceFill(['assigned_sale_id' => null])->save();
+
+            return;
+        }
+
+        if ($record instanceof SaleProfile) {
+            $record->forceFill(['processing_owner_id' => null])->save();
+        }
+    }
+
     public static function leadLikeAssignmentAttributes(User $assignee): array
     {
         $snapshot = SalesLineSnapshot::fromUser($assignee);
@@ -161,6 +189,7 @@ class RecordAssignment
     {
         $project = $recordOrProject instanceof SalesProject ? $recordOrProject : self::projectFor($recordOrProject);
         $slug = $project?->slug;
+        $actor = auth()->user();
 
         return self::activeUsersQuery()
             ->with('roles')
@@ -175,9 +204,17 @@ class RecordAssignment
             })
             ->orderBy('name')
             ->get()
-            ->filter(fn (User $user): bool => blank($slug)
-                ? ! $user->hasRole('Admin')
-                : ProcessingAssignmentConfig::canReceiveProject($user, $slug))
+            ->filter(function (User $user) use ($actor, $slug): bool {
+                if ($actor?->hasRole('Admin')) {
+                    return true;
+                }
+
+                if (blank($slug)) {
+                    return ! $user->hasRole('Admin');
+                }
+
+                return ProcessingAssignmentConfig::canReceiveProject($user, $slug);
+            })
             ->values();
     }
 

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CandidateApplications\Pages;
 
 use App\Filament\Resources\CandidateApplications\CandidateApplicationResource;
 use App\Filament\Resources\Users\UserResource;
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\CandidateApplication;
 use App\Support\Candidates\CandidateConversionService;
 use App\Support\Candidates\CandidateWorkflow;
@@ -14,7 +15,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
-use App\Forms\Components\SearchableSelect as Select;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -48,24 +49,39 @@ class ViewCandidateApplication extends ViewRecord
                     ->label('Phân công phỏng vấn')
                     ->icon(Heroicon::OutlinedUserPlus)
                     ->color('info')
+                    ->modalHeading('Phân công người quản lý phỏng vấn')
+                    ->modalWidth('lg')
+                    ->modalSubmitActionLabel('Lưu phân công')
+                    ->modalCancelActionLabel('Hủy')
                     ->visible(fn (): bool => CandidateWorkflow::canAssign($this->getRecord(), auth()->user()))
                     ->schema([
-                        Select::make('assigned_to_id')
-                            ->label('Người quản lý phỏng vấn')
-                            ->options(fn (): array => CandidateWorkflow::assigneeOptions(auth()->user()))
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
+                        Radio::make('assigned_to_id')
+                            ->label('Chọn người quản lý phỏng vấn')
+                            ->options(fn (): array => [
+                                0 => 'None - Không phân công',
+                            ] + CandidateWorkflow::assigneeOptions(auth()->user()))
+                            ->default(fn (): int => (int) ($this->getRecord()->assigned_to_id ?? 0))
+                            ->columns(1)
                             ->required(),
                     ])
                     ->action(function (array $data): void {
-                        CandidateWorkflow::assign(
-                            $this->getRecord(),
-                            (int) $data['assigned_to_id'],
-                            auth()->user(),
-                        );
+                        $assigneeId = (int) ($data['assigned_to_id'] ?? 0);
+
+                        if ($assigneeId === 0) {
+                            CandidateWorkflow::unassign($this->getRecord(), auth()->user());
+                        } else {
+                            CandidateWorkflow::assign(
+                                $this->getRecord(),
+                                $assigneeId,
+                                auth()->user(),
+                            );
+                        }
+
                         $this->getRecord()->refresh();
-                        Notification::make()->title('Đã phân công phỏng vấn')->success()->send();
+                        Notification::make()
+                            ->title($assigneeId === 0 ? 'Đã hủy phân công phỏng vấn' : 'Đã phân công phỏng vấn')
+                            ->success()
+                            ->send();
                     }),
                 Action::make('startInterview')
                     ->label('Bắt đầu phỏng vấn')

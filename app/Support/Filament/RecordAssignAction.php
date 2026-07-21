@@ -30,13 +30,24 @@ class RecordAssignAction
             ->schema(fn (Model $record): array => [
                 Radio::make('assignee_id')
                     ->label('Chọn nhân viên xử lý')
-                    ->options(fn (): array => RecordAssignment::assigneeOptions($record))
-                    ->default(fn (): ?int => RecordAssignment::currentAssigneeId($record) ?? RecordAssignment::autoAssigneeForRecord($record, auth()->user())?->getKey())
+                    ->options(fn (): array => [
+                        0 => 'None - Không phân công',
+                    ] + RecordAssignment::assigneeOptions($record))
+                    ->default(fn (): int => RecordAssignment::currentAssigneeId($record) ?? 0)
                     ->columns(1)
                     ->required(),
             ])
             ->action(function (Model $record, array $data): void {
-                $assignee = User::query()->find((int) ($data['assignee_id'] ?? 0));
+                $assigneeId = (int) ($data['assignee_id'] ?? 0);
+
+                if ($assigneeId === 0) {
+                    RecordAssignment::unassign($record);
+                    Notification::make()->title('Đã hủy phân công xử lý')->success()->send();
+
+                    return;
+                }
+
+                $assignee = User::query()->find($assigneeId);
 
                 if (! $assignee instanceof User) {
                     throw ValidationException::withMessages([

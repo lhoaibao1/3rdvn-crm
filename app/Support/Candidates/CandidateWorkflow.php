@@ -20,6 +20,7 @@ use Throwable;
 class CandidateWorkflow
 {
     public const ACCESS_ROLES = ['Admin', 'ZD', 'AM', 'Team Leader'];
+
     public const INTERVIEWER_ROLES = ['ZD', 'AM', 'Team Leader'];
 
     public static function canAccess(?User $user): bool
@@ -193,6 +194,33 @@ class CandidateWorkflow
         );
 
         return $candidate;
+    }
+
+    public static function unassign(CandidateApplication $candidate, User $actor): CandidateApplication
+    {
+        if (! self::canAssign($candidate, $actor)) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($candidate): void {
+            $candidate->forceFill([
+                'status' => in_array($candidate->status, [CandidateApplication::STATUS_NEW, CandidateApplication::STATUS_REVIEWING], true)
+                    ? $candidate->status
+                    : CandidateApplication::STATUS_REVIEWING,
+                'assigned_to_id' => null,
+                'assigned_by_id' => null,
+                'assigned_at' => null,
+                'interview_at' => null,
+                'interview_note' => null,
+                'interview_recommendation' => null,
+                'submitted_at' => null,
+                'approved_by_id' => null,
+                'approved_at' => null,
+                'approval_note' => null,
+            ])->save();
+        });
+
+        return $candidate->refresh();
     }
 
     public static function startInterview(CandidateApplication $candidate, User $actor): CandidateApplication
