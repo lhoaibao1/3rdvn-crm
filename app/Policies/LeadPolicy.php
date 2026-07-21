@@ -35,26 +35,26 @@ class LeadPolicy
 
     public function deleteAny(User $user): bool
     {
-        return $user->can('lead.delete') && LeadAccess::canAccessLeadModule($user);
+        return $user->hasRole('Admin') && LeadAccess::canAccessLeadModule($user);
     }
 
     public function restore(User $user, Lead $lead): bool
     {
-        return $this->delete($user, $lead);
+        return $user->hasRole('Admin') && $lead->trashed();
     }
 
     public function restoreAny(User $user): bool
     {
-        return $this->deleteAny($user);
+        return $user->hasRole('Admin') && LeadAccess::canAccessLeadModule($user);
     }
 
     public function forceDelete(User $user, Lead $lead): bool
     {
-        return $this->delete($user, $lead);
+        return $user->hasRole('Admin') && $lead->trashed();
     }
 
     public function forceDeleteAny(User $user): bool
     {
-        return $this->deleteAny($user);
+        return $user->hasRole('Admin') && LeadAccess::canAccessLeadModule($user);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Applications\Tables;
 
 use App\Filament\Resources\Applications\ApplicationResource;
+use App\Filament\Resources\Applications\Schemas\AclMixFields;
 use App\Filament\Resources\ProjectReports\Schemas\ProjectReportForm;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
@@ -19,6 +20,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
@@ -34,7 +36,6 @@ class ApplicationsTable
             ->extraAttributes(['class' => 'crm-users-table crm-applications-table', 'data-crm-column-table' => $columnTable], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record]))
-            ->poll('3s')
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
@@ -72,6 +73,9 @@ class ApplicationsTable
                     ->label('Số tiền sơ bộ')
                     ->formatStateUsing(fn (mixed $state): string => filled($state) ? number_format((int) preg_replace('/\D+/', '', (string) $state), 0, ',', '.').' VNĐ' : '-')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('payload.review.pre_approved_months')->label('Số tháng phê duyệt')->suffix(' tháng')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('payload.review.pre_approved_interest_rate')->label('Lãi suất phê duyệt')->suffix('%')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
+                ...($projectSlug === 'acl-mix' ? self::aclMixDataColumns() : []),
                 TextColumn::make('created_at')->label('Ngày tạo')->dateTime('H:i d/m/Y')->sortable(),
                 TextColumn::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),
             ]))
@@ -129,10 +133,13 @@ class ApplicationsTable
             ->filtersTriggerAction(fn (Action $action): Action => $action->label('Bộ lọc')->icon(Heroicon::OutlinedFunnel)->button()->color('gray'))
             ->filtersApplyAction(fn (Action $action): Action => $action->label('Tìm kiếm')->icon(Heroicon::OutlinedMagnifyingGlass)->color('primary'))
             ->filtersRemoveAllAction(fn (Action $action): Action => $action->label('Reset')->icon(Heroicon::OutlinedArrowPath)->color('gray'))
-            ->columnManagerTriggerAction(fn (Action $action): Action => $action->label('Cột')->icon(Heroicon::OutlinedViewColumns)->button())
-            ->columnManagerColumns(1)
-            ->columnManagerMaxHeight('28rem')
-            ->columnManagerWidth('18rem')
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->deferColumnManager()
+            ->columnManagerTriggerAction(fn (Action $action): Action => $action->label('Cột hiển thị')->icon(Heroicon::OutlinedViewColumns)->button()->color('gray'))
+            ->columnManagerApplyAction(fn (Action $action): Action => $action->label('Áp dụng')->color('primary'))
+            ->columnManagerColumns(2)
+            ->columnManagerMaxHeight('65vh')
+            ->columnManagerWidth('4xl')
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make()
@@ -215,6 +222,38 @@ class ApplicationsTable
                         fclose($out);
                     }, $exportPrefix.'-'.now()->format('Ymd-His').'.csv')),
             ]);
+    }
+
+    /** @return array<int, TextColumn> */
+    private static function aclMixDataColumns(): array
+    {
+        $duplicateKeys = ['customer_name', 'cccd', 'phone'];
+
+        return collect(AclMixFields::definitions())
+            ->reject(fn (array $field): bool => in_array($field['field_key'], $duplicateKeys, true))
+            ->map(function (array $field): TextColumn {
+                $key = $field['field_key'];
+                $displayKey = str_ends_with($key, '_province_code')
+                    || str_ends_with($key, '_district_code')
+                    || str_ends_with($key, '_ward_code')
+                        ? substr($key, 0, -4).'name'
+                        : $key;
+
+                return TextColumn::make('payload.module_fields.'.$displayKey)
+                    ->label($field['label'])
+                    ->placeholder('-')
+                    ->formatStateUsing(fn (mixed $state): string => match ($key) {
+                        'disbursement_method' => match ($state) {
+                            'agent' => 'Đại lý chi hộ',
+                            'bank' => 'Tài khoản ngân hàng',
+                            default => filled($state) ? (string) $state : '-',
+                        },
+                        default => filled($state) ? (string) $state : '-',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true);
+            })
+            ->values()
+            ->all();
     }
 
     private static function statusLabel(?string $state): string

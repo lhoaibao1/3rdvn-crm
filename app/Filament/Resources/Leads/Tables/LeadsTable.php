@@ -21,6 +21,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
@@ -37,7 +38,6 @@ class LeadsTable
             ->extraAttributes(['class' => 'crm-users-table crm-leads-table', 'data-crm-column-table' => 'leads'], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Lead $record): string => LeadResource::getUrl('view', ['record' => $record]))
-            ->poll('3s')
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
@@ -128,18 +128,21 @@ class LeadsTable
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when($data['date'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '<=', $date))),
                 TrashedFilter::make()->label('Đã xóa'),
-            ], layout: FiltersLayout::AboveContent)
+            ], layout: FiltersLayout::Modal)
             ->filtersFormColumns(3)
-            ->filtersFormWidth('7xl')
+            ->filtersFormWidth('4xl')
             ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
             ->deferFilters()
             ->filtersTriggerAction(fn (Action $action): Action => $action->label('Bộ lọc')->icon(Heroicon::OutlinedFunnel)->button()->color('gray'))
             ->filtersApplyAction(fn (Action $action): Action => $action->label('Tìm kiếm')->icon(Heroicon::OutlinedMagnifyingGlass)->color('primary'))
             ->filtersRemoveAllAction(fn (Action $action): Action => $action->label('Reset')->icon(Heroicon::OutlinedArrowPath)->color('gray'))
-            ->columnManagerTriggerAction(fn (Action $action): Action => $action->label('Cột')->icon(Heroicon::OutlinedViewColumns)->button())
-            ->columnManagerColumns(1)
-            ->columnManagerMaxHeight('28rem')
-            ->columnManagerWidth('18rem')
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->deferColumnManager()
+            ->columnManagerTriggerAction(fn (Action $action): Action => $action->label('Cột hiển thị')->icon(Heroicon::OutlinedViewColumns)->button()->color('gray'))
+            ->columnManagerApplyAction(fn (Action $action): Action => $action->label('Áp dụng')->color('primary'))
+            ->columnManagerColumns(2)
+            ->columnManagerMaxHeight('65vh')
+            ->columnManagerWidth('4xl')
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make()
