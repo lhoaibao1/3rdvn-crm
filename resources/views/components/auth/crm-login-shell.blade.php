@@ -17,7 +17,7 @@
 <div
     class="crm-login-screen"
     x-data="{ passwordVisible: false, introVisible: true, introLeaving: false }"
-    x-init="if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { introVisible = false } else { window.setTimeout(() => introLeaving = true, 1050); window.setTimeout(() => introVisible = false, 1900) }"
+    x-init="if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { introVisible = false } else { window.setTimeout(() => introLeaving = true, 1800); window.setTimeout(() => introVisible = false, 3200) }"
     style="--crm-login-primary: {{ $primary }}; --crm-login-cover: {{ $coverStyle }};"
 >
     <style>
@@ -58,6 +58,8 @@
             color: #0f172a;
             background: #f8fafc;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --crm-login-story-pad-x: clamp(34px, 4.2vw, 68px);
+            --crm-login-story-pad-y: clamp(34px, 4.2vw, 68px);
         }
 
         .crm-login-intro {
@@ -68,7 +70,7 @@
             color: #fff;
             background: transparent;
             pointer-events: all;
-            animation: crm-login-intro-failsafe .01s linear 3s forwards;
+            animation: crm-login-intro-failsafe .01s linear 4.5s forwards;
         }
 
         .crm-login-intro.is-leaving {
@@ -83,7 +85,7 @@
             background:
                 radial-gradient(circle at 35% 42%, rgba(59, 130, 246, .24), transparent 30%),
                 linear-gradient(135deg, #07111f 0%, #0c1d38 100%);
-            transition: transform .82s cubic-bezier(.76, 0, .24, 1) .12s;
+            transition: transform 1s cubic-bezier(.76, 0, .24, 1) .22s;
             will-change: transform;
         }
 
@@ -125,40 +127,59 @@
             background: radial-gradient(circle, rgba(37, 99, 235, .25), rgba(37, 99, 235, .07) 38%, transparent 70%);
             filter: blur(12px);
             transform: translate(-50%, -50%);
-            animation: crm-login-intro-breathe 1.6s ease-in-out both;
-            transition: opacity .25s ease, transform .45s ease;
+            animation: crm-login-intro-breathe 2.5s ease-in-out both;
+            transition: opacity .45s ease, filter .45s ease, transform .65s ease;
         }
 
         .crm-login-intro-center {
             position: absolute;
             inset: 0;
             z-index: 4;
-            display: grid;
-            place-content: center;
-            justify-items: center;
             padding: 24px;
             text-align: center;
-            transition: opacity .28s ease, filter .35s ease, transform .4s cubic-bezier(.4, 0, 1, 1);
         }
 
-        .crm-login-intro.is-leaving .crm-login-intro-center,
         .crm-login-intro.is-leaving .crm-login-intro-glow {
             opacity: 0;
             filter: blur(10px);
-            transform: translate(-50%, -50%) scale(.88);
+            transform: translate(-50%, -50%) scale(.9);
         }
 
-        .crm-login-intro.is-leaving .crm-login-intro-center {
-            transform: scale(.92);
+        .crm-login-intro.is-leaving .crm-login-intro-line,
+        .crm-login-intro.is-leaving .crm-login-intro-center > strong,
+        .crm-login-intro.is-leaving .crm-login-intro-center > small {
+            opacity: 0;
+            animation: none;
+            transform: translate(-50%, -12px);
+            transition: opacity .3s ease, transform .35s ease;
         }
 
         .crm-login-intro-rings {
-            position: relative;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            z-index: 5;
             display: grid;
             place-items: center;
-            width: 156px;
-            height: 156px;
-            animation: crm-login-intro-arrive .72s cubic-bezier(.16, 1, .3, 1) both;
+            width: min(520px, 86vw);
+            height: min(280px, 46vw);
+            transform: translate(-50%, -50%);
+            animation: crm-login-intro-arrive .9s cubic-bezier(.16, 1, .3, 1) both;
+            transition:
+                top 1.08s cubic-bezier(.16, 1, .3, 1),
+                left 1.08s cubic-bezier(.16, 1, .3, 1),
+                width 1.08s cubic-bezier(.16, 1, .3, 1),
+                height 1.08s cubic-bezier(.16, 1, .3, 1),
+                filter .5s ease;
+            will-change: top, left, width, height;
+        }
+
+        .crm-login-intro.is-leaving .crm-login-intro-rings {
+            top: calc(var(--crm-login-story-pad-y) + 24px);
+            left: calc(var(--crm-login-story-pad-x) + 77px);
+            width: 154px;
+            height: 48px;
+            filter: none;
         }
 
         .crm-login-intro-ring {
@@ -171,11 +192,16 @@
         }
 
         .crm-login-intro-ring:nth-child(2) {
-            inset: 15px;
+            inset: 24px;
             border-color: rgba(96, 165, 250, .18);
             border-radius: 50%;
             animation-direction: reverse;
-            animation-duration: 2.2s;
+            animation-duration: 3.2s;
+        }
+
+        .crm-login-intro.is-leaving .crm-login-intro-ring {
+            opacity: 0;
+            transition: opacity .26s ease;
         }
 
         .crm-login-intro-emblem {
@@ -183,9 +209,9 @@
             z-index: 2;
             display: grid;
             place-items: center;
-            width: 112px;
-            height: 78px;
-            padding: 14px;
+            width: min(430px, 78vw);
+            height: min(132px, 24vw);
+            padding: clamp(18px, 3vw, 26px);
             border: 1px solid rgba(255, 255, 255, .2);
             border-radius: 20px;
             background: rgba(255, 255, 255, .1);
@@ -195,6 +221,22 @@
                 0 0 44px rgba(59, 130, 246, .16);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
+            transition:
+                width 1.08s cubic-bezier(.16, 1, .3, 1),
+                height 1.08s cubic-bezier(.16, 1, .3, 1),
+                padding 1.08s cubic-bezier(.16, 1, .3, 1),
+                border-radius 1.08s cubic-bezier(.16, 1, .3, 1),
+                background .45s ease,
+                box-shadow .45s ease;
+        }
+
+        .crm-login-intro.is-leaving .crm-login-intro-emblem {
+            width: 154px;
+            height: 48px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .1);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
         }
 
         .crm-login-intro-emblem img {
@@ -211,11 +253,14 @@
         }
 
         .crm-login-intro-line {
-            width: min(240px, 56vw);
+            position: absolute;
+            top: calc(50% + 112px);
+            left: 50%;
+            width: min(310px, 64vw);
             height: 1px;
-            margin-top: 28px;
             overflow: hidden;
             background: rgba(148, 163, 184, .13);
+            transform: translateX(-50%);
         }
 
         .crm-login-intro-line span {
@@ -227,26 +272,34 @@
             animation: crm-login-intro-line .72s cubic-bezier(.16, 1, .3, 1) .24s forwards;
         }
 
-        .crm-login-intro-center strong {
-            margin-top: 20px;
-            font-size: clamp(1rem, 2vw, 1.25rem);
+        .crm-login-intro-center > strong {
+            position: absolute;
+            top: calc(50% + 136px);
+            left: 50%;
+            font-size: clamp(1.08rem, 2vw, 1.35rem);
             font-weight: 760;
             letter-spacing: .12em;
             text-transform: uppercase;
-            animation: crm-login-intro-copy .55s ease .22s both;
+            white-space: nowrap;
+            transform: translateX(-50%);
+            animation: crm-login-intro-copy .65s ease .3s both;
         }
 
-        .crm-login-intro-center small {
+        .crm-login-intro-center > small {
+            position: absolute;
+            top: calc(50% + 174px);
+            left: 50%;
             display: inline-flex;
             align-items: center;
             gap: 9px;
-            margin-top: 9px;
             color: rgba(191, 219, 254, .66);
             font-size: .66rem;
             font-weight: 650;
             letter-spacing: .14em;
             text-transform: uppercase;
-            animation: crm-login-intro-copy .55s ease .34s both;
+            white-space: nowrap;
+            transform: translateX(-50%);
+            animation: crm-login-intro-copy .65s ease .44s both;
         }
 
         .crm-login-intro-center small span {
@@ -272,7 +325,7 @@
             display: flex;
             min-width: 0;
             overflow: hidden;
-            padding: clamp(34px, 4.2vw, 68px);
+            padding: var(--crm-login-story-pad-y) var(--crm-login-story-pad-x);
             color: #fff;
             background:
                 radial-gradient(circle at 13% 14%, rgba(59, 130, 246, .28), transparent 30%),
@@ -311,7 +364,7 @@
             flex-direction: column;
             width: min(100%, 650px);
             min-height: 0;
-            animation: crm-login-scene-in .82s cubic-bezier(.16, 1, .3, 1) 1.12s both;
+            animation: crm-login-scene-in .82s cubic-bezier(.16, 1, .3, 1) 2.08s both;
         }
 
         .crm-login-story-header,
@@ -500,7 +553,7 @@
             box-shadow: 0 30px 80px rgba(15, 23, 42, .12), 0 3px 12px rgba(15, 23, 42, .04);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            animation: crm-login-dialog-in .9s cubic-bezier(.16, 1, .3, 1) 1.08s both;
+            animation: crm-login-dialog-in .9s cubic-bezier(.16, 1, .3, 1) 2.02s both;
             transform-origin: center;
         }
 
@@ -820,8 +873,8 @@
         }
 
         @keyframes crm-login-intro-arrive {
-            from { opacity: 0; transform: translateY(20px) scale(.78) rotate(-4deg); filter: blur(8px); }
-            to { opacity: 1; transform: translateY(0) scale(1) rotate(0); filter: blur(0); }
+            from { opacity: 0; transform: translate(-50%, -50%) translateY(22px) scale(.76) rotate(-3deg); filter: blur(10px); }
+            to { opacity: 1; transform: translate(-50%, -50%) translateY(0) scale(1) rotate(0); filter: blur(0); }
         }
 
         @keyframes crm-login-intro-ring {
@@ -833,8 +886,8 @@
         }
 
         @keyframes crm-login-intro-copy {
-            from { opacity: 0; transform: translateY(9px); letter-spacing: .22em; }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translate(-50%, 10px); letter-spacing: .22em; }
+            to { opacity: 1; transform: translate(-50%, 0); }
         }
 
         @keyframes crm-login-intro-breathe {
@@ -858,12 +911,17 @@
         }
 
         @media (max-width: 1080px) {
+            .crm-login-screen {
+                --crm-login-story-pad-x: 42px;
+                --crm-login-story-pad-y: 42px;
+            }
+
             .crm-login-layout {
                 grid-template-columns: minmax(410px, .92fr) minmax(430px, 1.08fr);
             }
 
             .crm-login-story {
-                padding: 42px;
+                padding: var(--crm-login-story-pad-y) var(--crm-login-story-pad-x);
             }
 
             .crm-login-flow {
@@ -895,6 +953,18 @@
 
             .crm-login-story {
                 display: none;
+            }
+
+            .crm-login-intro.is-leaving .crm-login-intro-rings {
+                top: 68px;
+                left: 116px;
+                width: 138px;
+                height: 44px;
+            }
+
+            .crm-login-intro.is-leaving .crm-login-intro-emblem {
+                width: 138px;
+                height: 44px;
             }
 
             .crm-login-panel {
@@ -950,9 +1020,13 @@
         }
 
         @media (max-height: 680px) and (min-width: 821px) {
+            .crm-login-screen {
+                --crm-login-story-pad-y: 30px;
+            }
+
             .crm-login-story {
-                padding-top: 30px;
-                padding-bottom: 30px;
+                padding-top: var(--crm-login-story-pad-y);
+                padding-bottom: var(--crm-login-story-pad-y);
             }
 
             .crm-login-story-copy {
