@@ -33,7 +33,7 @@ class UserFormLayoutTest extends TestCase
         }
     }
 
-    public function test_user_view_matches_form_sections_without_a_custom_header(): void
+    public function test_user_view_separates_information_and_history_into_two_tabs(): void
     {
         $source = file_get_contents(
             dirname(__DIR__, 2).'/app/Filament/Resources/Users/Schemas/UserInfolist.php',
@@ -41,8 +41,11 @@ class UserFormLayoutTest extends TestCase
 
         $this->assertStringContainsString('->columns(1)', $source);
         $this->assertStringNotContainsString('->columns(12)', $source);
-        $this->assertStringNotContainsString('Tabs::make', $source);
-        $this->assertStringNotContainsString('Tab::make', $source);
+        $this->assertStringContainsString("Tabs::make('Chi tiết người dùng')", $source);
+        $this->assertStringContainsString("Tab::make('Thông tin')", $source);
+        $this->assertStringContainsString("Tab::make('Lịch sử')", $source);
+        $this->assertStringContainsString("persistTabInQueryString('user_tab')", $source);
+        $this->assertSame(2, substr_count($source, 'Tab::make('));
         $this->assertStringNotContainsString('user_record_view_header', $source);
         $this->assertStringNotContainsString('RecordViewChrome', $source);
 
