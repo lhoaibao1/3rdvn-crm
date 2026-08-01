@@ -456,6 +456,7 @@
     </style>
 </head>
 <body>
+    @include('filament.hooks.login-entry-transition')
     <header class="los-topbar">
         <div class="los-brand">
             <div class="los-brand-mark">
