@@ -5,6 +5,7 @@ namespace App\Support\Applications;
 use App\Models\Application;
 use App\Models\Lead;
 use App\Models\User;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Notifications\LeadNotificationSender;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,7 @@ class LeadDecisionProcessor
             $applicationCode = trim((string) Arr::get($data, 'application_code', ''));
 
             if ($status === 'Khách hàng thoả mãn điều kiện') {
-                if ($applicationCode === '' && self::isCbpLead($lead)) {
+                if ($applicationCode === '' && (self::isCbpLead($lead) || AdminWorkflowOverride::active($actor))) {
                     $applicationCode = self::generateApplicationCode($lead);
                 }
 
@@ -116,7 +117,6 @@ class LeadDecisionProcessor
 
         return Arr::get($data, 'review_note', $lead->note);
     }
-
 
     private static function isCbpLead(Lead $lead): bool
     {

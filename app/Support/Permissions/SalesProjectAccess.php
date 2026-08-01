@@ -28,7 +28,7 @@ class SalesProjectAccess
             return false;
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return true;
         }
 
@@ -43,7 +43,7 @@ class SalesProjectAccess
             return false;
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return true;
         }
 

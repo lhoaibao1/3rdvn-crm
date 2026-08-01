@@ -48,9 +48,7 @@ class LotteFinanceDocuments
                 ->disabled($disabled)
                 ->columns(2)
                 ->schema([
-                    self::upload('doc100', self::definitions()['doc100'])
-                        ->disabled()
-                        ->dehydrated(false),
+                    self::upload('doc100', self::definitions()['doc100']),
                     self::upload('doc101', self::definitions()['doc101']),
                     self::upload('doc105_customer_sale', self::definitions()['doc105_customer_sale']),
                     self::upload('doc133_salary', self::definitions()['doc133_salary']),
@@ -65,6 +63,9 @@ class LotteFinanceDocuments
                         ->maxSize(102400)
                         ->multiple()
                         ->maxFiles(3)
+                        ->reorderable()
+                        ->previewable()
+                        ->deletable()
                         ->downloadable()
                         ->openable()
                         ->columnSpanFull(),
@@ -87,7 +88,7 @@ class LotteFinanceDocuments
             data_get($payload, 'fields.ocr_back_image'),
         ], fn (mixed $path): bool => filled($path)));
 
-        if ($doc100Sources !== [] && empty($documents['doc100'])) {
+        if ($doc100Sources !== [] && ! array_key_exists('doc100', $documents)) {
             $documents['doc100'] = $doc100Sources;
         }
 
@@ -114,6 +115,8 @@ class LotteFinanceDocuments
             ->multiple()
             ->maxFiles(12)
             ->reorderable()
+            ->previewable()
+            ->deletable()
             ->downloadable()
             ->openable();
     }

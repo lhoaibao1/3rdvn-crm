@@ -3,18 +3,19 @@
 namespace App\Filament\Resources\Leads\Pages;
 
 use App\Filament\Resources\Leads\LeadResource;
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\SalesProject;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\LeadPayload;
 use App\Support\Assignments\RecordAssignment;
 use App\Support\Filament\LeadCreate\CreateLotteFinanceLeadAction;
 use App\Support\Permissions\LeadAccess;
 use App\Support\SalesLineSnapshot;
-use Filament\Actions\Action;
 use App\Support\VietnamAddressCatalog;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
-use App\Forms\Components\SearchableSelect as Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Components\Section;
@@ -26,7 +27,6 @@ use Illuminate\Validation\ValidationException;
 
 class CreateLead extends CreateRecord
 {
-
     protected static string $resource = LeadResource::class;
 
     protected static bool $canCreateAnother = false;
@@ -133,8 +133,6 @@ class CreateLead extends CreateRecord
         }
     }
 
-
-
     private static function leadFieldsForProject(int|string|null $projectId): array
     {
         return match (LeadAccess::selectedProjectSlug($projectId)) {
@@ -149,16 +147,16 @@ class CreateLead extends CreateRecord
         return [
             TextInput::make('customer_name')
                 ->label('Họ tên')
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->maxLength(255),
             TextInput::make('identity_number')
                 ->label('CCCD')
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->maxLength(30),
             TextInput::make('phone')
                 ->label('Số điện thoại')
                 ->tel()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->maxLength(30),
         ];
     }
@@ -168,22 +166,22 @@ class CreateLead extends CreateRecord
         return [
             TextInput::make('customer_name')
                 ->label('Họ tên khách hàng')
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->maxLength(255),
             TextInput::make('phone')
                 ->label('Số điện thoại')
                 ->tel()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->maxLength(30),
             TextInput::make('identity_number')
                 ->label('CCCD/CMND')
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->maxLength(30),
             TextInput::make('birthday')
                 ->label('Ngày sinh')
                 ->mask('99/99/9999')
                 ->placeholder('dd/mm/yyyy')
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->rule('date_format:d/m/Y')
                 ->maxLength(10),
             Select::make('noi_cap')
@@ -194,13 +192,13 @@ class CreateLead extends CreateRecord
                 ])
                 ->searchable()
                 ->preload()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->native(false),
             TextInput::make('date_cap')
                 ->label('Ngày cấp')
                 ->mask('99/99/9999')
                 ->placeholder('dd/mm/yyyy')
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->rule('date_format:d/m/Y')
                 ->maxLength(10),
             Textarea::make('address')
@@ -213,7 +211,7 @@ class CreateLead extends CreateRecord
                 ->searchable()
                 ->preload()
                 ->live()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->afterStateUpdated(function (Set $set, ?string $state): void {
                     $set('province_name', VietnamAddressCatalog::provinceName($state));
                     $set('district_code', null);
@@ -229,7 +227,7 @@ class CreateLead extends CreateRecord
                 ->searchable()
                 ->preload()
                 ->live()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
                     $set('district_name', VietnamAddressCatalog::districtName($get('province_code'), $state));
                     $set('ward_code', null);
@@ -243,7 +241,7 @@ class CreateLead extends CreateRecord
                 ->searchable()
                 ->preload()
                 ->live()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->afterStateUpdated(fn (Get $get, Set $set, ?string $state): mixed => $set('ward_name', VietnamAddressCatalog::wardName($get('district_code'), $state)))
                 ->native(false),
             Hidden::make('province_name')->dehydrated(),

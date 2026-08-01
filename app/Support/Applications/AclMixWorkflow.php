@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\ProcessingAssignmentConfig;
 use App\Models\SalesProject;
 use App\Models\User;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Permissions\RecordVisibility;
 use App\Support\Permissions\SalesProjectAccess;
 use App\Support\SalesLineSnapshot;
@@ -61,12 +62,29 @@ class AclMixWorkflow
         };
     }
 
+    /** @return array<string, string> */
+    public static function nextStatusOptions(Application $application): array
+    {
+        if (! $application->relationLoaded('salesProject') && $application->exists) {
+            $application->loadMissing('salesProject');
+        }
+
+        $project = $application->relationLoaded('salesProject')
+            ? $application->getRelation('salesProject')
+            : null;
+        $project = $project instanceof SalesProject
+            ? $project
+            : new SalesProject(['slug' => 'acl-mix']);
+
+        return ProjectWorkflowConfiguration::nextStatusOptions($project, (string) $application->status);
+    }
+
     public static function canCreate(?User $user): bool
     {
         $project = self::project();
 
         return $user instanceof User
-            && $user->can('application.create')
+            && ($user->hasAnyRole(['Admin', 'Sales Admin']) || $user->can('application.create'))
             && $project instanceof SalesProject
             && SalesProjectAccess::canAccessProject($user, $project);
     }
@@ -105,7 +123,7 @@ class AclMixWorkflow
             return Application::query()->create([
                 'sales_project_id' => $project->getKey(),
                 'lead_id' => null,
-                'application_code' => self::nextApplicationCode(),
+                'application_code' => null,
                 'applicant_name' => $moduleFields['customer_name'],
                 'phone' => $moduleFields['phone'],
                 'identity_number' => $moduleFields['cccd'],
@@ -129,8 +147,8 @@ class AclMixWorkflow
             return false;
         }
 
-        if ($user->hasRole('Admin')) {
-            return ! in_array($application->status, [self::COMPLETED, self::REJECTED], true);
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
+            return true;
         }
 
         if (! $user->can('application.update') || ! self::canView($user, $application)) {
@@ -153,20 +171,21 @@ class AclMixWorkflow
             return false;
         }
 
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
+            return in_array($application->status, [
+                self::PENDING_INITIAL_REVIEW,
+                self::CALL_RECORDING,
+                self::UNDERWRITING,
+                self::AWAITING_CONTRACT,
+            ], true);
+        }
+
         if (! $user->can('application.update') || ! self::canView($user, $application)) {
             return false;
         }
 
         if ($application->status === self::COMPLETED) {
             return false;
-        }
-
-        if ($user->hasRole('Admin')) {
-            return ! in_array($application->status, [
-                self::SALE_COMPLETION,
-                self::RETURNED_TO_SALE,
-                self::COMPLETED,
-            ], true);
         }
 
         if (! in_array($application->status, [
@@ -202,6 +221,12 @@ class AclMixWorkflow
 
             $nextStatus = (string) ($data['next_status'] ?? '');
             self::validateTransition($application, $nextStatus, $data, $actor);
+
+            if ($application->status === self::PENDING_INITIAL_REVIEW) {
+                $applicationCode = trim((string) ($data['application_code'] ?? ''));
+                self::validateApplicationCode($application, $applicationCode, $actor);
+                $application->application_code = $applicationCode !== '' ? $applicationCode : null;
+            }
 
             $payload = is_array($application->payload) ? $application->payload : [];
             $review = is_array($payload['review'] ?? null) ? $payload['review'] : [];
@@ -306,14 +331,7 @@ class AclMixWorkflow
 
     private static function validateTransition(Application $application, string $nextStatus, array $data, User $actor): void
     {
-        $allowed = match ($application->status) {
-            self::PENDING_INITIAL_REVIEW => [self::SALE_COMPLETION, self::REJECTED],
-            self::CALL_RECORDING => [self::UNDERWRITING],
-            self::UNDERWRITING => [self::RETURNED_TO_SALE, self::AWAITING_CONTRACT, self::REJECTED],
-            self::AWAITING_CONTRACT => [self::RETURNED_TO_SALE, self::COMPLETED, self::REJECTED],
-            self::REJECTED => $actor->hasRole('Admin') ? [self::RETURNED_TO_SALE] : [],
-            default => [],
-        };
+        $allowed = array_keys(self::nextStatusOptions($application));
 
         if (! in_array($nextStatus, $allowed, true)) {
             throw ValidationException::withMessages(['next_status' => 'Bước xử lý không hợp lệ.']);
@@ -321,13 +339,16 @@ class AclMixWorkflow
 
         if ($application->status === self::PENDING_INITIAL_REVIEW && $nextStatus === self::SALE_COMPLETION) {
             foreach (['product', 'pre_approved_amount', 'pre_approved_months', 'pre_approved_interest_rate'] as $field) {
-                if (blank($data[$field] ?? null)) {
+                if (! AdminWorkflowOverride::active($actor)
+                    && blank($data[$field] ?? null)) {
                     throw ValidationException::withMessages([$field => 'Vui lòng nhập đầy đủ thông tin phê duyệt sơ bộ.']);
                 }
             }
         }
 
-        if ($nextStatus === self::COMPLETED && blank($data['contract_number'] ?? null)) {
+        if (! AdminWorkflowOverride::active($actor)
+            && $nextStatus === self::COMPLETED
+            && blank($data['contract_number'] ?? null)) {
             throw ValidationException::withMessages(['contract_number' => 'Vui lòng nhập số hợp đồng.']);
         }
     }
@@ -350,22 +371,16 @@ class AclMixWorkflow
         return $users->isEmpty() ? null : $users->random();
     }
 
-    private static function nextApplicationCode(): string
+    private static function validateApplicationCode(Application $application, string $applicationCode, User $actor): void
     {
-        $prefix = 'ACL'.now()->format('ymd');
-        $next = Application::withTrashed()->where('application_code', 'like', $prefix.'%')->count() + 1;
-
-        for ($sequence = $next; $sequence < $next + 1000; $sequence++) {
-            $code = $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
-
-            if (! Application::withTrashed()->where('application_code', $code)->exists()) {
-                return $code;
-            }
+        if ($applicationCode === '' && ! AdminWorkflowOverride::active($actor)) {
+            throw ValidationException::withMessages(['application_code' => 'Vui lòng nhập mã hồ sơ.']);
         }
 
-        throw ValidationException::withMessages([
-            'application_code' => 'Không thể cấp mã hồ sơ ACL Mix. Vui lòng thử lại.',
-        ]);
+        if ($applicationCode !== ''
+            && Application::withTrashed()->where('application_code', $applicationCode)->whereKeyNot($application->getKey())->exists()) {
+            throw ValidationException::withMessages(['application_code' => 'Mã hồ sơ đã tồn tại.']);
+        }
     }
 
     private static function digits(mixed $value): ?string

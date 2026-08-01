@@ -32,7 +32,7 @@ class EditApplication extends EditRecord
     {
         $isSaleStep = $this->record instanceof Application && match ($this->record->salesProject?->slug) {
             'acl-mix' => in_array($this->record->status, [AclMixWorkflow::SALE_COMPLETION, AclMixWorkflow::RETURNED_TO_SALE], true),
-            'lotte-finance' => $this->record->status === LotteFinanceWorkflow::SALE_COMPLETION,
+            'lotte-finance' => in_array($this->record->status, [LotteFinanceWorkflow::SALE_COMPLETION, LotteFinanceWorkflow::RETURNED_TO_SALE], true),
             default => false,
         };
 
@@ -54,7 +54,7 @@ class EditApplication extends EditRecord
 
         if ($this->record instanceof Application
             && $this->record->salesProject?->slug === 'lotte-finance'
-            && $this->record->status === LotteFinanceWorkflow::SALE_COMPLETION) {
+            && in_array($this->record->status, [LotteFinanceWorkflow::SALE_COMPLETION, LotteFinanceWorkflow::RETURNED_TO_SALE], true)) {
             $this->record = LotteFinanceWorkflow::submitSaleInformation($this->record, auth()->user());
         }
     }
@@ -74,6 +74,18 @@ class EditApplication extends EditRecord
             'acl-mix' => AclMixApplicationForm::normalizeDataForSave($this->record, $data),
             'lotte-finance' => LotteFinanceApplicationForm::normalizeDataForSave($this->record, $data),
             default => ApplicationForm::normalizeDataForSave($this->record, $data),
+        };
+    }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        if (! $this->record instanceof Application) {
+            return $data;
+        }
+
+        return match ($this->record->salesProject?->slug) {
+            'lotte-finance' => LotteFinanceApplicationForm::prepareDataForFill($data),
+            default => $data,
         };
     }
 }

@@ -67,6 +67,7 @@ class ProjectReportInfolist
                                         ->label('Nguồn')
                                         ->formatStateUsing(fn (?string $state): string => $state === ProjectReport::ORIGIN_APPLICATION ? 'Từ dự án' : 'Nhập báo cáo'),
                                     TextEntry::make('createdBy.name')->label('Người tạo')->placeholder('-'),
+                                    TextEntry::make('team.name')->label('Team')->badge()->color('info')->placeholder('-'),
                                     TextEntry::make('created_at')->label('Ngày tạo')->dateTime('H:i d/m/Y')->placeholder('-'),
                                     TextEntry::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->placeholder('-'),
                                 ]),

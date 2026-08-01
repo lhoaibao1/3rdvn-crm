@@ -2,11 +2,12 @@
 
 namespace App\Support\Filament;
 
-use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\LotteFinanceWorkflow;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
+use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -22,14 +23,26 @@ class LotteFinanceDecisionAction
             ->label('Xử lý hồ sơ')
             ->icon(Heroicon::OutlinedClipboardDocumentCheck)
             ->color('warning')
-            ->visible(fn (Application $record): bool => LotteFinanceWorkflow::canProcess(auth()->user(), $record))
+            ->visible(fn (Application $record): bool => LotteFinanceWorkflow::canProcess(auth()->user(), $record)
+                && in_array($record->status, [
+                    LotteFinanceWorkflow::PRE_CHECK,
+                    LotteFinanceWorkflow::UW_CALL,
+                    LotteFinanceWorkflow::UW_APPROVAL,
+                    LotteFinanceWorkflow::OP,
+                    LotteFinanceWorkflow::ESIGN,
+                    LotteFinanceWorkflow::POST_APPROVAL,
+                ], true))
             ->modalHeading(fn (Application $record): string => 'Xử lý '.($record->application_code ?: $record->applicant_name))
+            ->extraModalWindowAttributes(['class' => 'crm-lead-modal crm-lead-process-modal'])
             ->modalWidth('2xl')
+            ->modalAutofocus(false)
             ->modalSubmitActionLabel('Cập nhật trạng thái')
             ->modalCancelActionLabel('Hủy')
             ->schema(fn (Application $record): array => self::form($record))
-            ->action(function (Application $record, array $data): void {
+            ->action(function (Application $record, array $data, mixed $livewire): void {
                 $application = LotteFinanceWorkflow::process($record, auth()->user(), $data);
+
+                self::refreshLivewireRecord($livewire, $application);
 
                 Notification::make()
                     ->title('Đã cập nhật hồ sơ Lotte Finance')
@@ -56,7 +69,7 @@ class LotteFinanceDecisionAction
                 TextInput::make('application_code')
                     ->label('Mã hồ sơ')
                     ->default($record->application_code)
-                    ->required()
+                    ->required(AdminWorkflowOverride::required())
                     ->maxLength(120),
                 ...collect(['Blacklist', 'B11T', 'AML', 'PCB'])
                     ->map(fn (string $check): Placeholder => Placeholder::make('check_'.strtolower($check))
@@ -70,12 +83,12 @@ class LotteFinanceDecisionAction
                 TextInput::make('lf_grade')
                     ->label('LF Grade')
                     ->visible(fn (Get $get): bool => $get('decision') === 'pass')
-                    ->required(fn (Get $get): bool => $get('decision') === 'pass')
+                    ->required(fn (Get $get): bool => $get('decision') === 'pass' && AdminWorkflowOverride::required())
                     ->maxLength(50),
                 TextInput::make('ml_grade')
                     ->label('ML Grade')
                     ->visible(fn (Get $get): bool => $get('decision') === 'pass')
-                    ->required(fn (Get $get): bool => $get('decision') === 'pass')
+                    ->required(fn (Get $get): bool => $get('decision') === 'pass' && AdminWorkflowOverride::required())
                     ->maxLength(50),
                 TextInput::make('maximum_limit')
                     ->label('Hạn mức tối đa')
@@ -83,13 +96,13 @@ class LotteFinanceDecisionAction
                     ->mask(RawJs::make('$money($input, ",", ".", 0)'))
                     ->stripCharacters('.')
                     ->visible(fn (Get $get): bool => $get('decision') === 'pass')
-                    ->required(fn (Get $get): bool => $get('decision') === 'pass'),
+                    ->required(fn (Get $get): bool => $get('decision') === 'pass' && AdminWorkflowOverride::required()),
                 TextInput::make('estimated_interest_rate')
                     ->label('Lãi suất dự kiến')
                     ->numeric()
                     ->suffix('%')
                     ->visible(fn (Get $get): bool => $get('decision') === 'pass')
-                    ->required(fn (Get $get): bool => $get('decision') === 'pass'),
+                    ->required(fn (Get $get): bool => $get('decision') === 'pass' && AdminWorkflowOverride::required()),
                 $note,
             ];
         }
@@ -97,30 +110,79 @@ class LotteFinanceDecisionAction
         return [
             Select::make('next_status')
                 ->label('Trạng thái tiếp theo')
-                ->options(self::nextStatusOptions($record->status))
-                ->required(),
+                ->options(self::nextStatusOptions($record->status, $record))
+                ->required()
+                ->live(),
+            TextInput::make('approved_amount')
+                ->label('Số tiền được phê duyệt')
+                ->default(data_get($record->payload, 'review.approved_amount'))
+                ->suffix('VNĐ')
+                ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                ->stripCharacters('.')
+                ->visible(fn (Get $get): bool => $get('next_status') === LotteFinanceWorkflow::UW_APPROVAL)
+                ->required(fn (Get $get): bool => $get('next_status') === LotteFinanceWorkflow::UW_APPROVAL
+                    && AdminWorkflowOverride::required()),
             $note,
         ];
     }
 
-    private static function nextStatusOptions(string $status): array
+    private static function nextStatusOptions(string $status, ?Application $record = null): array
     {
+        if ($record instanceof Application) {
+            return LotteFinanceWorkflow::nextStatusOptions($record);
+        }
+
         return match ($status) {
             LotteFinanceWorkflow::UW_CALL => [
                 LotteFinanceWorkflow::UW_APPROVAL => 'UW Approval',
+                LotteFinanceWorkflow::UW_REJECTED => 'UW Rej',
                 LotteFinanceWorkflow::UW_FIELD => 'UW Field',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
             ],
-            LotteFinanceWorkflow::UW_APPROVAL => [
-                LotteFinanceWorkflow::UW_FIELD => 'UW Field',
-                LotteFinanceWorkflow::OP => 'OP',
+            LotteFinanceWorkflow::UW_APPROVAL, LotteFinanceWorkflow::OP => [
+                LotteFinanceWorkflow::ESIGN => 'eSign',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
             ],
-            LotteFinanceWorkflow::UW_FIELD => [
-                LotteFinanceWorkflow::UW_APPROVAL => 'UW Approval',
-                LotteFinanceWorkflow::OP => 'OP',
+            LotteFinanceWorkflow::ESIGN => [
+                LotteFinanceWorkflow::POST_APPROVAL => 'Post Approval',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
             ],
-            LotteFinanceWorkflow::OP => [LotteFinanceWorkflow::ESIGN => 'eSign'],
-            LotteFinanceWorkflow::ESIGN => [LotteFinanceWorkflow::POST_APPROVAL => 'Post Approval'],
+            LotteFinanceWorkflow::POST_APPROVAL => [
+                LotteFinanceWorkflow::DISBURSED => 'Đã giải ngân',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
+            ],
             default => [],
         };
+    }
+
+    private static function refreshLivewireRecord(mixed $livewire, Application $application): void
+    {
+        if (! is_object($livewire)) {
+            return;
+        }
+
+        if (method_exists($livewire, 'flushCachedTableRecords')) {
+            $livewire->flushCachedTableRecords();
+        }
+
+        if (! property_exists($livewire, 'record')) {
+            return;
+        }
+
+        $currentRecord = $livewire->record;
+
+        if (! $currentRecord instanceof Application || ! $currentRecord->is($application)) {
+            return;
+        }
+
+        $currentRecord->refresh();
+        $currentRecord->load([
+            'salesProject', 'assignedSale', 'createdBy', 'team', 'teamLeader',
+        ]);
+        $livewire->record = $currentRecord;
+
+        if (method_exists($livewire, 'refreshFormData')) {
+            $livewire->refreshFormData(['application_code', 'status', 'payload', 'note', 'updated_at']);
+        }
     }
 }

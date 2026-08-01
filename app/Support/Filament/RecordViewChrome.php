@@ -14,7 +14,7 @@ class RecordViewChrome
 {
     public static function lead(Lead $record): HtmlString
     {
-        $record->loadMissing(['salesProject', 'application', 'convertedSaleProfile', 'assignedSale', 'createdBy', 'convertedBy']);
+        $record->loadMissing(['salesProject', 'application', 'convertedSaleProfile', 'assignedSale', 'createdBy', 'team', 'convertedBy']);
 
         return new HtmlString(self::style().self::header(
             breadcrumb: ['Trang chủ', 'Lead', self::value($record->lead_code)],
@@ -25,6 +25,7 @@ class RecordViewChrome
                 ['Ngày tạo', self::date($record->created_at)],
                 ['Mã hồ sơ', $record->application?->application_code ?: ($record->convertedSaleProfile?->id ? 'HS #'.$record->convertedSaleProfile->id : '-')],
                 ['Dự án', $record->salesProject?->name],
+                ['Team', $record->team?->name],
                 ['Ngày sửa', self::date($record->updated_at)],
                 ['Phân công', self::user($record->assignedSale)],
                 ['Tạo bởi', self::user($record->createdBy)],
@@ -35,7 +36,7 @@ class RecordViewChrome
 
     public static function application(Application $record): HtmlString
     {
-        $record->loadMissing(['salesProject', 'lead', 'assignedSale', 'createdBy']);
+        $record->loadMissing(['salesProject', 'assignedSale', 'createdBy', 'team']);
 
         return new HtmlString(self::style().self::header(
             breadcrumb: ['Trang chủ', 'Application', self::value($record->application_code)],
@@ -44,11 +45,11 @@ class RecordViewChrome
                 ['Mã hồ sơ', $record->application_code],
                 ['Tiến trình', self::applicationStatus($record->status)],
                 ['Ngày tạo', self::date($record->created_at)],
-                ['Lead ID', $record->lead?->lead_code],
                 ['Số tiền duyệt', self::money(data_get($record->payload, 'review.pre_approved_amount'))],
                 ['Ngày sửa', self::date($record->updated_at)],
                 ['Phân công', self::user($record->assignedSale)],
                 ['Dự án', $record->salesProject?->name],
+                ['Team', $record->team?->name],
                 ['Kỳ hạn duyệt', filled(data_get($record->payload, 'review.pre_approved_months')) ? data_get($record->payload, 'review.pre_approved_months').' tháng' : '-'],
             ],
         ));
@@ -56,7 +57,7 @@ class RecordViewChrome
 
     public static function projectReport(ProjectReport $record): HtmlString
     {
-        $record->loadMissing(['salesProject', 'application', 'createdBy', 'statusUpdatedBy', 'convertedBy']);
+        $record->loadMissing(['salesProject', 'application', 'createdBy', 'team', 'statusUpdatedBy', 'convertedBy']);
 
         return new HtmlString(self::style().self::header(
             breadcrumb: ['Trang chủ', 'Báo cáo', '#'.$record->getKey()],
@@ -68,6 +69,7 @@ class RecordViewChrome
                 ['Dự án', $record->salesProject?->name],
                 ['Mã bán hàng', $record->sales_code],
                 ['Người tạo', self::user($record->createdBy)],
+                ['Team', $record->team?->name],
                 ['Mã hồ sơ', $record->application?->application_code],
                 ['Ngày sửa', self::date($record->updated_at)],
                 ['Nguồn', $record->origin === ProjectReport::ORIGIN_APPLICATION ? 'Từ dự án' : 'Nhập báo cáo'],
@@ -77,7 +79,7 @@ class RecordViewChrome
 
     public static function hotLead(Lead $record): HtmlString
     {
-        $record->loadMissing(['salesProject', 'convertedSaleProfile', 'assignedSale', 'createdBy']);
+        $record->loadMissing(['salesProject', 'convertedSaleProfile', 'assignedSale', 'createdBy', 'team']);
 
         return new HtmlString(self::style().self::header(
             breadcrumb: ['Trang chủ', 'Hot Lead', self::value($record->lead_code)],
@@ -91,6 +93,7 @@ class RecordViewChrome
                 ['Ngày sửa', self::date($record->updated_at)],
                 ['Phân công', self::user($record->assignedSale)],
                 ['Tạo bởi', self::user($record->createdBy)],
+                ['Team', $record->team?->name],
                 ['Dự án', $record->salesProject?->name],
             ],
         ));
@@ -98,7 +101,7 @@ class RecordViewChrome
 
     public static function dataCenter(DataCenterLead $record): HtmlString
     {
-        $record->loadMissing(['assignedUser', 'createdBy', 'teamLeader', 'am', 'zd', 'conversions']);
+        $record->loadMissing(['assignedUser', 'createdBy', 'team', 'teamLeader', 'am', 'zd', 'conversions']);
 
         return new HtmlString(self::style().self::header(
             breadcrumb: ['Trang chủ', 'Lead Referral', self::value($record->referral_code)],
@@ -110,6 +113,7 @@ class RecordViewChrome
                 ['Số điện thoại', $record->phone],
                 ['Người xử lý', self::user($record->assignedUser)],
                 ['Đã chuyển', $record->conversions->count().'/2 dự án'],
+                ['Team', $record->team?->name],
                 ['Team Leader', self::user($record->teamLeader)],
                 ['AM', self::user($record->am)],
                 ['ZD', self::user($record->zd)],
@@ -119,7 +123,7 @@ class RecordViewChrome
 
     public static function userProfile(User $record): HtmlString
     {
-        $record->loadMissing(['roles', 'teamLeader', 'am', 'zd', 'creator']);
+        $record->loadMissing(['roles', 'team', 'managedTeam', 'teamLeader', 'am', 'zd', 'creator']);
 
         $role = $record->roles->pluck('name')->filter()->join(', ');
 
@@ -133,6 +137,7 @@ class RecordViewChrome
                 ['Vai trò', $role],
                 ['Email', $record->email],
                 ['SĐT', $record->phone],
+                ['Team', $record->team?->name ?: $record->managedTeam?->name],
                 ['Team Leader', self::user($record->teamLeader)],
                 ['AM', self::user($record->am)],
                 ['ZD', self::user($record->zd)],

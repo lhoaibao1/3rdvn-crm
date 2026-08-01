@@ -2,13 +2,14 @@
 
 namespace App\Support\Filament;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Lead;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\LeadDecisionProcessor;
 use App\Support\HotLeads\HotLeadConverter;
 use App\Support\Permissions\LeadAccess;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -29,6 +30,7 @@ class LeadDecisionAction
             ->modalHeading('Xử lý hồ sơ Lead')
             ->extraModalWindowAttributes(['class' => 'crm-lead-modal crm-lead-process-modal'])
             ->modalWidth('3xl')
+            ->modalAutofocus(false)
             ->modalSubmitActionLabel('Lưu quyết định')
             ->modalCancelActionLabel('Hủy')
             ->fillForm(fn (?Lead $record = null): array => self::initialData($recordResolver ? $recordResolver($record) : $record))
@@ -70,7 +72,7 @@ class LeadDecisionAction
             && auth()->user() !== null
             && LeadAccess::canProcess(auth()->user(), $lead)
             && blank($lead->converted_at)
-            && ! in_array($lead->status, ['Từ chối', 'Khách hàng bị trùng'], true)
+            && (AdminWorkflowOverride::active() || ! in_array($lead->status, ['Từ chối', 'Khách hàng bị trùng'], true))
             && ! $lead->trashed();
     }
 
@@ -118,7 +120,7 @@ class LeadDecisionAction
                 ->native(false),
             TextInput::make('application_code')
                 ->label('Mã hồ sơ/Application')
-                ->required(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện')
+                ->required(fn (Get $get): bool => AdminWorkflowOverride::required() && $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->visible(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->maxLength(120),
             Select::make('product')
@@ -130,26 +132,26 @@ class LeadDecisionAction
                     'ACL04' => 'ACL04',
                 ])
                 ->native(false)
-                ->required(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện')
+                ->required(fn (Get $get): bool => AdminWorkflowOverride::required() && $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->visible(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện'),
             TextInput::make('pre_approved_amount')
                 ->label('Số tiền phê duyệt sơ bộ')
                 ->mask(RawJs::make('$money($input, ",", ".", 0)'))
                 ->stripCharacters('.')
                 ->suffix('VNĐ')
-                ->required(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện')
+                ->required(fn (Get $get): bool => AdminWorkflowOverride::required() && $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->visible(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện'),
             TextInput::make('pre_approved_months')
                 ->label('Số tháng phê duyệt')
                 ->numeric()
                 ->suffix('tháng')
-                ->required(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện')
+                ->required(fn (Get $get): bool => AdminWorkflowOverride::required() && $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->visible(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện'),
             TextInput::make('pre_approved_interest_rate')
                 ->label('Lãi suất phê duyệt')
                 ->numeric()
                 ->suffix('%')
-                ->required(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện')
+                ->required(fn (Get $get): bool => AdminWorkflowOverride::required() && $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->visible(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện'),
             Textarea::make('review_note')
                 ->label('Ghi chú quyết định')
@@ -180,7 +182,7 @@ class LeadDecisionAction
                 ->native(false),
             TextInput::make('application_code')
                 ->label('Mã hồ sơ/Application')
-                ->required(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện')
+                ->required(fn (Get $get): bool => AdminWorkflowOverride::required() && $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->visible(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->maxLength(120),
             Textarea::make('review_note')
@@ -220,7 +222,7 @@ class LeadDecisionAction
                 ->content(fn (Get $get): string => filled($get('decision_result')) ? 'Pass' : '-'),
             TextInput::make('application_code')
                 ->label('Mã hồ sơ/Application')
-                ->required(fn (Get $get): bool => $get('decision_result') === 'pass')
+                ->required(fn (Get $get): bool => AdminWorkflowOverride::required() && $get('decision_result') === 'pass')
                 ->visible(fn (Get $get): bool => $get('decision_result') === 'pass')
                 ->maxLength(120),
             Textarea::make('review_note')

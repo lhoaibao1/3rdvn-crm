@@ -58,10 +58,10 @@ class AdminPanelProvider extends PanelProvider
                 condition: fn () => (bool) UiSetting::current()->show_notifications,
                 position: DatabaseNotificationsPosition::Topbar,
             )
-            ->databaseNotificationsPolling('5s')
+            ->databaseNotificationsPolling(null)
 
             ->userMenuItems([
-                'profile' => fn (Action $action): Action => $action->hidden(),
+                'profile' => fn (Action $action): Action => $this->accountMenuHeader($action),
                 Action::make('change-password')
                     ->label('Thay đổi mật khẩu')
                     ->icon(Heroicon::Key)
@@ -75,6 +75,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->settingsStyles())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => $this->pwaHead())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.hooks.searchable-select-assets'))
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.hooks.login-entry-transition'))
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->notificationPanelStyles())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->sidebarDefaultScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->userFiltersToggleScript())
@@ -87,6 +88,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_AFTER, fn () => $this->chatLauncher())
             ->renderHook(PanelsRenderHook::TOPBAR_END, fn () => $this->topbarUserMeta())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->chatAssets())
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.form-drafts'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->pwaServiceWorkerScript())
             ->colors([
                 'primary' => Color::Blue,
@@ -175,6 +177,10 @@ class AdminPanelProvider extends PanelProvider
         --crm-sidebar: {$sidebar};
     }
 
+    .crm-application-summary .fi-in-entry-label {
+        font-weight: 700;
+    }
+
     html.fi, .fi-body {
         font-family: {$font};
     }
@@ -237,13 +243,13 @@ class AdminPanelProvider extends PanelProvider
         margin: auto !important;
         display: flex !important;
         flex-direction: column !important;
-        overflow: visible !important;
+        overflow: hidden !important;
     }
 
     .fi-modal-window.crm-lead-process-modal {
-        width: min(680px, calc(100vw - 32px)) !important;
-        max-width: min(680px, calc(100vw - 32px)) !important;
-        height: auto !important;
+        width: min(720px, calc(100vw - 32px)) !important;
+        max-width: min(720px, calc(100vw - 32px)) !important;
+        height: min(640px, calc(100dvh - 32px)) !important;
         max-height: calc(100dvh - 32px) !important;
     }
 
@@ -261,9 +267,69 @@ class AdminPanelProvider extends PanelProvider
         overflow: auto !important;
         padding: 12px 18px !important;
         overscroll-behavior: contain !important;
+        -webkit-overflow-scrolling: touch !important;
         scrollbar-gutter: stable both-edges !important;
+        touch-action: pan-y !important;
     }
 
+    .fi-modal:has(.crm-assignment-modal) > .fi-modal-window-ctn,
+    .fi-modal-window-ctn:has(> .crm-assignment-modal) {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 12px !important;
+        overflow: hidden !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal {
+        width: min(460px, calc(100vw - 24px)) !important;
+        max-width: min(460px, calc(100vw - 24px)) !important;
+        max-height: min(600px, calc(100dvh - 24px)) !important;
+        margin: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal > .fi-modal-header,
+    .fi-modal-window.crm-assignment-modal > .fi-modal-footer {
+        flex: 0 0 auto !important;
+        padding: 12px 16px !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal > .fi-modal-content {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        padding: 12px 16px !important;
+        overscroll-behavior: contain !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-y !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal .crm-assignee-option-list {
+        max-height: min(280px, 38dvh) !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        border: 1px solid var(--crm-border) !important;
+        border-radius: 12px !important;
+        background: var(--crm-surface) !important;
+        padding: 4px !important;
+        overscroll-behavior: contain !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal .crm-assignee-option-list .fi-fo-radio-label {
+        min-height: 44px !important;
+        padding: 10px 8px !important;
+        border-radius: 8px !important;
+        cursor: pointer !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal .crm-assignee-option-list .fi-fo-radio-label:hover {
+        background: rgba(37, 99, 235, .08) !important;
+    }
     .fi-modal-window.crm-lead-modal .fi-tabs,
     .fi-modal-window.crm-lead-modal [role="tablist"] {
         max-width: 100% !important;
@@ -915,6 +981,71 @@ class AdminPanelProvider extends PanelProvider
         white-space: nowrap !important;
     }
 
+    .fi-user-menu .fi-dropdown-panel {
+        min-width: min(280px, calc(100vw - 24px)) !important;
+    }
+
+    .fi-user-menu .fi-dropdown-header {
+        align-items: center;
+        gap: 12px;
+        padding: 15px 16px !important;
+        border-bottom: 1px solid #dbe5f1;
+        background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+    }
+
+    .fi-user-menu .fi-dropdown-header > .fi-icon {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 auto;
+        padding: 8px;
+        border-radius: 11px;
+        color: #2563eb;
+        background: #dbeafe;
+    }
+
+    .fi-user-menu .fi-dropdown-header > span {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .crm-user-menu-account {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+        line-height: 1.25;
+    }
+
+    .crm-user-menu-account-caption {
+        color: #64748b;
+        font-size: .64rem;
+        font-weight: 760;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+    }
+
+    .crm-user-menu-account strong {
+        overflow: hidden;
+        color: #0f172a;
+        font-size: .9rem;
+        font-weight: 780;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .crm-user-menu-account-code {
+        overflow: hidden;
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 560;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .crm-user-menu-account-code b {
+        color: #1d4ed8;
+        font-weight: 760;
+    }
+
     .fi-topbar-user-meta {
         display: flex;
         flex-direction: column;
@@ -924,6 +1055,8 @@ class AdminPanelProvider extends PanelProvider
         line-height: 1.15;
         min-width: max-content;
         white-space: nowrap;
+        pointer-events: none;
+        user-select: none;
     }
 
     .fi-topbar-user-meta strong {
@@ -2817,6 +2950,7 @@ HTML);
                 : 'outlook',
             'url' => $soundPath ? asset('storage/'.$soundPath) : null,
             'volume' => max(0, min(100, (int) ($settings->notification_sound_volume ?? 80))) / 100,
+            'userId' => (string) auth()->id(),
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
 
         $script = <<<'HTML'
@@ -2829,23 +2963,12 @@ HTML);
         window.__crmNotificationSoundBound = true;
 
         const soundConfig = __CRM_SOUND_CONFIG__;
-        const storageKey = '3rdvn:last-unread-notification-count';
+        const notificationIdKey = `3rdvn:last-notification-id:${soundConfig.userId}`;
+        const notificationTimeKey = `3rdvn:last-notification-time:${soundConfig.userId}`;
         let audioContext = null;
         let audioUnlocked = false;
         let customAudio = null;
-
-        const currentUnreadCount = () => {
-            const trigger = document.querySelector('.fi-topbar-database-notifications-btn');
-
-            if (! trigger) {
-                return 0;
-            }
-
-            const text = (trigger.innerText || trigger.textContent || '').replace(/\s+/g, ' ').trim();
-            const numbers = text.match(/\d+/g);
-
-            return numbers?.length ? Number.parseInt(numbers[numbers.length - 1], 10) || 0 : 0;
-        };
+        let syncInFlight = false;
 
         const unlockAudio = () => {
             if (soundConfig.preset === 'off') {
@@ -2906,18 +3029,16 @@ HTML);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + (tones.length * 0.1) + duration);
 
             tones.forEach((frequency, index) => {
-                const osc = audioContext.createOscillator();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(frequency, now + index * 0.1);
-                osc.connect(gain);
-                osc.start(now + index * 0.1);
-                osc.stop(now + index * 0.1 + duration);
+                const oscillator = audioContext.createOscillator();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(frequency, now + index * 0.1);
+                oscillator.connect(gain);
+                oscillator.start(now + index * 0.1);
+                oscillator.stop(now + index * 0.1 + duration);
             });
         };
 
         window.crmPreviewNotificationSound = playNotificationSound;
-
-        const pushStorageKey = '3rdvn:last-native-notification-id';
 
         const requestPushPermission = () => {
             if ('Notification' in window && Notification.permission === 'default') {
@@ -2925,10 +3046,36 @@ HTML);
             }
         };
 
-        const syncNativeNotification = async (announce = true) => {
+        const showNativeNotification = async (item) => {
             if (!('Notification' in window) || Notification.permission !== 'granted') {
                 return;
             }
+
+            const options = {
+                body: item.body,
+                icon: '/favicon.ico',
+                badge: '/favicon.ico',
+                tag: `3rdvn-crm-${item.id}`,
+                renotify: true,
+                data: { url: item.url || '/' },
+            };
+
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.showNotification(item.title, options);
+                return;
+            }
+
+            const notification = new Notification(item.title, options);
+            notification.onclick = () => window.location.assign(item.url || '/');
+        };
+
+        const syncLatestNotification = async (announce = true) => {
+            if (syncInFlight) {
+                return;
+            }
+
+            syncInFlight = true;
 
             try {
                 const response = await fetch('/crm/notifications/latest', {
@@ -2942,63 +3089,47 @@ HTML);
 
                 const item = (await response.json()).notification;
 
-                if (! item?.id) {
+                if (! item?.id || ! item?.createdAt) {
                     return;
                 }
 
-                const previousId = window.localStorage.getItem(pushStorageKey);
-                window.localStorage.setItem(pushStorageKey, item.id);
+                const itemTime = Date.parse(item.createdAt);
+                const previousId = window.localStorage.getItem(notificationIdKey);
+                const previousTimeRaw = window.localStorage.getItem(notificationTimeKey);
+                const previousTime = previousTimeRaw === null ? null : Number.parseInt(previousTimeRaw, 10);
 
-                if (! announce || previousId === null || previousId === item.id) {
+                if (previousId === null || previousTime === null || Number.isNaN(itemTime)) {
+                    window.localStorage.setItem(notificationIdKey, item.id);
+                    window.localStorage.setItem(notificationTimeKey, String(Number.isNaN(itemTime) ? Date.now() : itemTime));
                     return;
                 }
 
-                const options = {
-                    body: item.body,
-                    icon: '/favicon.ico',
-                    badge: '/favicon.ico',
-                    tag: `3rdvn-crm-${item.id}`,
-                    renotify: true,
-                    data: { url: item.url || '/' },
-                };
-
-                if ('serviceWorker' in navigator) {
-                    const registration = await navigator.serviceWorker.ready;
-                    await registration.showNotification(item.title, options);
-                } else {
-                    const notification = new Notification(item.title, options);
-                    notification.onclick = () => window.location.assign(item.url || '/');
+                if (previousId === item.id) {
+                    return;
                 }
+
+                window.localStorage.setItem(notificationIdKey, item.id);
+
+                if (itemTime <= previousTime) {
+                    return;
+                }
+
+                window.localStorage.setItem(notificationTimeKey, String(itemTime));
+
+                if (! announce) {
+                    return;
+                }
+
+                playNotificationSound();
+                await showNativeNotification(item);
             } catch (error) {
                 // Notification polling must never interrupt CRM interactions.
+            } finally {
+                syncInFlight = false;
             }
         };
 
-        const syncUnreadCount = () => {
-            const count = currentUnreadCount();
-            const previousRaw = window.sessionStorage.getItem(storageKey);
-
-            if (previousRaw === null) {
-                window.sessionStorage.setItem(storageKey, String(count));
-                return;
-            }
-
-            const previous = Number.parseInt(previousRaw, 10) || 0;
-
-            if (count > previous) {
-                playNotificationSound();
-            }
-
-            if (count !== previous) {
-                window.sessionStorage.setItem(storageKey, String(count));
-            }
-        };
-
-        window.crmHandleRealtimeNotification = () => {
-            playNotificationSound();
-            syncNativeNotification(true);
-            setTimeout(syncUnreadCount, 80);
-        };
+        window.crmHandleRealtimeNotification = () => syncLatestNotification(true);
 
         document.addEventListener('pointerdown', () => {
             unlockAudio();
@@ -3006,16 +3137,8 @@ HTML);
         }, { once: true, passive: true });
         document.addEventListener('keydown', unlockAudio, { once: true });
 
-        syncNativeNotification(false);
-        setInterval(syncNativeNotification, 5000);
-        setTimeout(syncUnreadCount, 250);
-        setInterval(syncUnreadCount, 1500);
-        document.addEventListener('livewire:navigated', () => setTimeout(syncUnreadCount, 250));
-        document.addEventListener('livewire:update', () => setTimeout(syncUnreadCount, 80));
-        document.addEventListener('livewire:updated', () => setTimeout(syncUnreadCount, 80));
-
-        new MutationObserver(() => window.requestAnimationFrame(syncUnreadCount))
-            .observe(document.body || document.documentElement, { childList: true, subtree: true, characterData: true });
+        syncLatestNotification(false);
+        window.setInterval(() => syncLatestNotification(true), 5000);
     })();
 </script>
 HTML;
@@ -3403,6 +3526,30 @@ HTML);
         }
 
         return new HtmlString(view('filament.hooks.chat-assets')->render());
+    }
+
+    protected function accountMenuHeader(Action $action): Action
+    {
+        return $action
+            ->label(fn (): HtmlString => $this->accountMenuLabel())
+            ->icon(Heroicon::UserCircle)
+            ->url(null)
+            ->sort(-100);
+    }
+
+    protected function accountMenuLabel(): HtmlString
+    {
+        $user = filament()->auth()->user();
+        $name = e(trim((string) ($user?->name ?? '')) ?: 'Chưa cập nhật');
+        $employeeCode = e(trim((string) ($user?->employee_code ?? '')) ?: 'Chưa có');
+
+        return new HtmlString(
+            '<span class="crm-user-menu-account">'
+            .'<span class="crm-user-menu-account-caption">Thông tin tài khoản</span>'
+            .'<strong>'.$name.'</strong>'
+            .'<span class="crm-user-menu-account-code">Employee code · <b>'.$employeeCode.'</b></span>'
+            .'</span>'
+        );
     }
 
     protected function topbarUserMeta(): HtmlString

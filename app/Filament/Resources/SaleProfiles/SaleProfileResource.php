@@ -119,7 +119,7 @@ class SaleProfileResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return $query;
         }
 

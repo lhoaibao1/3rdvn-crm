@@ -24,17 +24,17 @@ class SalesProjectResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Config trường thông tin';
+        return 'Cấu hình dự án';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Config trường thông tin';
+        return 'Cấu hình dự án & Workflow';
     }
 
     public static function getNavigationLabel(): string
     {
-        return 'Config trường thông tin';
+        return 'Cấu hình dự án & Workflow';
     }
 
     public static function shouldRegisterNavigation(array $parameters = []): bool

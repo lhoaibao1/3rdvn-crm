@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Applications\Schemas;
 
 use App\Forms\Components\SearchableSelect as Select;
+use App\Support\AdminWorkflowOverride;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Textarea;
@@ -12,6 +13,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\RawJs;
 use Illuminate\Support\Str;
 
 class AclMixFields
@@ -37,7 +39,7 @@ class AclMixFields
                 ->columns(2)
                 ->schema([
                     self::text('customer_name', 'Họ tên')
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->live(onBlur: true)
                         ->afterStateUpdated(fn (Set $set, ?string $state): mixed => $set(
                             self::path('bank_account_name'),
@@ -94,6 +96,12 @@ class AclMixFields
                     ]),
                     self::number('working_years', 'Thời gian làm việc - Năm'),
                     self::number('working_months', 'Thời gian làm việc - Tháng')->minValue(0)->maxValue(11),
+                    self::text(self::path('monthly_income'), 'Thu nhập')
+                        ->numeric()
+                        ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                        ->stripCharacters('.')
+                        ->suffix('VNĐ')
+                        ->minValue(0),
                     self::number('experience_years', 'Kinh nghiệm làm việc - Năm'),
                     self::number('experience_months', 'Kinh nghiệm làm việc - Tháng')->minValue(0)->maxValue(11),
                 ]),
@@ -148,17 +156,40 @@ class AclMixFields
 
     public static function entries(): array
     {
-        return collect(self::definitions())
-            ->map(function (array $field): TextEntry {
-                $key = $field['field_key'];
+        return self::entriesFor(array_column(self::definitions(), 'field_key'));
+    }
+
+    /**
+     * @param  array<int, string>  $fieldKeys
+     * @return array<int, TextEntry>
+     */
+    public static function entriesFor(array $fieldKeys): array
+    {
+        $definitions = collect(self::definitions())->keyBy('field_key');
+
+        return collect($fieldKeys)
+            ->map(function (string $key) use ($definitions): ?TextEntry {
+                $field = $definitions->get($key);
+
+                if (! is_array($field)) {
+                    return null;
+                }
+
                 $displayKey = Str::endsWith($key, ['_province_code', '_district_code', '_ward_code'])
                     ? Str::replaceEnd('_code', '_name', $key)
                     : $key;
-
-                return TextEntry::make(self::path($displayKey))
+                $entry = TextEntry::make(self::path($displayKey))
                     ->label($field['label'])
                     ->placeholder('-');
+
+                if ($key === 'monthly_income') {
+                    $entry->money('VND', locale: 'vi');
+                }
+
+                return $entry;
             })
+            ->filter()
+            ->values()
             ->all();
     }
 
@@ -183,6 +214,7 @@ class AclMixFields
             ['field_key' => 'contract_type', 'label' => 'Loại hợp đồng', 'type' => 'select'],
             ['field_key' => 'working_years', 'label' => 'Thời gian làm việc - Năm', 'type' => 'number'],
             ['field_key' => 'working_months', 'label' => 'Thời gian làm việc - Tháng', 'type' => 'number'],
+            ['field_key' => 'monthly_income', 'label' => 'Thu nhập', 'type' => 'number'],
             ['field_key' => 'experience_years', 'label' => 'Kinh nghiệm - Năm', 'type' => 'number'],
             ['field_key' => 'experience_months', 'label' => 'Kinh nghiệm - Tháng', 'type' => 'number'],
             ...self::addressDefinitions('work', 'Nơi làm việc'),

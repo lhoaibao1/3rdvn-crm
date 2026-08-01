@@ -10,10 +10,13 @@ use App\Support\Filament\ProjectSchemaColumns;
 use App\Support\Reports\ProjectReportAccess;
 use App\Support\Reports\ProjectReportProductCatalog;
 use App\Support\Reports\ProjectReportWorkflow;
+use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -61,6 +64,7 @@ class ProjectReportsTable
                     'approved_amount', 'approved_months', 'approved_interest_rate',
                 ]),
                 TextColumn::make('createdBy.name')->label('Người tạo')->searchable()->toggleable(),
+                TextColumn::make('team.name')->label('Team')->badge()->color('info')->placeholder('-')->sortable()->toggleable(),
                 TextColumn::make('createdBy.uid')->label('UID người tạo')->placeholder('-')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -68,6 +72,12 @@ class ProjectReportsTable
                 SelectFilter::make('sales_project_id')
                     ->label('Dự án')
                     ->options(fn (): array => ProjectReportAccess::projectOptions(auth()->user()))
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('team_id')
+                    ->label('Team')
+                    ->relationship('team', 'name')
                     ->searchable()
                     ->preload()
                     ->native(false),
@@ -97,11 +107,27 @@ class ProjectReportsTable
                     ->dropdownPlacement('bottom-end')
                     ->icon(Heroicon::EllipsisVertical),
             ])
-            ->toolbarActions([]);
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->label('Xóa đã chọn')
+                        ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
+                ])
+                    ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
+            ]);
     }
 
     public static function saveAsAdmin(ProjectReport $record, array $data): ProjectReport
     {
+        foreach ([
+            'sales_project_id', 'created_by_id', 'customer_name', 'province_code', 'district_code',
+            'identity_number', 'phone', 'product_code', 'loan_amount', 'status', 'created_at', 'updated_at',
+        ] as $field) {
+            if (blank($data[$field] ?? null) && filled($record->{$field})) {
+                $data[$field] = $record->{$field};
+            }
+        }
+
         $creator = User::query()->find($data['created_by_id'] ?? null);
         $project = ProjectReportAccess::project($data['sales_project_id'] ?? null);
         $salesCode = ProjectReportAccess::salesCode($creator, $data['sales_project_id'] ?? null);
@@ -120,18 +146,15 @@ class ProjectReportsTable
             ]);
         }
 
-        if (blank($productName) || blank($provinceName) || blank($districtName)) {
-            throw ValidationException::withMessages(['sales_project_id' => 'Dữ liệu sản phẩm hoặc địa chỉ không hợp lệ.']);
-        }
-
         $status = (string) ($data['status'] ?? $record->status);
         $timestamps = array_intersect_key($data, array_flip(['created_at', 'updated_at']));
         unset($data['created_at'], $data['updated_at'], $data['status']);
         $data['sales_code'] = $salesCode;
-        $data['product_name'] = $productName;
-        $data['province_name'] = $provinceName;
-        $data['district_name'] = $districtName;
-        $data['loan_amount'] = (int) ($data['loan_amount'] ?? 0);
+        $data['product_name'] = $productName ?: $record->product_name;
+        $data['province_name'] = $provinceName ?: $record->province_name;
+        $data['district_name'] = $districtName ?: $record->district_name;
+        $data['loan_amount'] = filled($data['loan_amount'] ?? null) ? (int) $data['loan_amount'] : null;
+        $data = array_merge($data, SalesLineSnapshot::hierarchyFromUser($creator));
 
         $record->update($data);
         if ($status !== $record->status) {

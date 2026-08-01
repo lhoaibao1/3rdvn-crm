@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\ProjectReport;
 use App\Models\SalesProject;
 use App\Models\User;
+use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +18,7 @@ class ProjectReportWorkflow
         $application->loadMissing(['salesProject.crmModule', 'assignedSale', 'createdBy']);
         $project = $application->salesProject;
         $owner = $application->createdBy ?: $application->assignedSale ?: $actor;
+        $ownerLine = SalesLineSnapshot::hierarchyFromUser($owner);
 
         if (! $project instanceof SalesProject || ! $owner instanceof User) {
             return null;
@@ -54,6 +56,10 @@ class ProjectReportWorkflow
         $report->forceFill([
             'sales_project_id' => $project->getKey(),
             'created_by_id' => $owner->getKey(),
+            'team_id' => $application->team_id ?: $ownerLine['team_id'],
+            'team_leader_id' => $application->team_leader_id ?: $ownerLine['team_leader_id'],
+            'am_id' => $application->am_id ?: $ownerLine['am_id'],
+            'zd_id' => $application->zd_id ?: $ownerLine['zd_id'],
             'customer_name' => $application->applicant_name,
             'identity_number' => $application->identity_number,
             'phone' => $application->phone,

@@ -28,6 +28,7 @@ class HotLeadDecisionAction
             ->modalHeading(fn (?Lead $record = null): string => 'Xử lý Lead nóng '.(self::resolveRecord($recordResolver, $record)?->lead_code ?: ''))
             ->extraModalWindowAttributes(['class' => 'crm-lead-modal crm-lead-process-modal'])
             ->modalWidth('3xl')
+            ->modalAutofocus(false)
             ->modalSubmitActionLabel('Lưu quyết định')
             ->modalCancelActionLabel('Hủy')
             ->fillForm(fn (?Lead $record = null): array => self::initialData(self::resolveRecord($recordResolver, $record)))

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Services\StalwartMailService;
 use App\Support\RoleHierarchy;
 use Filament\Actions\Action;
@@ -55,7 +56,9 @@ class CreateUser extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->plainPassword = filled($data['password'] ?? null) ? (string) $data['password'] : null;
+        $data = UserForm::normalizeDateFields($data);
         $role = $this->form->getRawState()['roles'] ?? null;
+        $data = UserForm::normalizeTeamAssignment($data, $role);
 
         if (! RoleHierarchy::canAssignRole(auth()->user(), $role)) {
             throw ValidationException::withMessages([

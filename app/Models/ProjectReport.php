@@ -20,6 +20,10 @@ class ProjectReport extends Model
     protected $fillable = [
         'sales_project_id',
         'created_by_id',
+        'team_id',
+        'team_leader_id',
+        'am_id',
+        'zd_id',
         'customer_name',
         'application_id',
         'origin',
@@ -44,6 +48,10 @@ class ProjectReport extends Model
     ];
 
     protected $casts = [
+        'team_id' => 'integer',
+        'team_leader_id' => 'integer',
+        'am_id' => 'integer',
+        'zd_id' => 'integer',
         'loan_amount' => 'integer',
         'approved_months' => 'integer',
         'approved_interest_rate' => 'decimal:4',
@@ -69,6 +77,26 @@ class ProjectReport extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(CrmTeam::class, 'team_id');
+    }
+
+    public function teamLeader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'team_leader_id');
+    }
+
+    public function am(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'am_id');
+    }
+
+    public function zd(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'zd_id');
     }
 
     public function application(): BelongsTo

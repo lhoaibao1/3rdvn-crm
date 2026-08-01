@@ -67,7 +67,7 @@ class ProjectReportResource extends Resource
         $user = Auth::user();
 
         return $record instanceof ProjectReport
-            && ($user?->hasRole('Admin') || $record->created_by_id === $user?->getKey());
+            && ($user?->hasAnyRole(['Admin', 'Sales Admin']) || $record->created_by_id === $user?->getKey());
     }
 
     public static function canCreate(): bool
@@ -103,7 +103,7 @@ class ProjectReportResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return ProjectReportAccess::applyVisibleTo(
-            parent::getEloquentQuery()->with(['salesProject.crmModule', 'application', 'createdBy', 'statusUpdatedBy', 'convertedBy']),
+            parent::getEloquentQuery()->with(['salesProject.crmModule', 'application', 'createdBy', 'team', 'teamLeader', 'am', 'zd', 'statusUpdatedBy', 'convertedBy']),
             Auth::user(),
         );
     }

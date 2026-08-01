@@ -18,7 +18,7 @@ class LeadAccess
 
         self::applyRecordTypeScope($query);
 
-        if (! $user->hasRole('Admin')) {
+        if (! $user->hasAnyRole(['Admin', 'Sales Admin'])) {
             self::applyProjectScope($query, $user);
         }
 
@@ -35,20 +35,25 @@ class LeadAccess
 
     public static function canUpdate(User $user, Lead $lead): bool
     {
-        return $user->hasRole('Admin')
+        return $user->hasAnyRole(['Admin', 'Sales Admin'])
             && $user->can('lead.update')
             && self::canView($user, $lead);
     }
 
     public static function canProcess(User $user, Lead $lead): bool
     {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
+            return blank($lead->converted_at)
+                && ! $lead->trashed();
+        }
+
         return $user->can('lead.convert')
             && self::canView($user, $lead)
             && blank($lead->converted_at)
             && ! $lead->trashed()
             && ! in_array($lead->status, ['Từ chối', 'Khách hàng bị trùng'], true)
             && (
-                $user->hasRole('Admin')
+                $user->hasAnyRole(['Admin', 'Sales Admin'])
                 || (int) $lead->assigned_sale_id === (int) $user->getKey()
                 || ($user->hasRole('Courier Manager')
                     && (int) $lead->assignedSale?->courier_manager_id === (int) $user->getKey())
@@ -90,7 +95,7 @@ class LeadAccess
 
         $query = self::activeLeadProjectQuery();
 
-        if (! $user->hasRole('Admin')) {
+        if (! $user->hasAnyRole(['Admin', 'Sales Admin'])) {
             $slugs = SalesProjectAccess::userProjectSlugs($user);
 
             if ($slugs === []) {
@@ -120,7 +125,7 @@ class LeadAccess
             return false;
         }
 
-        return $user->hasRole('Admin') || SalesProjectAccess::canAccessProject($user, $project);
+        return $user->hasAnyRole(['Admin', 'Sales Admin']) || SalesProjectAccess::canAccessProject($user, $project);
     }
 
     public static function normalizeProjectId(?User $user, int|string|null $projectId): ?int
@@ -176,7 +181,7 @@ class LeadAccess
 
         return $project instanceof SalesProject
             && (bool) $project->is_active
-            && ($user->hasRole('Admin') || SalesProjectAccess::canAccessProject($user, $project));
+            && ($user->hasAnyRole(['Admin', 'Sales Admin']) || SalesProjectAccess::canAccessProject($user, $project));
     }
 
     private static function applyRecordTypeScope(Builder $query): void

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class DataCenterAccess
 {
-    private const MANAGER_ROLES = ['Admin', 'ZD', 'AM', 'Team Leader'];
+    private const MANAGER_ROLES = ['Admin', 'Sales Admin', 'ZD', 'AM', 'Team Leader'];
 
     public static function canAccessModule(?User $user): bool
     {
@@ -28,7 +28,7 @@ class DataCenterAccess
             return false;
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return true;
         }
 
@@ -44,7 +44,7 @@ class DataCenterAccess
     public static function canUpdateResult(?User $user, DataCenterLead $record): bool
     {
         return self::canView($user, $record)
-            && ($user?->hasRole('Admin') || (int) $record->assigned_user_id === (int) $user?->getKey());
+            && ($user?->hasAnyRole(['Admin', 'Sales Admin']) || (int) $record->assigned_user_id === (int) $user?->getKey());
     }
 
     public static function canConvert(?User $user, DataCenterLead $record): bool
@@ -64,7 +64,7 @@ class DataCenterAccess
             return $query->whereRaw('1 = 0');
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return $query;
         }
 
@@ -96,7 +96,7 @@ class DataCenterAccess
         $query = User::query()
             ->whereNotIn('employment_status', ['inactive', User::STATUS_DEACTIVE, 'resigned', User::STATUS_DELETED]);
 
-        if (! $actor?->hasRole('Admin')) {
+        if (! $actor?->hasAnyRole(['Admin', 'Sales Admin'])) {
             $query->where(function (Builder $query) use ($actor): void {
                 if ($actor?->hasRole('ZD')) {
                     $query->where('zd_id', $actor->getKey());

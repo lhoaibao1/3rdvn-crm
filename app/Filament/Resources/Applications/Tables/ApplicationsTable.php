@@ -3,18 +3,18 @@
 namespace App\Filament\Resources\Applications\Tables;
 
 use App\Filament\Resources\Applications\ApplicationResource;
-use App\Filament\Resources\Applications\Schemas\AclMixFields;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Filament\AclMixDecisionAction;
 use App\Support\Filament\LotteFinanceDecisionAction;
-use App\Support\Filament\ProjectSchemaColumns;
 use App\Support\Filament\RecordAssignAction;
 use App\Support\Filament\TableColumnPreferences;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -37,16 +37,23 @@ class ApplicationsTable
             ->extraAttributes(['class' => 'crm-users-table crm-applications-table', 'data-crm-column-table' => $columnTable], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record]))
+            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
             ->columns(TableColumnPreferences::apply($columnTable, [
-                TextColumn::make('application_code')->label('Mã hồ sơ')->badge()->color('info')->searchable()->sortable(),
-                TextColumn::make('applicant_name')->label('Khách hàng')->searchable()->weight('bold')->color('gray'),
-                TextColumn::make('phone')->label('SĐT')->searchable()->toggleable(),
-                TextColumn::make('identity_number')->label('CCCD/CMND')->searchable()->toggleable(),
-                TextColumn::make('salesProject.name')->label('Dự án')->badge()->color('primary')->toggleable(),
-                TextColumn::make('lead.lead_code')->label('Lead ID')->badge()->color('gray')->placeholder('-')->toggleable(),
+                TextColumn::make('application_code')
+                    ->label('Mã hồ sơ')
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('Chờ cập nhật')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('applicant_name')
+                    ->label('Khách hàng')
+                    ->searchable()
+                    ->weight('bold')
+                    ->color('gray'),
                 TextColumn::make('status')
                     ->label('Trạng thái')
                     ->badge()
@@ -63,34 +70,42 @@ class ApplicationsTable
                     })
                     ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
                     ->sortable(),
-                TextColumn::make('assignedSale.name')->label('Người xử lý')->placeholder('-')->toggleable(),
-                TextColumn::make('createdBy.name')->label('Người tạo')->placeholder('-')->toggleable(),
-                TextColumn::make('team.name')->label('Team')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('teamLeader.name')->label('Team Leader')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('am.name')->label('AM')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('zd.name')->label('ZD')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('payload.review.product')->label('Sản phẩm')->badge()->placeholder('-')->toggleable(),
-                TextColumn::make('payload.review.pre_approved_amount')
-                    ->label('Số tiền sơ bộ')
-                    ->formatStateUsing(fn (mixed $state): string => filled($state) ? number_format((int) preg_replace('/\D+/', '', (string) $state), 0, ',', '.').' VNĐ' : '-')
+                ...match ($projectSlug) {
+                    'acl-mix' => self::aclMixSummaryColumns(),
+                    'lotte-finance' => self::lotteFinanceDataColumns(),
+                    default => [],
+                },
+                TextColumn::make('assignedSale.name')
+                    ->label('Người xử lý')
+                    ->placeholder('-')
+                    ->toggleable(),
+                TextColumn::make('createdBy.name')
+                    ->label('Người tạo')
+                    ->placeholder('-')
+                    ->toggleable(),
+                TextColumn::make('team.name')
+                    ->label('Team')
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('-')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('created_at')
+                    ->label('Ngày tạo')
+                    ->dateTime('H:i d/m/Y')
+                    ->sortable(),
+                TextColumn::make('updated_at')
+                    ->label('Cập nhật')
+                    ->dateTime('H:i d/m/Y')
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('payload.review.pre_approved_months')->label('Số tháng phê duyệt')->suffix(' tháng')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('payload.review.pre_approved_interest_rate')->label('Lãi suất phê duyệt')->suffix('%')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
-                ...(in_array($projectSlug, ['acl-mix', 'lotte-finance'], true) ? self::aclMixDataColumns() : []),
-                ...ProjectSchemaColumns::forApplication($projectSlug, [
-                    'customer_name', 'applicant_name', 'phone', 'identity_number',
-                    'cccd', 'product', 'pre_approved_amount', 'pre_approved_months',
-                    'pre_approved_interest_rate', 'status',
-                ]),
-                TextColumn::make('created_at')->label('Ngày tạo')->dateTime('H:i d/m/Y')->sortable(),
-                TextColumn::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->sortable()->toggleable(isToggledHiddenByDefault: true),
             ]))
             ->filters([
                 Filter::make('quick_lookup')
                     ->label('Tìm kiếm')
                     ->schema([
                         TextInput::make('keyword')
-                            ->label('App / Lead / CCCD / SĐT')
+                            ->label('Mã hồ sơ / CCCD / SĐT')
                             ->placeholder('Nhập mã cần tìm'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
@@ -99,8 +114,7 @@ class ApplicationsTable
                                 ->where('application_code', 'ilike', "%{$keyword}%")
                                 ->orWhere('applicant_name', 'ilike', "%{$keyword}%")
                                 ->orWhere('phone', 'ilike', "%{$keyword}%")
-                                ->orWhere('identity_number', 'ilike', "%{$keyword}%")
-                                ->orWhereHas('lead', fn (Builder $query): Builder => $query->where('lead_code', 'ilike', "%{$keyword}%"));
+                                ->orWhere('identity_number', 'ilike', "%{$keyword}%");
                         }))),
                 SelectFilter::make('status')
                     ->label('Trạng thái')
@@ -118,6 +132,12 @@ class ApplicationsTable
                 SelectFilter::make('assigned_sale_id')
                     ->label('Sale')
                     ->relationship('assignedSale', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('team_id')
+                    ->label('Team')
+                    ->relationship('team', 'name')
                     ->searchable()
                     ->preload()
                     ->native(false),
@@ -193,16 +213,15 @@ class ApplicationsTable
                     ->action(fn () => response()->streamDownload(function () use ($resourceClass): void {
                         $out = fopen('php://output', 'w');
                         fwrite($out, 'ï»¿');
-                        fputcsv($out, ['Mã hồ sơ', 'Lead ID', 'Khách hàng', 'SĐT', 'CCCD/CMND', 'Trạng thái', 'NVKD', 'Team', 'Team Leader', 'AM', 'ZD', 'Ngày tạo']);
+                        fputcsv($out, ['Mã hồ sơ', 'Khách hàng', 'SĐT', 'CCCD/CMND', 'Trạng thái', 'NVKD', 'Team', 'Team Leader', 'AM', 'ZD', 'Ngày tạo']);
 
                         $resourceClass::getEloquentQuery()
-                            ->with(['lead', 'assignedSale', 'team', 'teamLeader', 'am', 'zd'])
+                            ->with(['assignedSale', 'team', 'teamLeader', 'am', 'zd'])
                             ->orderByDesc('created_at')
                             ->chunk(500, function ($applications) use ($out): void {
                                 foreach ($applications as $application) {
                                     fputcsv($out, [
                                         $application->application_code,
-                                        $application->lead?->lead_code,
                                         $application->applicant_name,
                                         $application->phone,
                                         $application->identity_number,
@@ -218,39 +237,71 @@ class ApplicationsTable
                             });
                         fclose($out);
                     }, $exportPrefix.'-'.now()->format('Ymd-His').'.csv')),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->label('Xóa đã chọn')
+                        ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
+                ])
+                    ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
             ]);
     }
 
     /** @return array<int, TextColumn> */
-    private static function aclMixDataColumns(): array
+    private static function aclMixSummaryColumns(): array
     {
-        $duplicateKeys = ['customer_name', 'cccd', 'phone'];
+        return [
+            TextColumn::make('payload.review.product')
+                ->label('Sản phẩm')
+                ->badge()
+                ->placeholder('-'),
+            TextColumn::make('payload.review.pre_approved_amount')
+                ->label('Số tiền phê duyệt sơ bộ')
+                ->formatStateUsing(fn (mixed $state): string => filled($state)
+                    ? number_format((int) preg_replace('/\D+/', '', (string) $state), 0, ',', '.').' VNĐ'
+                    : '-')
+                ->placeholder('-'),
+            TextColumn::make('payload.review.pre_approved_months')
+                ->label('Thời hạn phê duyệt')
+                ->formatStateUsing(fn (mixed $state): string => filled($state) ? $state.' tháng' : '-')
+                ->placeholder('-'),
+            TextColumn::make('payload.review.pre_approved_interest_rate')
+                ->label('Lãi suất phê duyệt')
+                ->formatStateUsing(fn (mixed $state): string => filled($state) ? $state.'%' : '-')
+                ->placeholder('-'),
+        ];
+    }
 
-        return collect(AclMixFields::definitions())
-            ->reject(fn (array $field): bool => in_array($field['field_key'], $duplicateKeys, true))
-            ->map(function (array $field): TextColumn {
-                $key = $field['field_key'];
-                $displayKey = str_ends_with($key, '_province_code')
-                    || str_ends_with($key, '_district_code')
-                    || str_ends_with($key, '_ward_code')
-                        ? substr($key, 0, -4).'name'
-                        : $key;
-
-                return TextColumn::make('payload.module_fields.'.$displayKey)
-                    ->label($field['label'])
-                    ->placeholder('-')
-                    ->formatStateUsing(fn (mixed $state): string => match ($key) {
-                        'disbursement_method' => match ($state) {
-                            'agent' => 'Đại lý chi hộ',
-                            'bank' => 'Tài khoản ngân hàng',
-                            default => filled($state) ? (string) $state : '-',
-                        },
-                        default => filled($state) ? (string) $state : '-',
-                    })
-                    ->toggleable(isToggledHiddenByDefault: true);
-            })
-            ->values()
-            ->all();
+    /** @return array<int, TextColumn> */
+    private static function lotteFinanceDataColumns(): array
+    {
+        return [
+            TextColumn::make('payload.fields.scheme_code')
+                ->label('Scheme')
+                ->badge()
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.scheme_product')
+                ->label('Sản phẩm')
+                ->badge()
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.loan_amount')
+                ->label('Số tiền vay')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.review.maximum_limit')
+                ->label('Hạn mức tối đa')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.review.approved_amount')
+                ->label('Số tiền được phê duyệt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('lotte_interest_rate')
+                ->label('Lãi suất')
+                ->state(fn (Application $record): mixed => data_get($record->payload, 'review.estimated_interest_rate')
+                    ?: data_get($record->payload, 'fields.scheme_interest_rate'))
+                ->formatStateUsing(fn (mixed $state): string => filled($state) ? rtrim(rtrim(number_format((float) $state, 2, '.', ''), '0'), '.').'%' : '-')
+                ->placeholder('-'),
+        ];
     }
 
     private static function statusLabel(?string $state): string

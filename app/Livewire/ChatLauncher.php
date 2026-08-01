@@ -210,7 +210,7 @@ class ChatLauncher extends Component
         }
 
         $query = Application::query()
-            ->with(['salesProject', 'lead'])
+            ->with(['salesProject'])
             ->where(function (Builder $query) use ($pattern): void {
                 $query
                     ->where('application_code', 'ilike', $pattern)
@@ -220,8 +220,7 @@ class ChatLauncher extends Component
                     ->orWhere('status', 'ilike', $pattern)
                     ->orWhereHas('salesProject', fn (Builder $project): Builder => $project
                         ->where('name', 'ilike', $pattern)
-                        ->orWhere('slug', 'ilike', $pattern))
-                    ->orWhereHas('lead', fn (Builder $lead): Builder => $lead->where('lead_code', 'ilike', $pattern));
+                        ->orWhere('slug', 'ilike', $pattern));
             });
 
         if (! $user->hasRole('Admin')) {
@@ -246,7 +245,6 @@ class ChatLauncher extends Component
                 'uid' => $application->application_code,
                 'details' => array_values(array_filter([
                     ['label' => 'Dự án', 'value' => $application->salesProject?->name],
-                    ['label' => 'Lead ID', 'value' => $application->lead?->lead_code],
                     ['label' => 'SĐT', 'value' => $application->phone],
                     ['label' => 'CCCD', 'value' => $application->identity_number],
                     ['label' => 'Trạng thái', 'value' => $this->applicationStatus($application->status), 'wide' => true],

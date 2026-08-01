@@ -2,16 +2,17 @@
 
 namespace App\Support\Filament\LeadCreate;
 
+use App\Forms\Components\SearchableSelect as Select;
+use App\Support\AdminWorkflowOverride;
 use App\Support\LotteFinanceSchemeCatalog;
+use App\Support\VietnamAddressCatalog;
+use App\Support\VietnamBankCatalog;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -20,6 +21,8 @@ use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
 use Filament\Support\RawJs;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
 
 class CreateLotteFinanceLeadAction
@@ -35,8 +38,7 @@ class CreateLotteFinanceLeadAction
             ->modalHeading('Tạo Lead Lotte Finance')
             ->extraModalWindowAttributes(['class' => 'crm-lead-modal crm-lead-create-modal'])
             ->modalWidth('5xl')
-            ->modalSubmitActionLabel('Gửi Lead Kiểm Tra')
-            ->modalSubmitAction(fn (Action $action): Action => $action->icon(Heroicon::OutlinedPaperAirplane))
+            ->modalSubmitAction(false)
             ->modalCancelActionLabel('Hủy')
             ->schema(self::schema())
             ->action(fn (array $data, mixed $livewire): mixed => self::createLeadForProject($data, 'lotte-finance', self::fieldKeys(), $livewire));
@@ -59,7 +61,7 @@ class CreateLotteFinanceLeadAction
                                     ->placeholder('Chọn mã scheme')
                                     ->searchable()
                                     ->live()
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
                                         self::syncSchemePayload($set, $state);
                                         self::syncLoanEstimate($set, $get);
@@ -110,7 +112,7 @@ class CreateLotteFinanceLeadAction
                                     ->searchable()
                                     ->preload()
                                     ->live()
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->afterStateUpdated(fn (Set $set, ?string $state): mixed => $set('loan_purpose_name', LotteFinanceSchemeCatalog::loanPurposeLabel($state)))
                                     ->native(false),
                                 TextInput::make('loan_amount')
@@ -119,7 +121,7 @@ class CreateLotteFinanceLeadAction
                                     ->stripCharacters('.')
                                     ->suffix('VNĐ')
                                     ->live(onBlur: true)
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->afterStateUpdated(fn (Set $set, Get $get): mixed => self::syncLoanEstimate($set, $get)),
                                 TextInput::make('combo_loan_amount')
                                     ->label('Tổng số tiền vay (Combo 2 Loan)')
@@ -131,7 +133,7 @@ class CreateLotteFinanceLeadAction
                                     ->numeric()
                                     ->suffix('tháng')
                                     ->live(onBlur: true)
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->rule('integer')
                                     ->rule('min:1')
                                     ->rule('max:120')
@@ -178,118 +180,68 @@ class CreateLotteFinanceLeadAction
                                     ->columnSpanFull(),
                             ]),
                     ]),
-                Step::make('OCR/eKYC')
+                Step::make('Tải CCCD')
                     ->schema([
                         Grid::make(2)
                             ->schema([
                                 FileUpload::make('ocr_front_image')
-                                    ->label('OCR CCCD mặt trước')
+                                    ->label('CCCD mặt trước')
                                     ->disk('public')
                                     ->directory('leads/lotte-finance/ocr')
                                     ->image()
+                                    ->imageEditor()
                                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                     ->maxSize(5120)
-                                    ->imagePreviewHeight('80')
+                                    ->imagePreviewHeight('120')
+                                    ->previewable()
                                     ->openable()
                                     ->downloadable()
-                                    ->required(),
+                                    ->deletable()
+                                    ->required(AdminWorkflowOverride::required()),
                                 FileUpload::make('ocr_back_image')
-                                    ->label('OCR CCCD mặt sau')
+                                    ->label('CCCD mặt sau')
                                     ->disk('public')
                                     ->directory('leads/lotte-finance/ocr')
                                     ->image()
+                                    ->imageEditor()
                                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                     ->maxSize(5120)
-                                    ->imagePreviewHeight('80')
+                                    ->imagePreviewHeight('120')
+                                    ->previewable()
                                     ->openable()
                                     ->downloadable()
-                                    ->required(),
-                                Select::make('ekyc_status')
-                                    ->label('Trạng thái eKYC')
-                                    ->options([
-                                        'pending' => 'Chưa eKYC',
-                                        'processing' => 'Đang eKYC',
-                                        'success' => 'Đã eKYC',
-                                        'failed' => 'Lỗi eKYC',
-                                    ])
-                                    ->default('pending')
-                                    ->required()
-                                    ->rule('in:success')
-                                    ->validationMessages([
-                                        'in' => 'Vui lòng chạy eKYC thành công trước khi nhập thông tin.',
-                                    ])
-                                    ->native(false),
-                                TextInput::make('ekyc_request_id')
-                                    ->label('eKYC Request ID')
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->maxLength(120),
-                                Actions::make([
-                                    Action::make('run_ekyc')
-                                        ->label('Chạy eKYC')
-                                        ->icon(Heroicon::OutlinedIdentification)
-                                        ->color('primary')
-                                        ->action(function (Set $set, Get $get): void {
-                                            if (blank($get('ocr_front_image')) || blank($get('ocr_back_image'))) {
-                                                Notification::make()
-                                                    ->title('Vui lòng upload CCCD mặt trước và mặt sau trước khi chạy eKYC.')
-                                                    ->danger()
-                                                    ->send();
-
-                                                return;
-                                            }
-
-                                            $requestId = 'EKYC'.now()->format('ymdHis');
-                                            $filledFromOcr = self::fillEkycFieldsFromPayload($set, $get('ekyc_raw_payload'));
-
-                                            $set('ekyc_status', 'success');
-                                            $set('ekyc_request_id', $requestId);
-                                            $set('ekyc_completed_at', now()->format('H:i d/m/Y'));
-                                            $set('ekyc_result_note', $filledFromOcr
-                                                ? 'eKYC đã hoàn tất và hệ thống đã tự điền thông tin OCR nhận được.'
-                                                : 'eKYC đã hoàn tất. Chưa nhận được dữ liệu OCR trả về từ API live, vui lòng nhập thông tin khách hàng.');
-                                            $set('api_workflow_note', config('lotte_finance.live_api_ready')
-                                                ? 'Đã chạy eKYC theo cấu hình API live.'
-                                                : 'Chưa cấu hình URL endpoint eKYC live trong config Lotte; hệ thống chưa thể tự gọi OCR thật.');
-
-                                            Notification::make()
-                                                ->title('eKYC hoàn tất')
-                                                ->body($filledFromOcr ? 'Thông tin CCCD đã được tự điền.' : 'Chưa có dữ liệu OCR live để tự điền, vui lòng nhập thủ công.')
-                                                ->success()
-                                                ->send();
-                                        }),
-                                ])->columnSpanFull(),
-                                Textarea::make('ekyc_result_note')
-                                    ->label('Kết quả eKYC')
-                                    ->rows(2)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->columnSpanFull(),
+                                    ->deletable()
+                                    ->required(AdminWorkflowOverride::required()),
                             ]),
                     ]),
                 Step::make('Nhập thông tin')
                     ->schema([
-                        Section::make('Thông tin khách hàng')
-                            ->columns(2)
+                        Hidden::make('disbursement_method')
+                            ->default('bank')
+                            ->dehydrated(),
+                        Section::make('Thông tin cá nhân')
+                            ->description('Thông tin cơ bản của khách hàng')
+                            ->columns(3)
                             ->schema([
                                 TextInput::make('customer_name')
                                     ->label('Họ tên khách hàng')
-                                    ->required()
-                                    ->maxLength(255),
+                                    ->required(AdminWorkflowOverride::required())
+                                    ->maxLength(255)
+                                    ->columnSpan(2),
                                 TextInput::make('phone')
                                     ->label('Số điện thoại')
                                     ->tel()
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->maxLength(30),
                                 TextInput::make('identity_number')
                                     ->label('CCCD/CMND')
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->maxLength(30),
                                 TextInput::make('birthday')
                                     ->label('Ngày sinh')
                                     ->mask('99/99/9999')
                                     ->placeholder('dd/mm/yyyy')
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->rule('date_format:d/m/Y')
                                     ->maxLength(10),
                                 Select::make('gender')
@@ -300,41 +252,245 @@ class CreateLotteFinanceLeadAction
                                         'OTHER' => 'Khác',
                                     ])
                                     ->native(false),
-                                TextInput::make('identity_issue_date')
-                                    ->label('Ngày cấp')
-                                    ->mask('99/99/9999')
-                                    ->placeholder('dd/mm/yyyy')
-                                    ->rule('date_format:d/m/Y')
-                                    ->maxLength(10),
-                                TextInput::make('identity_expiry_date')
-                                    ->label('Ngày hết hạn')
-                                    ->mask('99/99/9999')
-                                    ->placeholder('dd/mm/yyyy')
-                                    ->rule('date_format:d/m/Y')
-                                    ->maxLength(10),
-                                Select::make('identity_issue_place')
-                                    ->label('Nơi cấp')
+                                Select::make('education')
+                                    ->label('Học vấn')
                                     ->options([
-                                        'CCS' => 'CCS',
-                                        'Bộ Công An' => 'Bộ Công An',
-                                        'Cục CSQLHC về TTXH' => 'Cục CSQLHC về TTXH',
+                                        'Trung học cơ sở' => 'Trung học cơ sở',
+                                        'Trung học phổ thông' => 'Trung học phổ thông',
+                                        'Trung cấp/Cao đẳng' => 'Trung cấp/Cao đẳng',
+                                        'Đại học' => 'Đại học',
+                                        'Sau đại học' => 'Sau đại học',
                                     ])
-                                    ->searchable()
-                                    ->preload()
                                     ->native(false),
                                 TextInput::make('nationality')
                                     ->label('Quốc tịch')
                                     ->maxLength(120),
-                                Textarea::make('permanent_address')
-                                    ->label('Địa chỉ thường trú')
-                                    ->rows(2)
-                                    ->columnSpanFull(),
+                            ]),
+                        Section::make('Địa chỉ cư trú')
+                            ->description('Thông tin nơi ở hiện tại')
+                            ->columns(3)
+                            ->schema([
+                                Select::make('province_code')
+                                    ->label('Tỉnh/Thành phố')
+                                    ->options(fn (): array => VietnamAddressCatalog::provinceOptions())
+                                    ->placeholder('Chọn tỉnh/thành phố')
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                        $set('province_name', VietnamAddressCatalog::provinceName($state));
+                                        $set('district_code', null);
+                                        $set('district_name', null);
+                                        $set('ward_code', null);
+                                        $set('ward_name', null);
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                Select::make('district_code')
+                                    ->label('Quận/Huyện')
+                                    ->options(fn (Get $get): array => VietnamAddressCatalog::districtOptions($get('province_code')))
+                                    ->placeholder('Chọn quận/huyện')
+                                    ->disabled(fn (Get $get): bool => blank($get('province_code')))
+                                    ->live()
+                                    ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
+                                        $set('district_name', VietnamAddressCatalog::districtName($get('province_code'), $state));
+                                        $set('ward_code', null);
+                                        $set('ward_name', null);
+                                    })
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                Select::make('ward_code')
+                                    ->label('Phường/Xã')
+                                    ->options(fn (Get $get): array => VietnamAddressCatalog::wardOptions($get('district_code')))
+                                    ->placeholder('Chọn phường/xã')
+                                    ->disabled(fn (Get $get): bool => blank($get('district_code')))
+                                    ->live()
+                                    ->afterStateUpdated(fn (Get $get, Set $set, ?string $state): mixed => $set('ward_name', VietnamAddressCatalog::wardName($get('district_code'), $state)))
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                Hidden::make('province_name')->dehydrated(),
+                                Hidden::make('district_name')->dehydrated(),
+                                Hidden::make('ward_name')->dehydrated(),
                                 Textarea::make('current_address')
                                     ->label('Địa chỉ hiện tại')
                                     ->rows(2)
                                     ->columnSpanFull(),
-                                Textarea::make('api_workflow_note')
-                                    ->label('Ghi chú API/OCR/eKYC')
+                            ]),
+                        Section::make('Địa chỉ thường trú')
+                            ->description('Thông tin nơi đăng ký thường trú')
+                            ->columns(3)
+                            ->schema([
+                                Select::make('permanent_province_code')
+                                    ->label('Tỉnh/Thành phố')
+                                    ->options(fn (): array => VietnamAddressCatalog::provinceOptions())
+                                    ->placeholder('Chọn tỉnh/thành phố')
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                Select::make('permanent_district_code')
+                                    ->label('Quận/Huyện')
+                                    ->options(fn (Get $get): array => VietnamAddressCatalog::districtOptions($get('permanent_province_code')))
+                                    ->placeholder('Chọn quận/huyện')
+                                    ->disabled(fn (Get $get): bool => blank($get('permanent_province_code')))
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                Select::make('permanent_ward_code')
+                                    ->label('Phường/Xã')
+                                    ->options(fn (Get $get): array => VietnamAddressCatalog::wardOptions($get('permanent_district_code')))
+                                    ->placeholder('Chọn phường/xã')
+                                    ->disabled(fn (Get $get): bool => blank($get('permanent_district_code')))
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                Textarea::make('permanent_address')
+                                    ->label('Địa chỉ thường trú')
+                                    ->rows(2)
+                                    ->columnSpanFull(),
+                            ]),
+                        Section::make('Công việc')
+                            ->description('Thông tin công việc')
+                            ->columns(3)
+                            ->schema([
+                                TextInput::make('employer_name')
+                                    ->label('Tên đơn vị/Công việc')
+                                    ->maxLength(255)
+                                    ->columnSpan(2),
+                                TextInput::make('employer_tax_code')
+                                    ->label('Mã số thuế')
+                                    ->maxLength(30),
+                                Select::make('employer_province_code')
+                                    ->label('Tỉnh/Thành phố')
+                                    ->options(fn (): array => VietnamAddressCatalog::provinceOptions())
+                                    ->placeholder('Chọn tỉnh/thành phố')
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                Select::make('employer_district_code')
+                                    ->label('Quận/Huyện')
+                                    ->options(fn (Get $get): array => VietnamAddressCatalog::districtOptions($get('employer_province_code')))
+                                    ->placeholder('Chọn quận/huyện')
+                                    ->disabled(fn (Get $get): bool => blank($get('employer_province_code')))
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                Select::make('employer_ward_code')
+                                    ->label('Phường/Xã')
+                                    ->options(fn (Get $get): array => VietnamAddressCatalog::wardOptions($get('employer_district_code')))
+                                    ->placeholder('Chọn phường/xã')
+                                    ->disabled(fn (Get $get): bool => blank($get('employer_district_code')))
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                TextInput::make('employer_phone')
+                                    ->label('SĐT nơi làm việc')
+                                    ->tel()
+                                    ->maxLength(30),
+                                Select::make('employment_type')
+                                    ->label('Hình thức công việc')
+                                    ->options([
+                                        'FULL_TIME' => 'Toàn thời gian',
+                                        'PART_TIME' => 'Bán thời gian',
+                                        'SELF_EMPLOYED' => 'Tự do',
+                                    ])
+                                    ->native(false),
+                                TextInput::make('working_years')
+                                    ->label('Năm làm việc')
+                                    ->numeric()
+                                    ->maxLength(3),
+                                TextInput::make('working_months')
+                                    ->label('Tháng làm việc')
+                                    ->numeric()
+                                    ->maxLength(2),
+                                TextInput::make('monthly_income')
+                                    ->label('Thu nhập/tháng')
+                                    ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                                    ->stripCharacters('.')
+                                    ->suffix('VNĐ')
+                                    ->maxLength(30),
+                                Textarea::make('employer_address')
+                                    ->label('Địa chỉ công ty')
+                                    ->rows(2)
+                                    ->columnSpanFull(),
+                            ]),
+                        Section::make('Tham chiếu')
+                            ->description('Thông tin người tham chiếu')
+                            ->columns(3)
+                            ->schema([
+                                TextInput::make('reference_1_name')
+                                    ->label('Tên')
+                                    ->maxLength(255),
+                                Select::make('reference_1_relationship')
+                                    ->label('Quan hệ')
+                                    ->options([
+                                        'Cha' => 'Cha',
+                                        'Mẹ' => 'Mẹ',
+                                        'Anh' => 'Anh',
+                                        'Chị' => 'Chị',
+                                        'Em' => 'Em',
+                                        'Ông' => 'Ông',
+                                        'Bà' => 'Bà',
+                                        'Bạn' => 'Bạn',
+                                        'Công ty' => 'Công ty',
+                                        'Khác' => 'Khác',
+                                    ])
+                                    ->placeholder('Chọn quan hệ')
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                TextInput::make('reference_1_phone')
+                                    ->label('SĐT')
+                                    ->tel()
+                                    ->maxLength(30),
+                                TextInput::make('reference_2_name')
+                                    ->label('Tên')
+                                    ->maxLength(255),
+                                Select::make('reference_2_relationship')
+                                    ->label('Quan hệ')
+                                    ->options([
+                                        'Cha' => 'Cha',
+                                        'Mẹ' => 'Mẹ',
+                                        'Anh' => 'Anh',
+                                        'Chị' => 'Chị',
+                                        'Em' => 'Em',
+                                        'Ông' => 'Ông',
+                                        'Bà' => 'Bà',
+                                        'Bạn' => 'Bạn',
+                                        'Công ty' => 'Công ty',
+                                        'Khác' => 'Khác',
+                                    ])
+                                    ->placeholder('Chọn quan hệ')
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false),
+                                TextInput::make('reference_2_phone')
+                                    ->label('SĐT')
+                                    ->tel()
+                                    ->maxLength(30),
+                            ]),
+                        Section::make('Giải ngân')
+                            ->description('Thông tin tài khoản nhận tiền')
+                            ->columns(3)
+                            ->schema([
+                                Select::make('bank_name')
+                                    ->label('Ngân hàng')
+                                    ->options(fn (): array => VietnamBankCatalog::options())
+                                    ->placeholder('Chọn ngân hàng')
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->default(fn (): ?string => self::defaultBankFields(auth()->user())['bank_name'] ?? null),
+                                TextInput::make('bank_account_number')
+                                    ->label('Số tài khoản')
+                                    ->maxLength(120)
+                                    ->default(fn (): ?string => self::defaultBankFields(auth()->user())['bank_account_number'] ?? null),
+                                TextInput::make('bank_account_name')
+                                    ->label('Chủ tài khoản')
+                                    ->maxLength(255)
+                                    ->default(fn (): ?string => self::defaultBankFields(auth()->user())['bank_account_name'] ?? null),
+                                Textarea::make('note')
+                                    ->label('Ghi chú')
                                     ->rows(2)
                                     ->columnSpanFull(),
                             ]),
@@ -346,6 +502,7 @@ class CreateLotteFinanceLeadAction
                 ->previousAction(fn (Action $action): Action => $action
                     ->label('Quay lại')
                     ->icon(Heroicon::OutlinedArrowLeft))
+                ->submitAction(new HtmlString('<button type="submit" class="fi-btn fi-btn-size-md fi-btn-color-primary">Gửi Lead</button>'))
                 ->contained(false),
             Hidden::make('loan_purpose_name')->dehydrated(),
             Hidden::make('insurance_label')->default(LotteFinanceSchemeCatalog::insuranceLabel('INSUR69'))->dehydrated(),
@@ -356,117 +513,34 @@ class CreateLotteFinanceLeadAction
             Hidden::make('scheme_dti')->dehydrated(),
             Hidden::make('scheme_loan_period_min')->dehydrated(),
             Hidden::make('scheme_loan_period_max')->dehydrated(),
-            Hidden::make('ekyc_completed_at')->dehydrated(),
-            Hidden::make('ekyc_raw_payload')->dehydrated(),
         ];
     }
 
-    private static function fillEkycFieldsFromPayload(Set $set, mixed $payload): bool
+    public static function defaultBankFields(mixed $user): array
     {
-        $data = self::decodeEkycPayload($payload);
+        $userData = $user instanceof Model ? $user->toArray() : [];
+        $bankName = Arr::get($userData, 'bank_name')
+            ?? Arr::get($userData, 'bankName')
+            ?? $user?->bank_name
+            ?? $user?->bankName
+            ?? null;
+        $bankAccountNumber = Arr::get($userData, 'bank_account_number')
+            ?? Arr::get($userData, 'bankAccountNumber')
+            ?? $user?->bank_account_number
+            ?? $user?->bankAccountNumber
+            ?? null;
+        $bankAccountName = Arr::get($userData, 'bank_account_name')
+            ?? Arr::get($userData, 'bankAccountName')
+            ?? $user?->bank_account_name
+            ?? $user?->bankAccountName
+            ?? null;
 
-        if ($data === []) {
-            return false;
-        }
-
-        $fields = [
-            'customer_name' => self::firstEkycValue($data, ['name.value', 'full_name.value', 'full_name', 'name']),
-            'identity_number' => self::firstEkycValue($data, ['id_number.value', 'identity_number.value', 'id_number', 'identity_number', 'nric']),
-            'birthday' => self::normalizeDate(self::firstEkycValue($data, ['dob.value', 'birthday.value', 'dob', 'birthday'])),
-            'identity_issue_date' => self::normalizeDate(self::firstEkycValue($data, ['given_date.value', 'issue_date.value', 'given_date', 'issue_date'])),
-            'identity_expiry_date' => self::normalizeDate(self::firstEkycValue($data, ['due_date.value', 'expiry_date.value', 'due_date', 'expiry_date'])),
-            'identity_issue_place' => self::normalizeIssuePlace(self::firstEkycValue($data, ['given_place.value', 'issue_place.value', 'given_place', 'issue_place'])),
-            'nationality' => self::firstEkycValue($data, ['nationality.value', 'ethnicity.value', 'nationality', 'ethnicity']) ?: 'Việt Nam',
-            'permanent_address' => self::firstEkycValue($data, ['id_address.value', 'permanent_address.value', 'id_address', 'permanent_address', 'address']),
-            'current_address' => self::firstEkycValue($data, ['id_address.value', 'current_address.value', 'id_address', 'current_address', 'address']),
-            'gender' => self::normalizeGender(self::firstEkycValue($data, ['gender.value', 'gender'])),
+        return [
+            'disbursement_method' => 'bank',
+            'bank_name' => VietnamBankCatalog::codeFor($bankName),
+            'bank_account_number' => $bankAccountNumber,
+            'bank_account_name' => $bankAccountName,
         ];
-
-        $filled = false;
-
-        foreach ($fields as $field => $value) {
-            if (filled($value)) {
-                $set($field, $value);
-                $filled = true;
-            }
-        }
-
-        return $filled;
-    }
-
-    private static function decodeEkycPayload(mixed $payload): array
-    {
-        if (is_array($payload)) {
-            return $payload;
-        }
-
-        if (! is_string($payload) || trim($payload) === '') {
-            return [];
-        }
-
-        $decoded = json_decode($payload, true);
-
-        return is_array($decoded) ? $decoded : [];
-    }
-
-    private static function firstEkycValue(array $data, array $paths): ?string
-    {
-        foreach ($paths as $path) {
-            $value = data_get($data, $path);
-
-            if (filled($value)) {
-                return trim((string) $value);
-            }
-
-            foreach (['data', 'result', 'ocr', 'front', 'id_card'] as $root) {
-                $value = data_get($data, $root.'.'.$path);
-
-                if (filled($value)) {
-                    return trim((string) $value);
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private static function normalizeDate(?string $value): ?string
-    {
-        if (blank($value)) {
-            return null;
-        }
-
-        $digits = preg_replace('/\D+/', '', $value);
-
-        if (strlen($digits) === 8) {
-            return substr($digits, 0, 2).'/'.substr($digits, 2, 2).'/'.substr($digits, 4, 4);
-        }
-
-        return $value;
-    }
-
-    private static function normalizeIssuePlace(?string $value): ?string
-    {
-        if (blank($value)) {
-            return null;
-        }
-
-        $upper = mb_strtoupper($value);
-
-        if (str_contains($upper, 'BỘ CÔNG AN') || str_contains($upper, 'CẢNH SÁT')) {
-            return 'Bộ Công An';
-        }
-
-        return $value === 'CCS' ? 'CCS' : $value;
-    }
-
-    private static function normalizeGender(?string $value): ?string
-    {
-        return match (mb_strtoupper((string) $value)) {
-            'MALE', 'NAM', 'M' => 'MALE',
-            'FEMALE', 'NỮ', 'NU', 'F' => 'FEMALE',
-            default => filled($value) ? 'OTHER' : null,
-        };
     }
 
     private static function syncSchemePayload(Set $set, ?string $schemeCode): void
@@ -586,16 +660,23 @@ class CreateLotteFinanceLeadAction
     public static function fieldKeys(): array
     {
         return [
-            'customer_name', 'phone', 'identity_number', 'birthday', 'gender', 'identity_issue_date',
-            'identity_expiry_date', 'identity_issue_place', 'nationality', 'permanent_address', 'current_address',
-            'scheme_code', 'scheme_name', 'scheme_product_type', 'scheme_product', 'scheme_product_line',
-            'scheme_description', 'scheme_sid', 'scheme_start_date', 'scheme_loan_period',
-            'scheme_loan_period_min', 'scheme_loan_period_max', 'scheme_interest_rate', 'scheme_interest_code',
-            'scheme_interest_period', 'scheme_dti', 'scheme_dti_label', 'loan_purpose_code', 'loan_purpose_name',
-            'loan_amount', 'combo_loan_amount', 'loan_term_months', 'insurance_code', 'insurance_label',
-            'interest_option', 'estimated_insurance_amount', 'estimated_monthly_payment', 'estimated_total_payment',
-            'ocr_front_image', 'ocr_back_image', 'ekyc_status', 'ekyc_request_id', 'ekyc_completed_at',
-            'ekyc_raw_payload', 'ekyc_result_note', 'api_workflow_note',
+            'customer_name', 'phone', 'identity_number', 'birthday', 'gender', 'education', 'marital_status',
+            'identity_issue_date', 'identity_expiry_date', 'identity_issue_place', 'nationality', 'province_code',
+            'province_name', 'district_code', 'district_name', 'ward_code', 'ward_name', 'residence_type',
+            'residence_duration_years', 'residence_duration_months', 'employer_name', 'employer_tax_code',
+            'employer_province_code', 'employer_district_code', 'employer_ward_code', 'employer_address',
+            'employer_phone', 'employment_type', 'working_years', 'working_months', 'monthly_income',
+            'contract_type', 'experience_years', 'experience_months', 'reference_1_name',
+            'reference_1_relationship', 'reference_1_phone', 'reference_2_name', 'reference_2_relationship',
+            'reference_2_phone', 'disbursement_method', 'bank_name', 'bank_account_number', 'bank_account_name',
+            'permanent_province_code', 'permanent_district_code', 'permanent_ward_code', 'permanent_address',
+            'current_address', 'note', 'scheme_code', 'scheme_name',
+            'scheme_product_type', 'scheme_product', 'scheme_product_line', 'scheme_description', 'scheme_sid',
+            'scheme_start_date', 'scheme_loan_period', 'scheme_loan_period_min', 'scheme_loan_period_max',
+            'scheme_interest_rate', 'scheme_interest_code', 'scheme_interest_period', 'scheme_dti', 'scheme_dti_label',
+            'loan_purpose_code', 'loan_purpose_name', 'loan_amount', 'combo_loan_amount', 'loan_term_months',
+            'insurance_code', 'insurance_label', 'interest_option', 'estimated_insurance_amount',
+            'estimated_monthly_payment', 'estimated_total_payment', 'ocr_front_image', 'ocr_back_image',
         ];
     }
 }

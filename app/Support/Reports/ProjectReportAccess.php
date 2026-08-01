@@ -17,7 +17,7 @@ class ProjectReportAccess
 
         $query = SalesProjectAccess::activeProjectQuery();
 
-        if (! $user->hasRole('Admin')) {
+        if (! $user->hasAnyRole(['Admin', 'Sales Admin'])) {
             $slugs = SalesProjectAccess::userProjectSlugs($user);
 
             if ($slugs === []) {
@@ -46,7 +46,7 @@ class ProjectReportAccess
         $project = self::project($projectId);
 
         return $project instanceof SalesProject
-            && ($user->hasRole('Admin') || SalesProjectAccess::canAccessProject($user, $project));
+            && ($user->hasAnyRole(['Admin', 'Sales Admin']) || SalesProjectAccess::canAccessProject($user, $project));
     }
 
     public static function project(int|string|null $projectId): ?SalesProject
@@ -76,7 +76,7 @@ class ProjectReportAccess
             return $query->whereRaw('1 = 0');
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return $query;
         }
 

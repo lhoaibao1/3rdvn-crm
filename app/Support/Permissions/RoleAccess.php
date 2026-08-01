@@ -19,7 +19,7 @@ class RoleAccess
         }
 
         $roles = $module->required_roles ?: [];
-        if ($roles !== [] && ! $user->hasAnyRole($roles)) {
+        if ($roles !== [] && ! $user->hasAnyRole(['Admin', 'Sales Admin']) && ! $user->hasAnyRole($roles)) {
             return false;
         }
 
@@ -39,7 +39,7 @@ class RoleAccess
 
     public static function canApproveProfile(User $user, SaleProfile $profile): bool
     {
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return true;
         }
 
@@ -48,7 +48,7 @@ class RoleAccess
 
     public static function canEditProfile(User $user, SaleProfile $profile): bool
     {
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return true;
         }
 
@@ -61,7 +61,7 @@ class RoleAccess
 
     public static function canViewProfile(User $user, SaleProfile $profile): bool
     {
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return true;
         }
 

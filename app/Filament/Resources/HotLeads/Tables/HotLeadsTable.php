@@ -42,7 +42,7 @@ class HotLeadsTable
             ->extraAttributes(['class' => 'crm-users-table crm-leads-table crm-hot-leads-table', 'data-crm-column-table' => 'hot-leads'], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Lead $record): string => HotLeadResource::getUrl('view', ['record' => $record]))
-            ->poll('3s')
+            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
@@ -61,7 +61,7 @@ class HotLeadsTable
                 TextColumn::make('payload.fields.address')->label('Địa chỉ chi tiết')->limit(36)->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('assignedSale.name')->label('Người xử lý')->placeholder('-')->sortable()->toggleable(),
                 TextColumn::make('createdBy.name')->label('Người tạo')->placeholder('-')->sortable()->toggleable(),
-                TextColumn::make('team.name')->label('Nhóm')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('team.name')->label('Team')->badge()->color('info')->placeholder('-')->toggleable(),
                 TextColumn::make('teamLeader.name')->label('Trưởng nhóm')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('am.name')->label('AM')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('zd.name')->label('ZD')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
@@ -110,6 +110,12 @@ class HotLeadsTable
                 SelectFilter::make('status')
                     ->label('Trạng thái')
                     ->options(fn (): array => HotLeadStatus::options())
+                    ->native(false),
+                SelectFilter::make('team_id')
+                    ->label('Team')
+                    ->relationship('team', 'name')
+                    ->searchable()
+                    ->preload()
                     ->native(false),
                 SelectFilter::make('assigned_sale_id')
                     ->label('Người xử lý')

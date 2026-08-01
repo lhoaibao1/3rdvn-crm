@@ -5,8 +5,10 @@ namespace App\Filament\Resources\Applications\Schemas;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Models\User;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Assignments\RecordAssignment;
+use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -34,16 +36,16 @@ class AclMixApplicationForm
                 ->visible(fn (?Application $record): bool => ! $record instanceof Application)
                 ->columns(2)
                 ->schema([
-                    TextInput::make('applicant_name')->label('Họ tên khách hàng')->required()->maxLength(255),
-                    TextInput::make('phone')->label('Số điện thoại')->tel()->required()->maxLength(30),
-                    TextInput::make('identity_number')->label('CCCD/CMND')->required()->maxLength(30),
-                    TextInput::make('birthday')->label('Ngày sinh')->mask('99/99/9999')->placeholder('dd/mm/yyyy')->required()->rule('date_format:d/m/Y')->maxLength(10),
-                    Select::make('identity_issued_place')->label('Nơi cấp')->options(['CCS' => 'CCS', 'Bộ Công An' => 'Bộ Công An'])->searchable()->preload()->required(),
-                    TextInput::make('identity_issued_date')->label('Ngày cấp')->mask('99/99/9999')->placeholder('dd/mm/yyyy')->required()->rule('date_format:d/m/Y')->maxLength(10),
+                    TextInput::make('applicant_name')->label('Họ tên khách hàng')->required(AdminWorkflowOverride::required())->maxLength(255),
+                    TextInput::make('phone')->label('Số điện thoại')->tel()->required(AdminWorkflowOverride::required())->maxLength(30),
+                    TextInput::make('identity_number')->label('CCCD/CMND')->required(AdminWorkflowOverride::required())->maxLength(30),
+                    TextInput::make('birthday')->label('Ngày sinh')->mask('99/99/9999')->placeholder('dd/mm/yyyy')->required(AdminWorkflowOverride::required())->rule('date_format:d/m/Y')->maxLength(10),
+                    Select::make('identity_issued_place')->label('Nơi cấp')->options(['CCS' => 'CCS', 'Bộ Công An' => 'Bộ Công An'])->searchable()->preload()->required(AdminWorkflowOverride::required()),
+                    TextInput::make('identity_issued_date')->label('Ngày cấp')->mask('99/99/9999')->placeholder('dd/mm/yyyy')->required(AdminWorkflowOverride::required())->rule('date_format:d/m/Y')->maxLength(10),
                     Textarea::make('address')->label('Địa chỉ chi tiết')->rows(2),
                     Select::make('province_code')
                         ->label('Tỉnh/Thành phố')->options(fn (): array => VietnamAddressCatalog::provinceOptions())
-                        ->searchable()->preload()->live()->required()
+                        ->searchable()->preload()->live()->required(AdminWorkflowOverride::required())
                         ->afterStateUpdated(function (Set $set, ?string $state): void {
                             $set('province_name', VietnamAddressCatalog::provinceName($state));
                             $set('district_code', null);
@@ -54,7 +56,7 @@ class AclMixApplicationForm
                     Select::make('district_code')
                         ->label('Quận/Huyện')->options(fn (Get $get): array => VietnamAddressCatalog::districtOptions($get('province_code')))
                         ->disabled(fn (Get $get): bool => blank($get('province_code')))
-                        ->searchable()->preload()->live()->required()
+                        ->searchable()->preload()->live()->required(AdminWorkflowOverride::required())
                         ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
                             $set('district_name', VietnamAddressCatalog::districtName($get('province_code'), $state));
                             $set('ward_code', null);
@@ -63,7 +65,7 @@ class AclMixApplicationForm
                     Select::make('ward_code')
                         ->label('Phường/Xã')->options(fn (Get $get): array => VietnamAddressCatalog::wardOptions($get('district_code')))
                         ->disabled(fn (Get $get): bool => blank($get('district_code')))
-                        ->searchable()->preload()->live()->required()
+                        ->searchable()->preload()->live()->required(AdminWorkflowOverride::required())
                         ->afterStateUpdated(fn (Get $get, Set $set, ?string $state): mixed => $set('ward_name', VietnamAddressCatalog::wardName($get('district_code'), $state))),
                     Hidden::make('province_name')->dehydrated(),
                     Hidden::make('district_name')->dehydrated(),
@@ -73,15 +75,15 @@ class AclMixApplicationForm
                 ->visible(fn (?Application $record): bool => $record instanceof Application && (bool) auth()->user()?->hasRole('Admin'))
                 ->columns(3)
                 ->schema([
-                    TextInput::make('application_code')->label('Mã hồ sơ')->required()->maxLength(120),
+                    TextInput::make('application_code')->label('Mã hồ sơ')->required(AdminWorkflowOverride::required())->maxLength(120),
                     Select::make('assigned_sale_id')
                         ->label('Người xử lý')
                         ->options(fn (?Application $record): array => $record ? RecordAssignment::assigneeOptions($record) : [])
                         ->searchable()->preload()->placeholder('Chưa phân công'),
                     Select::make('created_by_id')
                         ->label('Người tạo')->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
-                        ->searchable()->preload()->required(),
-                    DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(),
+                        ->searchable()->preload()->required(AdminWorkflowOverride::required()),
+                    DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
                     TextInput::make('status')->label('Trạng thái')->disabled()->dehydrated(false),
                 ]),
             ...array_map(
@@ -104,6 +106,17 @@ class AclMixApplicationForm
             foreach (['application_code', 'assigned_sale_id', 'created_by_id', 'created_at', 'status'] as $field) {
                 $data[$field] = $record->{$field};
             }
+        } else {
+            foreach (['application_code', 'created_by_id', 'created_at', 'status'] as $field) {
+                if (blank($data[$field] ?? null) && filled($record->{$field})) {
+                    $data[$field] = $record->{$field};
+                }
+            }
+
+        }
+
+        if (auth()->user()?->hasRole('Admin') && filled($data['created_by_id'] ?? null)) {
+            $data = array_replace($data, SalesLineSnapshot::hierarchyForUserId($data['created_by_id']));
         }
 
         $fields = data_get($data, 'payload.module_fields', []);

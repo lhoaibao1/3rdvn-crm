@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Tables;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Models\CrmTeam;
 use App\Models\SalesChannel;
 use App\Models\User;
 use App\Support\Filament\TableColumnPreferences;
@@ -58,6 +59,7 @@ class UsersTable
                     ->color('gray')
                     ->toggleable(),
                 TextColumn::make('sales_channel')->label('Kênh')->badge()->color('success')->toggleable(),
+                TextColumn::make('team_display')->label('Team')->state(fn (User $record): ?string => $record->team?->name ?: $record->managedTeam?->name)->badge()->color('info')->placeholder('-')->toggleable(),
                 TextColumn::make('teamLeader.name')->label('Team Leader')->toggleable(),
                 TextColumn::make('courierManager.name')->label('Courier Manager')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('am.name')->label('AM')->toggleable(isToggledHiddenByDefault: true),
@@ -95,6 +97,16 @@ class UsersTable
                                 ->orWhere('employee_code', 'ilike', "%{$keyword}%")
                                 ->orWhere('identity_number', 'ilike', "%{$keyword}%");
                         }))),
+                SelectFilter::make('team_id')
+                    ->label('Team')
+                    ->options(fn (): array => CrmTeam::query()
+                        ->where('is_active', true)
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('team_leader_id')
                     ->label('Team Leader')
                     ->options(fn (): array => UserSpecOptions::roleUsers('Team Leader'))
@@ -212,6 +224,7 @@ class UsersTable
                             'Phòng ban',
                             'Office',
                             'Kênh',
+                            'Team',
                             'Team Leader',
                             'AM',
                             'ZD',
@@ -221,7 +234,7 @@ class UsersTable
                             'Ngày tạo',
                         ]);
 
-                        RoleHierarchy::applyVisibilityScope(User::query()->with(['roles', 'teamLeader', 'am', 'zd']))
+                        RoleHierarchy::applyVisibilityScope(User::query()->with(['roles', 'team', 'teamLeader', 'am', 'zd']))
                             ->orderBy('id')
                             ->chunk(500, function ($users) use ($out): void {
                                 foreach ($users as $user) {
@@ -237,6 +250,7 @@ class UsersTable
                                         UserSpecOptions::labelFor('department', $user->department),
                                         UserSpecOptions::labelFor('office', $user->office),
                                         $user->sales_channel,
+                                        $user->team?->name,
                                         $user->teamLeader?->name,
                                         $user->am?->name,
                                         $user->zd?->name,

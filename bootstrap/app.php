@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,7 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(fn (Request $request): string => url('/authen/login'));
+        $middleware->redirectGuestsTo(fn (Request $request): string => $request->getHost() === 'los.3rdvn.io.vn'
+            ? route('los.login')
+            : url('/authen/login'));
 
         $middleware->alias([
             'role' => RoleMiddleware::class,
@@ -28,4 +31,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        $exceptions->respond(function (Response $response): Response {
+            if ($response->getStatusCode() !== 419 || request()->getHost() !== 'los.3rdvn.io.vn') {
+                return $response;
+            }
+
+            return redirect()
+                ->route('los.login')
+                ->with('status', 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        });
     })->create();

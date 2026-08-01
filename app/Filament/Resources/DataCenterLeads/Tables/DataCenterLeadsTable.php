@@ -5,26 +5,35 @@ namespace App\Filament\Resources\DataCenterLeads\Tables;
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\DataCenterLead;
+use App\Models\User;
 use App\Support\DataCenter\DataCenterCsvImporter;
 use App\Support\DataCenter\DataCenterLeadService;
 use App\Support\DataCenter\DataCenterStatus;
 use App\Support\Permissions\DataCenterAccess;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class DataCenterLeadsTable
 {
@@ -36,7 +45,7 @@ class DataCenterLeadsTable
                 'data-crm-column-table' => 'data-center',
             ], merge: true)
             ->recordUrl(fn (DataCenterLead $record): string => DataCenterLeadResource::getUrl('view', ['record' => $record]))
-            ->poll('5s')
+            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
@@ -53,6 +62,7 @@ class DataCenterLeadsTable
                     ->color(fn (?string $state): string => DataCenterStatus::color($state))
                     ->sortable(),
                 TextColumn::make('assignedUser.name')->label('Người xử lý')->placeholder('Chưa phân')->sortable(),
+                TextColumn::make('team.name')->label('Team')->badge()->color('info')->placeholder('-')->sortable()->toggleable(),
                 TextColumn::make('teamLeader.name')->label('Team Leader')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('am.name')->label('AM')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('zd.name')->label('ZD')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
@@ -84,14 +94,66 @@ class DataCenterLeadsTable
                     ->label('Trạng thái')
                     ->options(DataCenterStatus::options())
                     ->native(false),
+                SelectFilter::make('source')
+                    ->label('Nguồn')
+                    ->options(fn (): array => DataCenterLead::query()
+                        ->whereNotNull('source')
+                        ->where('source', '<>', '')
+                        ->distinct()
+                        ->orderBy('source')
+                        ->pluck('source', 'source')
+                        ->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('assigned_user_id')
                     ->label('Người xử lý')
                     ->relationship('assignedUser', 'name')
                     ->searchable()
                     ->preload()
                     ->native(false),
-            ], layout: FiltersLayout::AboveContent)
+                SelectFilter::make('team_id')
+                    ->label('Team')
+                    ->relationship('team', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('team_leader_id')
+                    ->label('Team Leader')
+                    ->relationship('teamLeader', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('am_id')
+                    ->label('AM')
+                    ->relationship('am', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('zd_id')
+                    ->label('ZD')
+                    ->relationship('zd', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                Filter::make('created_from')
+                    ->label('Từ ngày')
+                    ->schema([
+                        DatePicker::make('date')->label('Từ ngày')->displayFormat('d/m/Y')->native(false),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['date'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '>=', $date))),
+                Filter::make('created_until')
+                    ->label('Đến ngày')
+                    ->schema([
+                        DatePicker::make('date')->label('Đến ngày')->displayFormat('d/m/Y')->native(false),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['date'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '<=', $date))),
+            ], layout: FiltersLayout::Modal)
             ->filtersFormColumns(3)
+            ->filtersFormWidth('4xl')
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
             ->deferFilters()
             ->filtersTriggerAction(fn (Action $action): Action => $action
                 ->label('Bộ lọc')
@@ -100,23 +162,31 @@ class DataCenterLeadsTable
                 ->color('gray'))
             ->filtersApplyAction(fn (Action $action): Action => $action
                 ->label('Tìm kiếm')
-                ->icon(Heroicon::OutlinedMagnifyingGlass))
+                ->icon(Heroicon::OutlinedMagnifyingGlass)
+                ->color('primary'))
             ->filtersRemoveAllAction(fn (Action $action): Action => $action
                 ->label('Reset')
                 ->icon(Heroicon::OutlinedArrowPath)
                 ->color('gray'))
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->deferColumnManager()
             ->columnManagerTriggerAction(fn (Action $action): Action => $action
-                ->label('Cột')
+                ->label('Cột hiển thị')
                 ->icon(Heroicon::OutlinedViewColumns)
-                ->button())
-            ->columnManagerColumns(1)
-            ->columnManagerMaxHeight('28rem')
-            ->columnManagerWidth('18rem')
+                ->button()
+                ->color('gray'))
+            ->columnManagerApplyAction(fn (Action $action): Action => $action
+                ->label('Áp dụng')
+                ->color('primary'))
+            ->columnManagerColumns(2)
+            ->columnManagerMaxHeight('65vh')
+            ->columnManagerWidth('4xl')
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Xem')
                         ->url(fn (DataCenterLead $record): string => DataCenterLeadResource::getUrl('view', ['record' => $record])),
+                    self::assignmentAction(),
                     self::resultAction(),
                     self::convertAction(),
                     DeleteAction::make()->label('Xóa')->icon(Heroicon::OutlinedTrash)->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false),
@@ -130,9 +200,134 @@ class DataCenterLeadsTable
                     ->icon(Heroicon::EllipsisVertical),
             ])
             ->toolbarActions([
+                self::assignSelectedAction(),
                 self::downloadTemplateAction(),
                 self::importAction(),
             ]);
+    }
+
+    private static function assignmentAction(): Action
+    {
+        return Action::make('assignLeadReferral')
+            ->label('Gán người xử lý')
+            ->icon(Heroicon::OutlinedUserPlus)
+            ->color('gray')
+            ->visible(fn (DataCenterLead $record): bool => DataCenterAccess::canDistribute(auth()->user())
+                && DataCenterAccess::canView(auth()->user(), $record))
+            ->modalHeading(fn (DataCenterLead $record): string => 'Gán xử lý '.$record->referral_code)
+            ->extraModalWindowAttributes(['class' => 'crm-assignment-modal'])
+            ->modalWidth('md')
+            ->modalAutofocus(false)
+            ->modalSubmitActionLabel('Lưu phân công')
+            ->modalCancelActionLabel('Hủy')
+            ->schema(fn (DataCenterLead $record): array => [
+                TextInput::make('assignee_search')
+                    ->label('Tìm nhân viên')
+                    ->placeholder('Nhập tên, UID hoặc mã nhân viên')
+                    ->prefixIcon(Heroicon::OutlinedMagnifyingGlass)
+                    ->live(debounce: 300)
+                    ->dehydrated(false),
+                Radio::make('assignee_id')
+                    ->label('Chọn nhân viên xử lý')
+                    ->options(fn (Get $get): array => self::assignmentOptions(
+                        trim((string) $get('assignee_search')) ?: null,
+                    ))
+                    ->default($record->assigned_user_id ?? 0)
+                    ->columns(1)
+                    ->extraAttributes(['class' => 'crm-assignee-option-list'])
+                    ->required(),
+            ])
+            ->action(function (DataCenterLead $record, array $data, mixed $livewire): void {
+                $assignee = self::resolveAssignee($data);
+
+                if ($assignee instanceof User) {
+                    DataCenterLeadService::assign($record, auth()->user(), $assignee);
+                    $message = 'Đã gán Lead cho '.$assignee->name;
+                } else {
+                    DataCenterLeadService::unassign($record, auth()->user());
+                    $message = 'Đã hủy phân công Lead';
+                }
+
+                if (method_exists($livewire, 'flushCachedTableRecords')) {
+                    $livewire->flushCachedTableRecords();
+                }
+
+                Notification::make()->title($message)->success()->send();
+            });
+    }
+
+    private static function assignSelectedAction(): BulkAction
+    {
+        return BulkAction::make('assignSelectedLeadReferrals')
+            ->label('Gán Lead đã chọn')
+            ->icon(Heroicon::OutlinedUserGroup)
+            ->color('primary')
+            ->visible(fn (): bool => DataCenterAccess::canDistribute(auth()->user()))
+            ->modalHeading('Gán các Lead Referral đã chọn')
+            ->extraModalWindowAttributes(['class' => 'crm-assignment-modal'])
+            ->modalWidth('md')
+            ->modalAutofocus(false)
+            ->modalSubmitActionLabel('Lưu phân công')
+            ->modalCancelActionLabel('Hủy')
+            ->schema([
+                TextInput::make('assignee_search')
+                    ->label('Tìm nhân viên')
+                    ->placeholder('Nhập tên, UID hoặc mã nhân viên')
+                    ->prefixIcon(Heroicon::OutlinedMagnifyingGlass)
+                    ->live(debounce: 300)
+                    ->dehydrated(false),
+                Radio::make('assignee_id')
+                    ->label('Chọn nhân viên xử lý')
+                    ->options(fn (Get $get): array => self::assignmentOptions(
+                        trim((string) $get('assignee_search')) ?: null,
+                    ))
+                    ->columns(1)
+                    ->extraAttributes(['class' => 'crm-assignee-option-list'])
+                    ->required(),
+            ])
+            ->action(function (Collection $records, array $data, mixed $livewire): void {
+                $assignee = self::resolveAssignee($data);
+                $count = DataCenterLeadService::assignMany($records, auth()->user(), $assignee);
+
+                if (method_exists($livewire, 'flushCachedTableRecords')) {
+                    $livewire->flushCachedTableRecords();
+                }
+
+                Notification::make()
+                    ->title($assignee instanceof User
+                        ? 'Đã gán '.$count.' Lead cho '.$assignee->name
+                        : 'Đã hủy phân công '.$count.' Lead')
+                    ->success()
+                    ->send();
+            })
+            ->deselectRecordsAfterCompletion();
+    }
+
+    private static function assignmentOptions(?string $search = null): array
+    {
+        return [0 => 'Không phân công'] + DataCenterAccess::assignableUsers(auth()->user(), $search)
+            ->get()
+            ->mapWithKeys(fn (User $user): array => [$user->getKey() => DataCenterAccess::userLabel($user)])
+            ->all();
+    }
+
+    private static function resolveAssignee(array $data): ?User
+    {
+        $assigneeId = (int) ($data['assignee_id'] ?? 0);
+
+        if ($assigneeId === 0) {
+            return null;
+        }
+
+        $assignee = User::query()->find($assigneeId);
+
+        if (! $assignee instanceof User) {
+            throw ValidationException::withMessages([
+                'assignee_id' => 'Vui lòng chọn nhân viên xử lý hợp lệ.',
+            ]);
+        }
+
+        return $assignee;
     }
 
     private static function resultAction(): Action

@@ -39,6 +39,19 @@ class RoleSeeder extends Seeder
 
         $roles = [
             'Admin' => $permissions,
+            'Sales Admin' => [
+                'dashboard.view',
+                'lead.view', 'lead.create', 'lead.update', 'lead.convert',
+                'hot_lead.view', 'hot_lead.create', 'hot_lead.process',
+                'application.view', 'application.create', 'application.update',
+                'profile.view', 'profile.create', 'profile.update', 'profile.submit',
+                'profile.approve', 'profile.reject', 'profile.process', 'profile.complete',
+                'approval.view', 'approval.update', 'approval.approve', 'approval.export',
+                'lookup.view', 'sales_channel.view', 'sales_project.view',
+                'report.view', 'report.export',
+                'settings.view',
+                'user.view', 'user.create', 'user.update', 'user.manage_team', 'user.assign_hierarchy',
+            ],
             'Team Leader' => [
                 'dashboard.view',
                 'lead.view', 'lead.create', 'lead.update',

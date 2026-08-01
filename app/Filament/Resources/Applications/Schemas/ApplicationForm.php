@@ -4,10 +4,11 @@ namespace App\Filament\Resources\Applications\Schemas;
 
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
-use App\Models\Lead;
 use App\Models\SalesProject;
 use App\Models\User;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Filament\LeadFormFieldFactory;
+use App\Support\SalesLineSnapshot;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -51,21 +52,15 @@ class ApplicationForm
                     Select::make('sales_project_id')
                         ->label('Dự án')
                         ->options(fn (): array => SalesProject::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->searchable()
                         ->preload()
                         ->live()
                         ->native(false),
-                    Select::make('lead_id')
-                        ->label('Lead nguồn')
-                        ->options(fn (): array => Lead::query()->latest()->limit(500)->pluck('lead_code', 'id')->all())
-                        ->searchable()
-                        ->preload()
-                        ->native(false),
                     Select::make('created_by_id')
                         ->label('Người tạo')
                         ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->searchable()
                         ->preload()
                         ->native(false),
@@ -78,11 +73,11 @@ class ApplicationForm
                     DateTimePicker::make('created_at')
                         ->label('Ngày tạo')
                         ->seconds(false)
-                        ->required(),
+                        ->required(AdminWorkflowOverride::required()),
                     DateTimePicker::make('updated_at')
                         ->label('Ngày cập nhật')
                         ->seconds(false)
-                        ->required(),
+                        ->required(AdminWorkflowOverride::required()),
                 ]),
             Tabs::make('Application detail')
                 ->columnSpanFull()
@@ -96,7 +91,7 @@ class ApplicationForm
                                 ->columnSpan(8)
                                 ->columns(2)
                                 ->schema([
-                                    TextInput::make('application_code')->label('Mã hồ sơ')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->required()->maxLength(255),
+                                    TextInput::make('application_code')->label('Mã hồ sơ')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->required(AdminWorkflowOverride::required())->maxLength(255),
                                     TextInput::make('applicant_name')->label('Khách hàng')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->maxLength(255),
                                     TextInput::make('phone')->label('SĐT')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->maxLength(50),
                                     TextInput::make('identity_number')->label('CCCD/CMND')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->maxLength(50),
@@ -114,11 +109,11 @@ class ApplicationForm
                                         ])
                                         ->disabled(fn (?Application $record): bool => ! self::adminCanEdit() && ($record?->projectReport()->exists() ?? false))
                                         ->helperText(fn (?Application $record): ?string => (! self::adminCanEdit() && ($record?->projectReport()->exists() ?? false)) ? 'Trạng thái đồng bộ theo Báo cáo và chỉ Admin quyết định tại module Báo cáo.' : null)
-                                        ->required()
+                                        ->required(AdminWorkflowOverride::required())
                                         ->native(false),
                                     Textarea::make('note')->label('Ghi chú xử lý')->rows(3),
                                 ]),
-                            Section::make('Dữ liệu Lead')
+                            Section::make('Dữ liệu hồ sơ')
                                 ->columnSpanFull()
                                 ->columns(2)
                                 ->schema(fn (Get $get): array => LeadFormFieldFactory::componentsForProject($get('sales_project_id'), 'lead', 'payload.fields', self::disabledForNonAdmin())),
@@ -165,8 +160,8 @@ class ApplicationForm
         }
 
         if ($isAdmin) {
-            foreach (['sales_project_id', 'lead_id', 'created_by_id', 'assigned_sale_id', 'created_at', 'updated_at', 'application_code', 'applicant_name', 'phone', 'identity_number'] as $field) {
-                if (! array_key_exists($field, $data)) {
+            foreach (['sales_project_id', 'lead_id', 'created_by_id', 'assigned_sale_id', 'created_at', 'updated_at', 'application_code', 'applicant_name', 'phone', 'identity_number', 'status'] as $field) {
+                if (! array_key_exists($field, $data) || (blank($data[$field]) && filled($record->{$field}))) {
                     $data[$field] = $record->{$field};
                 }
             }
@@ -196,6 +191,10 @@ class ApplicationForm
             $data['applicant_name'] = $record->applicant_name;
             $data['phone'] = $record->phone;
             $data['identity_number'] = $record->identity_number;
+        }
+
+        if ($isAdmin && filled($data['created_by_id'] ?? null)) {
+            $data = array_replace($data, SalesLineSnapshot::hierarchyForUserId($data['created_by_id']));
         }
 
         if (! $isAdmin && $record->projectReport()->exists()) {
