@@ -61,7 +61,7 @@ class AdminPanelProvider extends PanelProvider
             ->databaseNotificationsPolling(null)
 
             ->userMenuItems([
-                'profile' => fn (Action $action): Action => $action->hidden(),
+                'profile' => fn (Action $action): Action => $this->accountMenuHeader($action),
                 Action::make('change-password')
                     ->label('Thay đổi mật khẩu')
                     ->icon(Heroicon::Key)
@@ -979,6 +979,71 @@ class AdminPanelProvider extends PanelProvider
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
+    }
+
+    .fi-user-menu .fi-dropdown-panel {
+        min-width: min(280px, calc(100vw - 24px)) !important;
+    }
+
+    .fi-user-menu .fi-dropdown-header {
+        align-items: center;
+        gap: 12px;
+        padding: 15px 16px !important;
+        border-bottom: 1px solid #dbe5f1;
+        background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+    }
+
+    .fi-user-menu .fi-dropdown-header > .fi-icon {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 auto;
+        padding: 8px;
+        border-radius: 11px;
+        color: #2563eb;
+        background: #dbeafe;
+    }
+
+    .fi-user-menu .fi-dropdown-header > span {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .crm-user-menu-account {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+        line-height: 1.25;
+    }
+
+    .crm-user-menu-account-caption {
+        color: #64748b;
+        font-size: .64rem;
+        font-weight: 760;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+    }
+
+    .crm-user-menu-account strong {
+        overflow: hidden;
+        color: #0f172a;
+        font-size: .9rem;
+        font-weight: 780;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .crm-user-menu-account-code {
+        overflow: hidden;
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 560;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .crm-user-menu-account-code b {
+        color: #1d4ed8;
+        font-weight: 760;
     }
 
     .fi-topbar-user-meta {
@@ -3461,6 +3526,30 @@ HTML);
         }
 
         return new HtmlString(view('filament.hooks.chat-assets')->render());
+    }
+
+    protected function accountMenuHeader(Action $action): Action
+    {
+        return $action
+            ->label(fn (): HtmlString => $this->accountMenuLabel())
+            ->icon(Heroicon::UserCircle)
+            ->url(null)
+            ->sort(-100);
+    }
+
+    protected function accountMenuLabel(): HtmlString
+    {
+        $user = filament()->auth()->user();
+        $name = e(trim((string) ($user?->name ?? '')) ?: 'Chưa cập nhật');
+        $employeeCode = e(trim((string) ($user?->employee_code ?? '')) ?: 'Chưa có');
+
+        return new HtmlString(
+            '<span class="crm-user-menu-account">'
+            .'<span class="crm-user-menu-account-caption">Thông tin tài khoản</span>'
+            .'<strong>'.$name.'</strong>'
+            .'<span class="crm-user-menu-account-code">Employee code · <b>'.$employeeCode.'</b></span>'
+            .'</span>'
+        );
     }
 
     protected function topbarUserMeta(): HtmlString

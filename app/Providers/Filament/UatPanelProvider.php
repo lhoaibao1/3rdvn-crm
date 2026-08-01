@@ -69,7 +69,7 @@ class UatPanelProvider extends AdminPanelProvider
             )
             ->databaseNotificationsPolling(null)
             ->userMenuItems([
-                'profile' => fn (Action $action): Action => $action->hidden(),
+                'profile' => fn (Action $action): Action => $this->accountMenuHeader($action),
                 Action::make('change-password')
                     ->label('Thay đổi mật khẩu')
                     ->icon(Heroicon::Key)
