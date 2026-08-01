@@ -255,18 +255,26 @@
     }
 
     .crm-entry-transition.is-originating {
-        clip-path: inset(
-            var(--crm-entry-origin-top, 50%)
-            var(--crm-entry-origin-right, 50%)
-            var(--crm-entry-origin-bottom, 50%)
-            var(--crm-entry-origin-left, 50%)
-            round var(--crm-entry-origin-radius, 28px)
+        opacity: 0;
+        filter: brightness(1.18) saturate(.82);
+        clip-path: ellipse(
+            var(--crm-entry-origin-radius-x, 210px)
+            var(--crm-entry-origin-radius-y, 260px)
+            at var(--crm-entry-origin-x, 50%) var(--crm-entry-origin-y, 50%)
         );
-        transition: clip-path .92s cubic-bezier(.76, 0, .24, 1);
+        transition:
+            clip-path 1s cubic-bezier(.76, 0, .24, 1),
+            opacity .62s ease .1s,
+            filter .72s ease;
     }
 
     .crm-entry-transition.is-originating.is-authenticating {
-        clip-path: inset(0 0 0 0 round 0);
+        opacity: 1;
+        filter: brightness(1) saturate(1);
+        clip-path: ellipse(
+            150vmax 150vmax
+            at var(--crm-entry-origin-x, 50%) var(--crm-entry-origin-y, 50%)
+        );
     }
 
     .crm-entry-transition.is-originating .crm-entry-stage {
@@ -516,7 +524,8 @@
             overlay.style.setProperty('--crm-entry-origin-x', String(rect.left + (rect.width / 2)) + 'px');
             overlay.style.setProperty('--crm-entry-origin-y', String(rect.top + (rect.height / 2)) + 'px');
             overlay.style.setProperty('--crm-entry-origin-width', String(rect.width) + 'px');
-            overlay.style.setProperty('--crm-entry-origin-radius', window.innerWidth <= 520 ? '22px' : '28px');
+            overlay.style.setProperty('--crm-entry-origin-radius-x', String(Math.max(120, rect.width / 2)) + 'px');
+            overlay.style.setProperty('--crm-entry-origin-radius-y', String(Math.max(120, rect.height / 2)) + 'px');
 
             const kicker = overlay.querySelector('[data-entry-kicker]');
             const label = overlay.querySelector('[data-entry-label]');
