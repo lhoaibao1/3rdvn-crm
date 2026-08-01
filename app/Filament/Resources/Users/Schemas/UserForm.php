@@ -30,11 +30,10 @@ class UserForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(12)
+            ->columns(1)
             ->components([
-                Section::make('Thông tin chính')
-                    ->columnSpan(8)
-                    ->columns(2)
+                Section::make('Thông tin người dùng')
+                    ->columns(4)
                     ->schema([
                         TextInput::make('name')->label('Họ tên')->required()->maxLength(255),
                         TextInput::make('username')
@@ -94,10 +93,6 @@ class UserForm
                             ->label('Nơi cấp')
                             ->options(fn (): array => UserSpecOptions::issuedPlaces())
                             ->native(false),
-                    ]),
-                Section::make('Công việc')
-                    ->columnSpan(4)
-                    ->schema([
                         Select::make('department')
                             ->label('Phòng ban')
                             ->options(fn (): array => UserSpecOptions::departments())
@@ -144,8 +139,8 @@ class UserForm
                             ->native(false),
                     ]),
 
-                Section::make('Dự án bán hàng')
-                    ->columnSpan(6)
+                Section::make('Dự án & kênh bán hàng')
+                    ->columns(4)
                     ->schema([
                         Select::make('sales_projects')
                             ->label('Dự án bán hàng')
@@ -163,6 +158,7 @@ class UserForm
                             })
                             ->native(false),
                         Grid::make(2)
+                            ->columnSpanFull()
                             ->columns(2)
                             ->schema(fn (): array => SalesProject::query()
                                 ->where('is_active', true)
@@ -176,11 +172,6 @@ class UserForm
                                     ->visible(fn (Get $get): bool => in_array($project->slug, $get('sales_projects') ?? [], true))
                                     ->dehydrated(fn (Get $get): bool => in_array($project->slug, $get('sales_projects') ?? [], true)))
                                 ->all()),
-                    ]),
-                Section::make('Kênh')
-                    ->columnSpan(6)
-                    ->columns(2)
-                    ->schema([
                         TextInput::make('company_name')
                             ->label('Tên công ty')
                             ->maxLength(255)
@@ -234,8 +225,7 @@ class UserForm
                     ]),
 
                 Section::make('Quản lý trực tiếp')
-                    ->columnSpanFull()
-                    ->columns(3)
+                    ->columns(4)
                     ->schema([
                         Select::make('courier_manager_id')
                             ->label('Courier Manager')
@@ -311,9 +301,8 @@ class UserForm
                             ->native(false),
                     ]),
 
-                Section::make('Địa chỉ hiện tại')
-                    ->columnSpan(8)
-                    ->columns(2)
+                Section::make('Địa chỉ & liên hệ')
+                    ->columns(4)
                     ->schema([
                         Textarea::make('address_line')
                             ->label('Địa chỉ chi tiết')
@@ -359,17 +348,12 @@ class UserForm
                         Hidden::make('province_name')->dehydrated(),
                         Hidden::make('district_name')->dehydrated(),
                         Hidden::make('ward_name')->dehydrated(),
-                    ]),
-                Section::make('Liên hệ khẩn cấp')
-                    ->columnSpan(4)
-                    ->schema([
                         TextInput::make('emergency_contact_name')->label('Người liên hệ')->maxLength(255),
                         TextInput::make('emergency_contact_phone')->label('SĐT khẩn cấp')->tel()->maxLength(30),
                     ]),
 
-                Section::make('Tài khoản nhận lương')
-                    ->columnSpan(8)
-                    ->columns(2)
+                Section::make('Ngân hàng, thuế & bảo hiểm')
+                    ->columns(4)
                     ->schema([
                         Select::make('bank_code')
                             ->label('Ngân hàng')
@@ -384,10 +368,6 @@ class UserForm
                         TextInput::make('bank_account_number')->label('Số tài khoản')->maxLength(80),
                         TextInput::make('bank_account_name')->label('Tên chủ tài khoản')->maxLength(255),
                         TextInput::make('bank_branch')->label('Chi nhánh')->columnSpanFull()->maxLength(255),
-                    ]),
-                Section::make('Thuế & bảo hiểm')
-                    ->columnSpan(4)
-                    ->schema([
                         TextInput::make('tax_code')->label('Mã số thuế')->maxLength(80),
                         TextInput::make('social_insurance_number')->label('Mã BHXH')->maxLength(80),
                     ]),
@@ -395,8 +375,7 @@ class UserForm
                 Section::make('Hộp thư 3RDVN')
                     ->visible(fn ($record): bool => $record instanceof User
                         && (auth()->user()?->hasRole('Admin') || auth()->id() === $record->getKey()))
-                    ->columnSpanFull()
-                    ->columns(2)
+                    ->columns(4)
                     ->schema([
                         Placeholder::make('mail_address_display')
                             ->label('Địa chỉ email')
@@ -418,8 +397,8 @@ class UserForm
                             ->content(fn (?User $record): string => $record?->mail_provisioned_at?->format('H:i d/m/Y') ?: '-'),
                     ]),
 
-                Section::make('Đăng nhập')
-                    ->columnSpan(5)
+                Section::make('Phân quyền hệ thống')
+                    ->columns(4)
                     ->schema([
                         TextInput::make('password')
                             ->label('Mật khẩu')
@@ -433,10 +412,6 @@ class UserForm
                             ->label('Xác thực email lúc')
                             ->visible(fn (): bool => auth()->user()?->hasRole('Admin'))
                             ->displayFormat('H:i d/m/Y'),
-                    ]),
-                Section::make('Vai trò')
-                    ->columnSpan(7)
-                    ->schema([
                         Select::make('roles')
                             ->label('Vai trò')
                             ->options(function ($record): array {

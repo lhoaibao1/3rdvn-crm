@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
-use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Users\Pages\Concerns\InteractsWithUserMailbox;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -20,23 +20,12 @@ class ViewUser extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Người dùng';
+        return $this->record->name ?: ($this->record->uid ?: 'Người dùng');
     }
 
     public function getBreadcrumb(): string
     {
         return 'Xem';
-    }
-
-
-    public function getHeading(): string | \Illuminate\Contracts\Support\Htmlable | null
-    {
-        return null;
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [];
     }
 
     protected function getHeaderActions(): array

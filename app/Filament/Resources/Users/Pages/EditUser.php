@@ -2,18 +2,21 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
-use App\Filament\Resources\Users\UserResource;
-use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Pages\Concerns\InteractsWithUserMailbox;
+use App\Filament\Resources\Users\Schemas\UserForm;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Services\StalwartMailService;
 use App\Support\RoleHierarchy;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class EditUser extends EditRecord
@@ -46,15 +49,15 @@ class EditUser extends EditRecord
                     ->modalSubmitActionLabel('Tạo lại mật khẩu')
                     ->modalCancelActionLabel('Hủy')
                     ->schema([
-                        \Filament\Forms\Components\TextInput::make('new_password')
+                        TextInput::make('new_password')
                             ->label('Mật khẩu mới')
                             ->password()
                             ->revealable()
                             ->required()
-                            ->rules([\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()])
+                            ->rules([Password::min(8)->mixedCase()->numbers()])
                             ->same('new_password_confirmation')
                             ->validationMessages(['same' => 'Xác nhận mật khẩu mới không khớp.']),
-                        \Filament\Forms\Components\TextInput::make('new_password_confirmation')
+                        TextInput::make('new_password_confirmation')
                             ->label('Xác nhận mật khẩu mới')
                             ->password()
                             ->revealable()
@@ -62,16 +65,12 @@ class EditUser extends EditRecord
                     ])
                     ->action(function (array $data): void {
                         $this->getRecord()->forceFill([
-                            'password' => \Illuminate\Support\Facades\Hash::make($data['new_password']),
+                            'password' => Hash::make($data['new_password']),
                         ])->save();
                         app(StalwartMailService::class)
                             ->scheduleCredentialSync($this->getRecord(), $data['new_password']);
                         Notification::make()->title('Đã tạo lại mật khẩu đăng nhập')->success()->send();
                     }),
-                Action::make('saveUser')
-                    ->icon(Heroicon::OutlinedCheck)
-                    ->label('Lưu thay đổi')
-                    ->action(fn () => $this->save()),
                 ViewAction::make()
                     ->icon(Heroicon::OutlinedEye)
                     ->label('Xem người dùng'),
@@ -117,11 +116,6 @@ class EditUser extends EditRecord
 
                         $this->redirect(UserResource::getUrl('view', ['record' => $record]));
                     }),
-                Action::make('cancel')
-                    ->icon(Heroicon::OutlinedXMark)
-                    ->label('Hủy')
-                    ->color('gray')
-                    ->url(UserResource::getUrl('index')),
             ])
                 ->button()
                 ->label('Hành động')
@@ -129,9 +123,11 @@ class EditUser extends EditRecord
         ];
     }
 
-    protected function getFormActions(): array
+    protected function getSaveFormAction(): Action
     {
-        return [];
+        return parent::getSaveFormAction()
+            ->label('Lưu thay đổi')
+            ->icon(Heroicon::OutlinedCheck);
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -167,5 +163,4 @@ class EditUser extends EditRecord
     {
         return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
     }
-
 }

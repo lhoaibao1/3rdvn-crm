@@ -2,12 +2,11 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
-use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Users\Schemas\UserForm;
+use App\Filament\Resources\Users\UserResource;
 use App\Services\StalwartMailService;
 use App\Support\RoleHierarchy;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Validation\ValidationException;
@@ -16,8 +15,10 @@ class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
 
+    protected static bool $canCreateAnother = false;
 
     private ?string $plainPassword = null;
+
     public function getTitle(): string
     {
         return 'Tạo người dùng';
@@ -28,29 +29,11 @@ class CreateUser extends CreateRecord
         return 'Tạo';
     }
 
-    protected function getHeaderActions(): array
+    protected function getCreateFormAction(): Action
     {
-        return [
-            ActionGroup::make([
-                Action::make('createUser')
-                    ->icon(Heroicon::OutlinedCheck)
-                    ->label('Tạo người dùng')
-                    ->action(fn () => $this->create()),
-                Action::make('cancel')
-                    ->icon(Heroicon::OutlinedXMark)
-                    ->label('Hủy')
-                    ->color('gray')
-                    ->url(UserResource::getUrl('index')),
-            ])
-                ->button()
-                ->label('Hành động')
-                ->icon(Heroicon::EllipsisHorizontal),
-        ];
-    }
-
-    protected function getFormActions(): array
-    {
-        return [];
+        return parent::getCreateFormAction()
+            ->label('Tạo người dùng')
+            ->icon(Heroicon::OutlinedCheck);
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array

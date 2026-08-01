@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use App\Models\User;
 use App\Support\Filament\ProcessTimeline;
-use App\Support\Filament\RecordViewChrome;
 use App\Support\UserSpecOptions;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -17,16 +16,10 @@ class UserInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(12)
+            ->columns(1)
             ->components([
-                TextEntry::make('user_record_view_header')
-                    ->hiddenLabel()
-                    ->state(fn (User $record): HtmlString => RecordViewChrome::userProfile($record))
-                    ->html()
-                    ->columnSpanFull(),
-                Section::make('Thông tin chính')
-                    ->columnSpan(8)
-                    ->columns(2)
+                Section::make('Thông tin người dùng')
+                    ->columns(4)
                     ->schema([
                         TextEntry::make('name')->label('Họ tên'),
                         TextEntry::make('username')->label('Username')->placeholder('-'),
@@ -48,10 +41,6 @@ class UserInfolist
                             ->label('Nơi cấp')
                             ->formatStateUsing(fn (?string $state): string => UserSpecOptions::labelFor('issued_place', $state))
                             ->placeholder('-'),
-                    ]),
-                Section::make('Công việc')
-                    ->columnSpan(4)
-                    ->schema([
                         TextEntry::make('department')
                             ->label('Phòng ban')
                             ->formatStateUsing(fn (?string $state): string => UserSpecOptions::labelFor('department', $state))
@@ -78,8 +67,8 @@ class UserInfolist
                             ->placeholder('-'),
                     ]),
 
-                Section::make('Dự án bán hàng')
-                    ->columnSpan(6)
+                Section::make('Dự án & kênh bán hàng')
+                    ->columns(4)
                     ->schema([
                         TextEntry::make('sales_projects')
                             ->label('Dự án bán hàng')
@@ -97,11 +86,6 @@ class UserInfolist
                                     : $code)
                                 ->join(', '))
                             ->placeholder('-'),
-                    ]),
-                Section::make('Kênh')
-                    ->columnSpan(6)
-                    ->columns(2)
-                    ->schema([
                         TextEntry::make('company_name')->label('Tên công ty')->placeholder('-'),
                         TextEntry::make('branch_name')->label('Chi nhánh')->placeholder('-'),
                         TextEntry::make('branch_code')->label('Mã chi nhánh')->placeholder('-'),
@@ -109,8 +93,7 @@ class UserInfolist
                     ]),
 
                 Section::make('Quản lý trực tiếp')
-                    ->columnSpanFull()
-                    ->columns(3)
+                    ->columns(4)
                     ->schema([
                         TextEntry::make('teamLeader.name')->label('Team Leader')->placeholder('-'),
                         TextEntry::make('courierManager.name')->label('Courier Manager')->placeholder('-'),
@@ -118,8 +101,8 @@ class UserInfolist
                         TextEntry::make('zd.name')->label('ZD')->placeholder('-'),
                     ]),
 
-                Section::make('Địa chỉ hiện tại')
-                    ->columnSpan(8)
+                Section::make('Địa chỉ & liên hệ')
+                    ->columns(4)
                     ->schema([
                         TextEntry::make('full_address')
                             ->label('Địa chỉ đầy đủ')
@@ -134,27 +117,18 @@ class UserInfolist
                         TextEntry::make('province_name')->label('Tỉnh/Thành phố')->placeholder('-'),
                         TextEntry::make('district_name')->label('Quận/Huyện')->placeholder('-'),
                         TextEntry::make('ward_name')->label('Phường/Xã')->placeholder('-'),
-                    ]),
-                Section::make('Liên hệ khẩn cấp')
-                    ->columnSpan(4)
-                    ->schema([
                         TextEntry::make('emergency_contact_name')->label('Người liên hệ')->placeholder('-'),
                         TextEntry::make('emergency_contact_phone')->label('SĐT khẩn cấp')->placeholder('-'),
                     ]),
 
-                Section::make('Tài khoản nhận lương')
-                    ->columnSpan(8)
-                    ->columns(2)
+                Section::make('Ngân hàng, thuế & bảo hiểm')
+                    ->columns(4)
                     ->schema([
                         TextEntry::make('bank_name')->label('Ngân hàng')->placeholder('-')->columnSpanFull(),
                         TextEntry::make('bank_code')->label('Mã ngân hàng')->placeholder('-'),
                         TextEntry::make('bank_account_number')->label('Số tài khoản')->placeholder('-'),
                         TextEntry::make('bank_account_name')->label('Chủ tài khoản')->placeholder('-'),
                         TextEntry::make('bank_branch')->label('Chi nhánh')->placeholder('-'),
-                    ]),
-                Section::make('Thuế & bảo hiểm')
-                    ->columnSpan(4)
-                    ->schema([
                         TextEntry::make('tax_code')->label('Mã số thuế')->placeholder('-'),
                         TextEntry::make('social_insurance_number')->label('Mã BHXH')->placeholder('-'),
                     ]),
@@ -162,8 +136,7 @@ class UserInfolist
                 Section::make('Hộp thư 3RDVN')
                     ->visible(fn (User $record): bool => auth()->user()?->hasRole('Admin')
                         || auth()->id() === $record->getKey())
-                    ->columnSpanFull()
-                    ->columns(2)
+                    ->columns(4)
                     ->schema([
                         TextEntry::make('mail_address')
                             ->label('Địa chỉ email')
@@ -202,14 +175,10 @@ class UserInfolist
                             ->columnSpanFull(),
                     ]),
 
-                Section::make('Vai trò')
-                    ->columnSpan(6)
+                Section::make('Phân quyền hệ thống')
+                    ->columns(4)
                     ->schema([
                         TextEntry::make('roles.name')->label('Vai trò')->badge()->separator(', ')->placeholder('-'),
-                    ]),
-                Section::make('Hệ thống')
-                    ->columnSpan(6)
-                    ->schema([
                         TextEntry::make('email_verified_at')->label('Xác thực email')->dateTime('H:i d/m/Y')->placeholder('-'),
                         TextEntry::make('creator.name')->label('Tạo bởi')->placeholder('-'),
                         TextEntry::make('created_at')->label('Tạo lúc')->dateTime('H:i d/m/Y')->placeholder('-'),
@@ -217,7 +186,6 @@ class UserInfolist
                     ]),
 
                 Section::make('Nhật ký chỉnh sửa')
-                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('change_history')
                             ->hiddenLabel()
