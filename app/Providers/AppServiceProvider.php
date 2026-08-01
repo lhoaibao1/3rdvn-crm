@@ -10,6 +10,7 @@ use App\Models\ProjectReport;
 use App\Models\SaleProfile;
 use App\Models\UiSetting;
 use App\Models\User;
+use App\Observers\ApplicationNotificationObserver;
 use App\Policies\ApiMappingPolicy;
 use App\Policies\ApplicationPolicy;
 use App\Policies\CrmModulePolicy;
@@ -38,6 +39,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Application::observe(ApplicationNotificationObserver::class);
+
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(Application::class, ApplicationPolicy::class);
         Gate::policy(SaleProfile::class, SaleProfilePolicy::class);
