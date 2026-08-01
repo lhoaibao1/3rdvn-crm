@@ -116,6 +116,22 @@
             transform: translate3d(101%, 0, 0);
         }
 
+        .crm-login-intro-scan {
+            position: absolute;
+            inset: -45% -20%;
+            z-index: 3;
+            opacity: .42;
+            background: linear-gradient(108deg, transparent 42%, rgba(147, 197, 253, .03) 47%, rgba(255, 255, 255, .22) 50%, rgba(96, 165, 250, .05) 53%, transparent 58%);
+            transform: translateX(-48%);
+            animation: crm-login-intro-scan 2.4s cubic-bezier(.22, 1, .36, 1) .25s both;
+            pointer-events: none;
+        }
+
+        .crm-login-intro.is-leaving .crm-login-intro-scan {
+            opacity: 0;
+            transition: opacity .3s ease;
+        }
+
         .crm-login-intro-glow {
             position: absolute;
             top: 50%;
@@ -189,6 +205,18 @@
             border-radius: 36%;
             transform: rotate(45deg);
             animation: crm-login-intro-ring 2.8s linear infinite;
+        }
+
+        .crm-login-intro-ring::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #bfdbfe;
+            box-shadow: 0 0 8px #60a5fa, 0 0 24px rgba(96, 165, 250, .9);
         }
 
         .crm-login-intro-ring:nth-child(2) {
@@ -868,6 +896,12 @@
             height: 15px;
         }
 
+        @keyframes crm-login-intro-scan {
+            from { opacity: 0; transform: translateX(-52%); }
+            28% { opacity: .45; }
+            to { opacity: 0; transform: translateX(52%); }
+        }
+
         @keyframes crm-login-intro-failsafe {
             to { visibility: hidden; pointer-events: none; }
         }
@@ -1082,6 +1116,7 @@
         <div class="crm-login-intro-panel crm-login-intro-panel--left"></div>
         <div class="crm-login-intro-panel crm-login-intro-panel--right"></div>
         <div class="crm-login-intro-glow"></div>
+        <div class="crm-login-intro-scan"></div>
 
         <div class="crm-login-intro-center">
             <div class="crm-login-intro-rings">

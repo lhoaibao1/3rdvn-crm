@@ -9,7 +9,7 @@
         <div class="crm-login-status" role="status">{{ session('status') }}</div>
     @endif
 
-    <form class="crm-login-form" wire:submit.prevent="authenticate">
+    <form class="crm-login-form" wire:submit.prevent="authenticate" x-on:submit="window.sessionStorage.setItem('3rdvn:login-entry', String(Date.now()))">
         <div class="crm-login-field">
             <label class="crm-login-label" for="crm-login-identifier">User / UID</label>
             <div class="crm-login-control @error('data.identifier') is-invalid @enderror">
