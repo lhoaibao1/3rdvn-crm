@@ -16,7 +16,8 @@
 
 <div
     class="crm-login-screen"
-    x-data="{ passwordVisible: false }"
+    x-data="{ passwordVisible: false, introVisible: true, introLeaving: false }"
+    x-init="if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { introVisible = false } else { window.setTimeout(() => introLeaving = true, 1050); window.setTimeout(() => introVisible = false, 1900) }"
     style="--crm-login-primary: {{ $primary }}; --crm-login-cover: {{ $coverStyle }};"
 >
     <style>
@@ -57,6 +58,206 @@
             color: #0f172a;
             background: #f8fafc;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .crm-login-intro {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            overflow: hidden;
+            color: #fff;
+            background: transparent;
+            pointer-events: all;
+            animation: crm-login-intro-failsafe .01s linear 3s forwards;
+        }
+
+        .crm-login-intro.is-leaving {
+            pointer-events: none;
+        }
+
+        .crm-login-intro-panel {
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 50.05%;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 35% 42%, rgba(59, 130, 246, .24), transparent 30%),
+                linear-gradient(135deg, #07111f 0%, #0c1d38 100%);
+            transition: transform .82s cubic-bezier(.76, 0, .24, 1) .12s;
+            will-change: transform;
+        }
+
+        .crm-login-intro-panel::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: .42;
+            background-image:
+                linear-gradient(rgba(148, 163, 184, .07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, .07) 1px, transparent 1px);
+            background-size: 54px 54px;
+        }
+
+        .crm-login-intro-panel--right {
+            right: 0;
+            left: auto;
+            background:
+                radial-gradient(circle at 65% 58%, rgba(14, 165, 233, .2), transparent 30%),
+                linear-gradient(225deg, #07111f 0%, #0c1d38 100%);
+        }
+
+        .crm-login-intro.is-leaving .crm-login-intro-panel--left {
+            transform: translate3d(-101%, 0, 0);
+        }
+
+        .crm-login-intro.is-leaving .crm-login-intro-panel--right {
+            transform: translate3d(101%, 0, 0);
+        }
+
+        .crm-login-intro-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            z-index: 2;
+            width: min(72vw, 760px);
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(37, 99, 235, .25), rgba(37, 99, 235, .07) 38%, transparent 70%);
+            filter: blur(12px);
+            transform: translate(-50%, -50%);
+            animation: crm-login-intro-breathe 1.6s ease-in-out both;
+            transition: opacity .25s ease, transform .45s ease;
+        }
+
+        .crm-login-intro-center {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            display: grid;
+            place-content: center;
+            justify-items: center;
+            padding: 24px;
+            text-align: center;
+            transition: opacity .28s ease, filter .35s ease, transform .4s cubic-bezier(.4, 0, 1, 1);
+        }
+
+        .crm-login-intro.is-leaving .crm-login-intro-center,
+        .crm-login-intro.is-leaving .crm-login-intro-glow {
+            opacity: 0;
+            filter: blur(10px);
+            transform: translate(-50%, -50%) scale(.88);
+        }
+
+        .crm-login-intro.is-leaving .crm-login-intro-center {
+            transform: scale(.92);
+        }
+
+        .crm-login-intro-rings {
+            position: relative;
+            display: grid;
+            place-items: center;
+            width: 156px;
+            height: 156px;
+            animation: crm-login-intro-arrive .72s cubic-bezier(.16, 1, .3, 1) both;
+        }
+
+        .crm-login-intro-ring {
+            position: absolute;
+            inset: 0;
+            border: 1px solid rgba(147, 197, 253, .24);
+            border-radius: 36%;
+            transform: rotate(45deg);
+            animation: crm-login-intro-ring 2.8s linear infinite;
+        }
+
+        .crm-login-intro-ring:nth-child(2) {
+            inset: 15px;
+            border-color: rgba(96, 165, 250, .18);
+            border-radius: 50%;
+            animation-direction: reverse;
+            animation-duration: 2.2s;
+        }
+
+        .crm-login-intro-emblem {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            place-items: center;
+            width: 112px;
+            height: 78px;
+            padding: 14px;
+            border: 1px solid rgba(255, 255, 255, .2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, .1);
+            box-shadow:
+                0 24px 70px rgba(0, 0, 0, .3),
+                inset 0 1px 0 rgba(255, 255, 255, .16),
+                0 0 44px rgba(59, 130, 246, .16);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        .crm-login-intro-emblem img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
+        }
+
+        .crm-login-intro-emblem span {
+            font-size: 1.2rem;
+            font-weight: 850;
+            letter-spacing: .05em;
+        }
+
+        .crm-login-intro-line {
+            width: min(240px, 56vw);
+            height: 1px;
+            margin-top: 28px;
+            overflow: hidden;
+            background: rgba(148, 163, 184, .13);
+        }
+
+        .crm-login-intro-line span {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #60a5fa 28%, #fff 50%, #60a5fa 72%, transparent);
+            transform: scaleX(0);
+            animation: crm-login-intro-line .72s cubic-bezier(.16, 1, .3, 1) .24s forwards;
+        }
+
+        .crm-login-intro-center strong {
+            margin-top: 20px;
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            font-weight: 760;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            animation: crm-login-intro-copy .55s ease .22s both;
+        }
+
+        .crm-login-intro-center small {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            margin-top: 9px;
+            color: rgba(191, 219, 254, .66);
+            font-size: .66rem;
+            font-weight: 650;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            animation: crm-login-intro-copy .55s ease .34s both;
+        }
+
+        .crm-login-intro-center small span {
+            display: inline-flex;
+            align-items: center;
+            min-height: 22px;
+            padding: 0 8px;
+            border: 1px solid rgba(96, 165, 250, .28);
+            border-radius: 999px;
+            color: #bfdbfe;
+            background: rgba(37, 99, 235, .14);
         }
 
         .crm-login-layout {
@@ -110,6 +311,7 @@
             flex-direction: column;
             width: min(100%, 650px);
             min-height: 0;
+            animation: crm-login-scene-in .82s cubic-bezier(.16, 1, .3, 1) 1.12s both;
         }
 
         .crm-login-story-header,
@@ -289,9 +491,17 @@
         }
 
         .crm-login-form-wrap {
-            width: min(440px, calc(100% - 64px));
+            width: min(500px, calc(100% - 64px));
             margin: auto;
-            padding: 48px 0;
+            padding: clamp(34px, 3.6vw, 48px);
+            border: 1px solid rgba(203, 213, 225, .72);
+            border-radius: 28px;
+            background: rgba(255, 255, 255, .9);
+            box-shadow: 0 30px 80px rgba(15, 23, 42, .12), 0 3px 12px rgba(15, 23, 42, .04);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            animation: crm-login-dialog-in .9s cubic-bezier(.16, 1, .3, 1) 1.08s both;
+            transform-origin: center;
         }
 
         .crm-login-mobile-brand {
@@ -605,6 +815,44 @@
             height: 15px;
         }
 
+        @keyframes crm-login-intro-failsafe {
+            to { visibility: hidden; pointer-events: none; }
+        }
+
+        @keyframes crm-login-intro-arrive {
+            from { opacity: 0; transform: translateY(20px) scale(.78) rotate(-4deg); filter: blur(8px); }
+            to { opacity: 1; transform: translateY(0) scale(1) rotate(0); filter: blur(0); }
+        }
+
+        @keyframes crm-login-intro-ring {
+            to { transform: rotate(405deg); }
+        }
+
+        @keyframes crm-login-intro-line {
+            to { transform: scaleX(1); }
+        }
+
+        @keyframes crm-login-intro-copy {
+            from { opacity: 0; transform: translateY(9px); letter-spacing: .22em; }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes crm-login-intro-breathe {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(.62); }
+            55% { opacity: 1; }
+            100% { opacity: .72; transform: translate(-50%, -50%) scale(1.08); }
+        }
+
+        @keyframes crm-login-dialog-in {
+            from { opacity: 0; transform: translateY(34px) scale(.88); filter: blur(12px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        @keyframes crm-login-scene-in {
+            from { opacity: 0; transform: translateX(-28px); filter: blur(8px); }
+            to { opacity: 1; transform: translateX(0); filter: blur(0); }
+        }
+
         @keyframes crm-login-spin {
             to { transform: rotate(360deg); }
         }
@@ -663,15 +911,16 @@
             }
 
             .crm-login-form-wrap {
-                width: min(440px, calc(100% - 48px));
-                padding: 34px 0;
+                width: min(470px, calc(100% - 40px));
+                padding: 34px;
             }
         }
 
         @media (max-width: 520px) {
             .crm-login-form-wrap {
-                width: calc(100% - 36px);
-                padding: 24px 0 30px;
+                width: calc(100% - 24px);
+                padding: 28px 22px;
+                border-radius: 22px;
             }
 
             .crm-login-mobile-brand {
@@ -723,7 +972,7 @@
             }
 
             .crm-login-form-wrap {
-                padding: 28px 0;
+                padding: 30px 34px;
             }
 
             .crm-login-welcome {
@@ -737,6 +986,8 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
+            .crm-login-intro { display: none !important; }
+
             .crm-login-screen *,
             .crm-login-screen *::before,
             .crm-login-screen *::after {
@@ -747,6 +998,34 @@
             }
         }
     </style>
+
+    <div
+        class="crm-login-intro"
+        x-show="introVisible"
+        x-bind:class="{ 'is-leaving': introLeaving }"
+        aria-hidden="true"
+    >
+        <div class="crm-login-intro-panel crm-login-intro-panel--left"></div>
+        <div class="crm-login-intro-panel crm-login-intro-panel--right"></div>
+        <div class="crm-login-intro-glow"></div>
+
+        <div class="crm-login-intro-center">
+            <div class="crm-login-intro-rings">
+                <span class="crm-login-intro-ring"></span>
+                <span class="crm-login-intro-ring"></span>
+                <div class="crm-login-intro-emblem">
+                    @if ($logo)
+                        <img src="{{ $logo }}" alt="">
+                    @else
+                        <span>3RD</span>
+                    @endif
+                </div>
+            </div>
+            <div class="crm-login-intro-line"><span></span></div>
+            <strong>{{ $brandName }}</strong>
+            <small>CRM Workspace <span>UAT</span></small>
+        </div>
+    </div>
 
     <div class="crm-login-layout">
         <aside class="crm-login-story" aria-label="Giới thiệu {{ $brandName }}">
