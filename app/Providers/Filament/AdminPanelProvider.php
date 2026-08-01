@@ -3115,6 +3115,7 @@ HTML);
                 }
 
                 window.localStorage.setItem(notificationTimeKey, String(itemTime));
+                window.Livewire?.dispatch('applicationRecordsChanged');
 
                 if (! announce) {
                     return;
