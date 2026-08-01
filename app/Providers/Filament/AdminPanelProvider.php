@@ -75,7 +75,6 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->settingsStyles())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => $this->pwaHead())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.hooks.searchable-select-assets'))
-            ->renderHook(PanelsRenderHook::BODY_START, fn () => $this->pageLoader())
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->notificationPanelStyles())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->sidebarDefaultScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->userFiltersToggleScript())
@@ -141,16 +140,6 @@ class AdminPanelProvider extends PanelProvider
         $version = is_file($absolutePath) ? '?v='.filemtime($absolutePath) : '';
 
         return asset('storage/'.$path).$version;
-    }
-
-    protected function pageLoader(): HtmlString
-    {
-        $settings = UiSetting::current();
-
-        return new HtmlString(view('filament.hooks.page-loader', [
-            'appName' => $settings->app_name ?: '3RDVN CRM',
-            'logoUrl' => $this->versionedPublicAsset($settings->logo_path) ?: asset('icons/3rdvn-icon.svg'),
-        ])->render());
     }
 
     protected function settingsStyles(): HtmlString
