@@ -10,6 +10,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
+use Filament\Support\RawJs;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Support\Str;
@@ -94,6 +95,12 @@ class AclMixFields
                     ]),
                     self::number('working_years', 'Thời gian làm việc - Năm'),
                     self::number('working_months', 'Thời gian làm việc - Tháng')->minValue(0)->maxValue(11),
+                    self::text(self::path('monthly_income'), 'Thu nhập')
+                        ->numeric()
+                        ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                        ->stripCharacters('.')
+                        ->suffix('VNĐ')
+                        ->minValue(0),
                     self::number('experience_years', 'Kinh nghiệm làm việc - Năm'),
                     self::number('experience_months', 'Kinh nghiệm làm việc - Tháng')->minValue(0)->maxValue(11),
                 ]),
@@ -183,6 +190,7 @@ class AclMixFields
             ['field_key' => 'contract_type', 'label' => 'Loại hợp đồng', 'type' => 'select'],
             ['field_key' => 'working_years', 'label' => 'Thời gian làm việc - Năm', 'type' => 'number'],
             ['field_key' => 'working_months', 'label' => 'Thời gian làm việc - Tháng', 'type' => 'number'],
+            ['field_key' => 'monthly_income', 'label' => 'Thu nhập', 'type' => 'number'],
             ['field_key' => 'experience_years', 'label' => 'Kinh nghiệm - Năm', 'type' => 'number'],
             ['field_key' => 'experience_months', 'label' => 'Kinh nghiệm - Tháng', 'type' => 'number'],
             ...self::addressDefinitions('work', 'Nơi làm việc'),

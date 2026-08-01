@@ -80,20 +80,6 @@ class LotteFinanceApplicationForm
                         ->dehydrated(false)
                         ->columnSpanFull(),
                 ]),
-            Section::make('Thông tin OCR/eKYC')
-                ->visible($visibleOnEdit)
-                ->columns(3)
-                ->schema([
-                    self::readOnly('payload.fields.ekyc_status', 'Trạng thái eKYC'),
-                    self::readOnly('payload.fields.ekyc_request_id', 'eKYC Request ID'),
-                    self::readOnly('payload.fields.ekyc_completed_at', 'Hoàn tất lúc'),
-                    Textarea::make('payload.fields.ekyc_result_note')
-                        ->label('Kết quả eKYC')
-                        ->rows(2)
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->columnSpanFull(),
-                ]),
             ...array_map(
                 fn ($component) => $component->visible($visibleOnEdit),
                 AclMixFields::components($locked),
@@ -114,6 +100,15 @@ class LotteFinanceApplicationForm
         $incomingPayload = is_array($data['payload'] ?? null) ? $data['payload'] : [];
         $canEditData = LotteFinanceWorkflow::canEditData(auth()->user(), $record);
         $data['payload'] = array_replace_recursive($existingPayload, $incomingPayload);
+
+        if ($canEditData && array_key_exists('documents', $incomingPayload)) {
+            $data['payload']['documents'] = $incomingPayload['documents'];
+
+            if (empty($incomingPayload['documents']['doc100'])) {
+                data_set($data, 'payload.fields.ocr_front_image', null);
+                data_set($data, 'payload.fields.ocr_back_image', null);
+            }
+        }
 
         if ($canEditData) {
             $data['payload'] = AclMixFields::normalize($data['payload']);

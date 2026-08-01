@@ -4,9 +4,22 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\ChangePassword;
+use App\Filament\Pages\Dashboard as CrmDashboard;
 use App\Filament\Resources\ApiMappings\ApiMappingResource;
+use App\Filament\Resources\Applications\ApplicationResource;
+use App\Filament\Resources\CandidateApplications\CandidateApplicationResource;
+use App\Filament\Resources\CbpApplications\CbpApplicationResource;
+use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
+use App\Filament\Resources\HotLeads\HotLeadResource;
+use App\Filament\Resources\JobVacancies\JobVacancyResource;
+use App\Filament\Resources\Leads\LeadResource;
+use App\Filament\Resources\LotteFinanceApplications\LotteFinanceApplicationResource;
+use App\Filament\Resources\ProjectReports\ProjectReportResource;
+use App\Filament\Resources\SaleProfiles\SaleProfileResource;
+use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\CrmLookups\CrmLookupResource;
 use App\Filament\Resources\CrmModules\CrmModuleResource;
+use App\Filament\Resources\CrmTeams\CrmTeamResource;
 use App\Filament\Resources\ProcessingAssignmentConfigs\ProcessingAssignmentConfigResource;
 use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\SalesChannels\SalesChannelResource;
@@ -19,11 +32,11 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
 use Filament\View\PanelsRenderHook;
+use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -71,16 +84,37 @@ class UatPanelProvider extends AdminPanelProvider
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->notificationPanelStyles())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => $this->pwaHead())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.hooks.searchable-select-assets'))
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => $this->pageLoader())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->sidebarDefaultScript())
+            ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->userFiltersToggleScript())
+            ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->repaymentPreviewScript())
+            ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->nd13ConsentScript())
+            ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->notificationSoundScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->notificationPanelScript())
+            ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->chatStyles())
+            ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->chatScripts())
+            ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_AFTER, fn () => $this->chatLauncher())
             ->renderHook(PanelsRenderHook::TOPBAR_END, fn () => $this->topbarUserMeta())
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->chatAssets())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->pwaServiceWorkerScript())
             ->colors([
                 'primary' => Color::Blue,
                 'gray' => Color::Slate,
             ])
             ->resources([
+                LeadResource::class,
+                HotLeadResource::class,
+                DataCenterLeadResource::class,
+                ApplicationResource::class,
+                CbpApplicationResource::class,
+                LotteFinanceApplicationResource::class,
+                ProjectReportResource::class,
+                SaleProfileResource::class,
+                JobVacancyResource::class,
+                CandidateApplicationResource::class,
+                UserResource::class,
                 CrmModuleResource::class,
+                CrmTeamResource::class,
                 SalesProjectResource::class,
                 CrmLookupResource::class,
                 SalesChannelResource::class,
@@ -89,9 +123,14 @@ class UatPanelProvider extends AdminPanelProvider
                 ApiMappingResource::class,
                 RoleResource::class,
             ])
+            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
-                Dashboard::class,
+                CrmDashboard::class,
                 ChangePassword::class,
+            ])
+            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            ->widgets([
+                AccountWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

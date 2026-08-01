@@ -12,6 +12,7 @@ use App\Support\Notifications\DataCenterNotificationSender;
 use App\Support\Permissions\DataCenterAccess;
 use App\Support\Permissions\SalesProjectAccess;
 use App\Support\SalesLineSnapshot;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -56,7 +57,7 @@ class DataCenterLeadService
         return $record;
     }
 
-    public static function assign(DataCenterLead $record, User $actor, User $assignee): DataCenterLead
+    public static function assign(DataCenterLead $record, User $actor, User $assignee, bool $notify = true): DataCenterLead
     {
         if (! DataCenterAccess::canDistribute($actor) || ! DataCenterAccess::canView($actor, $record)) {
             abort(403);
@@ -76,9 +77,57 @@ class DataCenterLeadService
             'zd_id' => $snapshot['zd_id'],
         ])->save();
 
-        DataCenterNotificationSender::assigned($record->refresh());
+        if ($notify) {
+            DataCenterNotificationSender::assigned($record->refresh());
+        }
 
         return $record;
+    }
+
+    public static function unassign(DataCenterLead $record, User $actor): DataCenterLead
+    {
+        if (! DataCenterAccess::canDistribute($actor) || ! DataCenterAccess::canView($actor, $record)) {
+            abort(403);
+        }
+
+        $record->forceFill([
+            'assigned_user_id' => null,
+            'team_id' => null,
+            'team_leader_id' => null,
+            'am_id' => null,
+            'zd_id' => null,
+        ])->save();
+
+        return $record->refresh();
+    }
+
+    public static function assignMany(Collection $records, User $actor, ?User $assignee): int
+    {
+        $count = DB::transaction(function () use ($records, $actor, $assignee): int {
+            $count = 0;
+
+            foreach ($records as $record) {
+                if (! $record instanceof DataCenterLead) {
+                    continue;
+                }
+
+                if ($assignee instanceof User) {
+                    self::assign($record, $actor, $assignee, notify: false);
+                } else {
+                    self::unassign($record, $actor);
+                }
+
+                $count++;
+            }
+
+            return $count;
+        });
+
+        if ($assignee instanceof User && $count > 0) {
+            DataCenterNotificationSender::imported($assignee, $actor, $count);
+        }
+
+        return $count;
     }
 
     public static function updateResult(DataCenterLead $record, User $actor, array $data): DataCenterLead

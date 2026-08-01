@@ -109,17 +109,26 @@ class LotteFinanceDecisionAction
             LotteFinanceWorkflow::UW_CALL => [
                 LotteFinanceWorkflow::UW_APPROVAL => 'UW Approval',
                 LotteFinanceWorkflow::UW_FIELD => 'UW Field',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
             ],
             LotteFinanceWorkflow::UW_APPROVAL => [
                 LotteFinanceWorkflow::UW_FIELD => 'UW Field',
                 LotteFinanceWorkflow::OP => 'OP',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
             ],
             LotteFinanceWorkflow::UW_FIELD => [
                 LotteFinanceWorkflow::UW_APPROVAL => 'UW Approval',
                 LotteFinanceWorkflow::OP => 'OP',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
             ],
-            LotteFinanceWorkflow::OP => [LotteFinanceWorkflow::ESIGN => 'eSign'],
-            LotteFinanceWorkflow::ESIGN => [LotteFinanceWorkflow::POST_APPROVAL => 'Post Approval'],
+            LotteFinanceWorkflow::OP => [
+                LotteFinanceWorkflow::ESIGN => 'eSign',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
+            ],
+            LotteFinanceWorkflow::ESIGN => [
+                LotteFinanceWorkflow::POST_APPROVAL => 'Post Approval',
+                LotteFinanceWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
+            ],
             default => [],
         };
     }

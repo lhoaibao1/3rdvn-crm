@@ -119,7 +119,7 @@ class RecordViewChrome
 
     public static function userProfile(User $record): HtmlString
     {
-        $record->loadMissing(['roles', 'teamLeader', 'am', 'zd', 'creator']);
+        $record->loadMissing(['roles', 'team', 'teamLeader', 'am', 'zd', 'creator']);
 
         $role = $record->roles->pluck('name')->filter()->join(', ');
 
@@ -133,6 +133,7 @@ class RecordViewChrome
                 ['Vai trò', $role],
                 ['Email', $record->email],
                 ['SĐT', $record->phone],
+                ['Team', $record->team?->name],
                 ['Team Leader', self::user($record->teamLeader)],
                 ['AM', self::user($record->am)],
                 ['ZD', self::user($record->zd)],

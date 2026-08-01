@@ -349,6 +349,12 @@ class RoleHierarchy
             $data['courier_manager_id'] = null;
         }
 
+        if ($role === 'Courier') {
+            $data['zd_id'] = null;
+            $data['am_id'] = null;
+            $data['team_leader_id'] = null;
+        }
+
         return $data;
     }
 
@@ -358,6 +364,10 @@ class RoleHierarchy
             throw ValidationException::withMessages([
                 'roles' => 'Phiên đăng nhập không hợp lệ.',
             ]);
+        }
+
+        if ($actor->hasRole('Admin')) {
+            return;
         }
 
         if (in_array($role, ['Admin', 'ZD'], true)) {
@@ -416,14 +426,6 @@ class RoleHierarchy
 
         if ($role === 'Courier') {
             $manager = self::requiredManager($data['courier_manager_id'] ?? null, 'Courier Manager', 'courier_manager_id', 'Vui lòng chọn Courier Manager.');
-
-            if (blank($manager->am_id) || blank($manager->zd_id)) {
-                self::deny('courier_manager_id', 'Courier Manager chưa được gắn đủ AM/ZD.');
-            }
-
-            if ((int) ($data['am_id'] ?? 0) !== (int) $manager->am_id || (int) ($data['zd_id'] ?? 0) !== (int) $manager->zd_id) {
-                self::deny('courier_manager_id', 'Courier Manager không thuộc tuyến quản lý đã chọn.');
-            }
 
             if ($actor->hasRole('ZD') && (int) $manager->zd_id !== (int) $actor->getKey()) {
                 self::deny('courier_manager_id', 'ZD chỉ được tạo Courier thuộc tuyến của mình.');

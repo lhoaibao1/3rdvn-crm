@@ -19,6 +19,8 @@ class LotteFinanceWorkflow
 
     public const SALE_COMPLETION = 'lotte_sale_completion';
 
+    public const RETURNED_TO_SALE = 'lotte_returned_to_sale';
+
     public const UW_CALL = 'lotte_uw_call';
 
     public const UW_APPROVAL = 'lotte_uw_approval';
@@ -38,6 +40,7 @@ class LotteFinanceWorkflow
         return [
             self::PRE_CHECK => 'Pre-Check',
             self::SALE_COMPLETION => 'Chờ Sale hoàn thiện thông tin',
+            self::RETURNED_TO_SALE => 'Trả về Sale',
             self::UW_CALL => 'UW Call',
             self::UW_APPROVAL => 'UW Approval',
             self::UW_FIELD => 'UW Field',
@@ -58,6 +61,7 @@ class LotteFinanceWorkflow
         return match ($status) {
             self::PRE_CHECK => 'warning',
             self::SALE_COMPLETION => 'info',
+            self::RETURNED_TO_SALE => 'warning',
             self::UW_CALL, self::UW_APPROVAL, self::UW_FIELD, self::OP, self::ESIGN => 'primary',
             self::POST_APPROVAL => 'success',
             self::REJECTED => 'danger',
@@ -91,13 +95,41 @@ class LotteFinanceWorkflow
             $moduleFields = array_filter([
                 'customer_name' => $fields['customer_name'] ?? null,
                 'phone' => $fields['phone'] ?? null,
-                'cccd' => $fields['identity_number'] ?? null,
-                'date_of_birth' => $fields['birthday'] ?? null,
-                'identity_issued_date' => $fields['identity_issue_date'] ?? null,
-                'identity_issued_place' => $fields['identity_issue_place'] ?? null,
+                'cccd' => $fields['cccd'] ?? $fields['identity_number'] ?? null,
+                'cmnd' => $fields['cmnd'] ?? null,
+                'date_of_birth' => $fields['birthday'] ?? $fields['date_of_birth'] ?? null,
+                'identity_issued_date' => $fields['identity_issue_date'] ?? $fields['identity_issued_date'] ?? null,
+                'identity_issued_place' => $fields['identity_issue_place'] ?? $fields['identity_issued_place'] ?? null,
                 'identity_expiry_date' => $fields['identity_expiry_date'] ?? null,
+                'education' => $fields['education'] ?? null,
+                'marital_status' => $fields['marital_status'] ?? null,
+                'residence_type' => $fields['residence_type'] ?? null,
+                'residence_duration_years' => $fields['residence_duration_years'] ?? null,
+                'residence_duration_months' => $fields['residence_duration_months'] ?? null,
                 'current_address_line' => $fields['current_address'] ?? null,
                 'permanent_address_line' => $fields['permanent_address'] ?? null,
+                'employer_name' => $fields['employer_name'] ?? null,
+                'employer_tax_code' => $fields['employer_tax_code'] ?? null,
+                'employer_phone' => $fields['employer_phone'] ?? null,
+                'contract_type' => $fields['contract_type'] ?? null,
+                'working_years' => $fields['working_years'] ?? null,
+                'working_months' => $fields['working_months'] ?? null,
+                'experience_years' => $fields['experience_years'] ?? null,
+                'experience_months' => $fields['experience_months'] ?? null,
+                'spouse_name' => $fields['spouse_name'] ?? null,
+                'spouse_identity_number' => $fields['spouse_identity_number'] ?? null,
+                'spouse_phone' => $fields['spouse_phone'] ?? null,
+                'reference_1_name' => $fields['reference_1_name'] ?? null,
+                'reference_1_relationship' => $fields['reference_1_relationship'] ?? null,
+                'reference_1_phone' => $fields['reference_1_phone'] ?? null,
+                'reference_2_name' => $fields['reference_2_name'] ?? null,
+                'reference_2_relationship' => $fields['reference_2_relationship'] ?? null,
+                'reference_2_phone' => $fields['reference_2_phone'] ?? null,
+                'disbursement_method' => $fields['disbursement_method'] ?? null,
+                'bank_name' => $fields['bank_name'] ?? null,
+                'bank_account_number' => $fields['bank_account_number'] ?? null,
+                'bank_account_name' => $fields['bank_account_name'] ?? null,
+                'note' => $fields['note'] ?? null,
             ], fn (mixed $value): bool => filled($value));
             $assignee = RecordAssignment::autoAssigneeForProject($project, $creator);
             $snapshot = SalesLineSnapshot::fromUser($creator);
@@ -134,7 +166,7 @@ class LotteFinanceWorkflow
         if ($user->hasRole('Admin')) {
             return ! in_array($application->status, [self::POST_APPROVAL, self::REJECTED], true);
         }
-        if (! $user->can('application.update') || ! self::canView($user, $application) || $application->status !== self::SALE_COMPLETION) {
+        if (! $user->can('application.update') || ! self::canView($user, $application) || ! in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE], true)) {
             return false;
         }
 
@@ -155,7 +187,7 @@ class LotteFinanceWorkflow
         if ($application->status === self::PRE_CHECK) {
             return $user->hasRole('Admin');
         }
-        if (in_array($application->status, [self::SALE_COMPLETION, self::POST_APPROVAL, self::REJECTED], true)) {
+        if (in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE, self::POST_APPROVAL, self::REJECTED], true)) {
             return false;
         }
         if ($user->hasRole('Admin')) {
@@ -239,7 +271,8 @@ class LotteFinanceWorkflow
     {
         return DB::transaction(function () use ($application, $actor): Application {
             $application = Application::query()->lockForUpdate()->with(['salesProject', 'assignedSale'])->findOrFail($application->getKey());
-            if ($application->status !== self::SALE_COMPLETION || ! self::canEditData($actor, $application)) {
+            $currentStatus = $application->status;
+            if (! in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE], true) || ! self::canEditData($actor, $application)) {
                 throw ValidationException::withMessages(['status' => 'Bạn không được phép hoàn thiện hồ sơ này.']);
             }
 
@@ -248,11 +281,11 @@ class LotteFinanceWorkflow
             $payload = is_array($application->payload) ? $application->payload : [];
             $workflow = is_array($payload['workflow'] ?? null) ? $payload['workflow'] : [];
             $workflow['last_transition'] = [
-                'from' => self::SALE_COMPLETION,
+                'from' => $currentStatus,
                 'to' => self::UW_CALL,
                 'actor_id' => $actor->getKey(),
                 'at' => now()->toDateTimeString(),
-                'note' => 'Sale đã hoàn thiện thông tin và chứng từ.',
+                'note' => self::saleSubmissionNote($payload),
             ];
             $payload['workflow'] = $workflow;
             $application->forceFill(['status' => self::UW_CALL, 'payload' => $payload])->save();
@@ -271,6 +304,16 @@ class LotteFinanceWorkflow
         return $application->salesProject?->slug === 'lotte-finance';
     }
 
+    public static function saleSubmissionNote(array $payload): string
+    {
+        $moduleNote = data_get($payload, 'module_fields.note');
+        $fieldNote = data_get($payload, 'fields.note');
+
+        return filled($moduleNote)
+            ? (string) $moduleNote
+            : (filled($fieldNote) ? (string) $fieldNote : 'Sale đã hoàn thiện thông tin và chứng từ.');
+    }
+
     private static function canView(User $user, Application $application): bool
     {
         return SalesProjectAccess::canAccessProject($user, $application->salesProject)
@@ -280,11 +323,11 @@ class LotteFinanceWorkflow
     private static function validateTransition(string $currentStatus, string $nextStatus): void
     {
         $allowed = match ($currentStatus) {
-            self::UW_CALL => [self::UW_APPROVAL, self::UW_FIELD],
-            self::UW_APPROVAL => [self::UW_FIELD, self::OP],
-            self::UW_FIELD => [self::UW_APPROVAL, self::OP],
-            self::OP => [self::ESIGN],
-            self::ESIGN => [self::POST_APPROVAL],
+            self::UW_CALL => [self::UW_APPROVAL, self::UW_FIELD, self::RETURNED_TO_SALE],
+            self::UW_APPROVAL => [self::UW_FIELD, self::OP, self::RETURNED_TO_SALE],
+            self::UW_FIELD => [self::UW_APPROVAL, self::OP, self::RETURNED_TO_SALE],
+            self::OP => [self::ESIGN, self::RETURNED_TO_SALE],
+            self::ESIGN => [self::POST_APPROVAL, self::RETURNED_TO_SALE],
             default => [],
         };
         if (! in_array($nextStatus, $allowed, true)) {

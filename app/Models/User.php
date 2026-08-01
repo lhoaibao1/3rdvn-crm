@@ -83,6 +83,7 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
         'branch_name' => 'Chi nhánh',
         'branch_code' => 'Mã chi nhánh',
         'sales_channel' => 'Kênh',
+        'team_id' => 'Team',
         'team_leader_id' => 'Team Leader',
         'courier_manager_id' => 'Courier Manager',
         'am_id' => 'AM',

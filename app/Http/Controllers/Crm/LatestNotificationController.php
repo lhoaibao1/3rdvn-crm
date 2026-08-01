@@ -28,6 +28,7 @@ class LatestNotificationController extends Controller
                 'body' => trim($body),
                 'url' => data_get($data, 'actions.0.url', url('/')),
                 'status' => (string) ($data['status'] ?? 'info'),
+                'createdAt' => $notification->created_at?->toIso8601String(),
             ],
         ]);
     }

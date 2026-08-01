@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Forms\Components\SearchableSelect as Select;
+use App\Models\CrmTeam;
 use App\Models\SalesChannel;
 use App\Models\SalesProject;
 use App\Models\User;
@@ -87,12 +88,18 @@ class UserForm
                                                     ->validationMessages([
                                                         'regex' => 'Số giấy tờ chưa đúng định dạng.',
                                                     ]),
-                                                DatePicker::make('date_of_birth')->label('Ngày sinh')->displayFormat('d/m/Y')->native(false),
+                                                DatePicker::make('date_of_birth')
+                                                    ->label('Ngày sinh')
+                                                    ->displayFormat('d/m/Y')
+                                                    ->native(false),
                                                 Select::make('gender')
                                                     ->label('Giới tính')
                                                     ->options(['male' => 'Nam', 'female' => 'Nữ', 'other' => 'Khác'])
                                                     ->native(false),
-                                                DatePicker::make('identity_issued_date')->label('Ngày cấp')->displayFormat('d/m/Y')->native(false),
+                                                DatePicker::make('identity_issued_date')
+                                                    ->label('Ngày cấp')
+                                                    ->displayFormat('d/m/Y')
+                                                    ->native(false),
                                                 Select::make('identity_issued_place')
                                                     ->label('Nơi cấp')
                                                     ->options(fn (): array => UserSpecOptions::issuedPlaces())
@@ -104,6 +111,25 @@ class UserForm
                                                 Select::make('department')
                                                     ->label('Phòng ban')
                                                     ->options(fn (): array => UserSpecOptions::departments())
+                                                    ->native(false),
+                                                Select::make('team_id')
+                                                    ->label('Team')
+                                                    ->options(fn (?User $record): array => self::teamOptions($record))
+                                                    ->getOptionLabelUsing(fn (mixed $value): ?string => self::teamLabel(CrmTeam::query()->find($value)))
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->live()
+                                                    ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                                        $team = filled($state) ? CrmTeam::query()->find($state) : null;
+                                                        $managerId = $team?->manager_id;
+
+                                                        $set('team_leader_id', $managerId);
+
+                                                        foreach (UserSpecOptions::managerChainFor($managerId) as $field => $value) {
+                                                            $set($field, $value);
+                                                        }
+                                                    })
+                                                    ->disabled(fn (string $operation): bool => self::isLockedForManagerEdit($operation))
                                                     ->native(false),
                                                 Select::make('employment_status')
                                                     ->label('Trạng thái')
@@ -233,17 +259,13 @@ class UserForm
                                             ->schema([
                                                 Select::make('courier_manager_id')
                                                     ->label('Courier Manager')
-                                                    ->options(fn (Get $get): array => UserSpecOptions::roleUsers('Courier Manager', $get('zd_id'), $get('am_id')))
+                                                    ->options(fn (): array => UserSpecOptions::roleUsers('Courier Manager'))
+                                                    ->getOptionLabelUsing(fn (mixed $value): ?string => blank($value) ? null : User::query()->whereKey($value)->value('name'))
                                                     ->default(fn (): ?int => auth()->user()?->hasRole('Courier Manager') ? auth()->id() : null)
                                                     ->visible(fn (Get $get): bool => $get('roles') === 'Courier')
                                                     ->disabled(fn ($record): bool => self::isEditingSelf($record) || auth()->user()?->hasRole('Courier Manager'))
-                                                    ->required(fn (Get $get): bool => $get('roles') === 'Courier')
+                                                    ->required(fn (Get $get): bool => $get('roles') === 'Courier' && ! self::adminMaySkipManager())
                                                     ->live()
-                                                    ->afterStateUpdated(function (Set $set, ?int $state): void {
-                                                        foreach (UserSpecOptions::managerChainFor($state) as $field => $value) {
-                                                            $set($field, $value);
-                                                        }
-                                                    })
                                                     ->dehydrated()
                                                     ->searchable()
                                                     ->preload()
@@ -254,11 +276,17 @@ class UserForm
                                                     ->default(fn (): ?int => auth()->user()?->hasRole('Team Leader') ? auth()->id() : null)
                                                     ->visible(fn (Get $get): bool => in_array($get('roles'), RoleHierarchy::SALES_ROLES, true))
                                                     ->disabled(fn ($record): bool => self::isEditingSelf($record) || auth()->user()?->hasRole('Team Leader'))
-                                                    ->required(fn (Get $get): bool => in_array($get('roles'), RoleHierarchy::SALES_ROLES, true))
+                                                    ->required(fn (Get $get): bool => in_array($get('roles'), RoleHierarchy::SALES_ROLES, true) && ! self::adminMaySkipManager())
                                                     ->live()
-                                                    ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                                    ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
                                                         foreach (UserSpecOptions::managerChainFor($state) as $field => $value) {
                                                             $set($field, $value);
+                                                        }
+
+                                                        $team = filled($get('team_id')) ? CrmTeam::query()->find($get('team_id')) : null;
+
+                                                        if ($team instanceof CrmTeam && (int) $team->manager_id !== (int) $state) {
+                                                            $set('team_id', null);
                                                         }
                                                     })
                                                     ->dehydrated()
@@ -269,9 +297,9 @@ class UserForm
                                                     ->label('AM')
                                                     ->options(fn (Get $get): array => UserSpecOptions::roleUsers('AM', $get('zd_id')))
                                                     ->default(fn (): ?int => auth()->user()?->hasRole('AM') ? auth()->id() : (auth()->user()?->hasAnyRole(['Team Leader', 'Courier Manager']) ? auth()->user()?->am_id : null))
-                                                    ->visible(fn (Get $get): bool => in_array($get('roles'), ['Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'], true))
+                                                    ->visible(fn (Get $get): bool => in_array($get('roles'), ['Team Leader', 'Courier Manager', 'Direct Sale', 'Telesale', 'CTV'], true))
                                                     ->disabled(fn ($record): bool => self::isEditingSelf($record) || auth()->user()?->hasAnyRole(['AM', 'Team Leader', 'Courier Manager']))
-                                                    ->required(fn (Get $get): bool => in_array($get('roles'), ['Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'], true))
+                                                    ->required(fn (Get $get): bool => in_array($get('roles'), ['Team Leader', 'Courier Manager', 'Direct Sale', 'Telesale', 'CTV'], true) && ! self::adminMaySkipManager())
                                                     ->live()
                                                     ->afterStateUpdated(function (Set $set, ?int $state): void {
                                                         $chain = UserSpecOptions::managerChainFor($state);
@@ -288,9 +316,9 @@ class UserForm
                                                     ->label('ZD')
                                                     ->options(fn (): array => UserSpecOptions::roleUsers('ZD'))
                                                     ->default(fn (): ?int => auth()->user()?->hasRole('ZD') ? auth()->id() : (auth()->user()?->hasAnyRole(['AM', 'Team Leader', 'Courier Manager']) ? auth()->user()?->zd_id : null))
-                                                    ->visible(fn (Get $get): bool => in_array($get('roles'), ['AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'], true))
+                                                    ->visible(fn (Get $get): bool => in_array($get('roles'), ['AM', 'Team Leader', 'Courier Manager', 'Direct Sale', 'Telesale', 'CTV'], true))
                                                     ->disabled(fn ($record): bool => self::isEditingSelf($record) || ! auth()->user()?->hasRole('Admin'))
-                                                    ->required(fn (Get $get): bool => in_array($get('roles'), ['AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'], true))
+                                                    ->required(fn (Get $get): bool => in_array($get('roles'), ['AM', 'Team Leader', 'Courier Manager', 'Direct Sale', 'Telesale', 'CTV'], true) && ! self::adminMaySkipManager())
                                                     ->live()
                                                     ->afterStateUpdated(function (Set $set): void {
                                                         $set('am_id', null);
@@ -509,6 +537,104 @@ class UserForm
                                     ]),
                             ]),
             ]);
+    }
+
+    public static function normalizeDateFields(array $data): array
+    {
+        foreach (['date_of_birth', 'identity_issued_date', 'hire_date'] as $field) {
+            if (! array_key_exists($field, $data) || blank($data[$field])) {
+                continue;
+            }
+
+            if ($data[$field] instanceof \DateTimeInterface) {
+                $data[$field] = $data[$field]->format('Y-m-d');
+
+                continue;
+            }
+
+            $date = \DateTimeImmutable::createFromFormat('!d/m/Y', (string) $data[$field]);
+
+            if ($date instanceof \DateTimeImmutable) {
+                $data[$field] = $date->format('Y-m-d');
+            }
+        }
+
+        return $data;
+    }
+
+    private static function dateField(string $name, string $label): TextInput
+    {
+        return TextInput::make($name)
+            ->label($label)
+            ->mask('99/99/9999')
+            ->placeholder('dd/mm/yyyy')
+            ->maxLength(10)
+            ->rules(['nullable', 'date_format:d/m/Y'])
+            ->validationMessages([
+                'date_format' => $label.' phải đúng định dạng dd/mm/yyyy.',
+            ])
+            ->formatStateUsing(function (mixed $state): ?string {
+                if (blank($state)) {
+                    return null;
+                }
+
+                if ($state instanceof \DateTimeInterface) {
+                    return $state->format('d/m/Y');
+                }
+
+                $date = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $state);
+
+                return $date instanceof \DateTimeImmutable ? $date->format('d/m/Y') : (string) $state;
+            });
+    }
+
+    public static function normalizeTeamAssignment(array $data, ?string $role): array
+    {
+        if (! in_array($role, RoleHierarchy::SALES_ROLES, true) || blank($data['team_id'] ?? null)) {
+            return $data;
+        }
+
+        $team = CrmTeam::query()->with('manager')->find($data['team_id']);
+
+        if (! $team instanceof CrmTeam || ! $team->manager instanceof User) {
+            return $data;
+        }
+
+        $data['team_leader_id'] = $team->manager->getKey();
+        $data['am_id'] = $team->manager->am_id;
+        $data['zd_id'] = $team->manager->zd_id;
+
+        return $data;
+    }
+
+    private static function teamOptions(?User $record): array
+    {
+        return CrmTeam::query()
+            ->where(function ($query) use ($record): void {
+                $query->where('is_active', true);
+
+                if ($record instanceof User && filled($record->team_id)) {
+                    $query->orWhereKey($record->team_id);
+                }
+            })
+            ->orderBy('name')
+            ->get()
+            ->mapWithKeys(fn (CrmTeam $team): array => [$team->getKey() => self::teamLabel($team)])
+            ->all();
+    }
+
+    private static function teamLabel(?CrmTeam $team): ?string
+    {
+        if (! $team instanceof CrmTeam) {
+            return null;
+        }
+
+        return collect([$team->name, $team->code])->filter()->join(' · ');
+    }
+
+    private static function adminMaySkipManager(): bool
+    {
+        return auth()->user()?->hasRole('Admin') ?? false;
     }
 
     private static function isEditingSelf(mixed $record): bool

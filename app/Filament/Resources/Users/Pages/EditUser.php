@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Pages\Concerns\InteractsWithUserMailbox;
 use App\Models\User;
 use App\Services\StalwartMailService;
@@ -136,7 +137,9 @@ class EditUser extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $record = $this->getRecord();
+        $data = UserForm::normalizeDateFields($data);
         $role = $this->form->getRawState()['roles'] ?? $record->roles()->value('name');
+        $data = UserForm::normalizeTeamAssignment($data, $role);
 
         if (! RoleHierarchy::canUseRoleOnEdit(auth()->user(), $record, $role)) {
             throw ValidationException::withMessages([

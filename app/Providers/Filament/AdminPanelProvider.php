@@ -75,6 +75,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->settingsStyles())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => $this->pwaHead())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.hooks.searchable-select-assets'))
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => $this->pageLoader())
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->notificationPanelStyles())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->sidebarDefaultScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->userFiltersToggleScript())
@@ -139,6 +140,16 @@ class AdminPanelProvider extends PanelProvider
         $version = is_file($absolutePath) ? '?v='.filemtime($absolutePath) : '';
 
         return asset('storage/'.$path).$version;
+    }
+
+    protected function pageLoader(): HtmlString
+    {
+        $settings = UiSetting::current();
+
+        return new HtmlString(view('filament.hooks.page-loader', [
+            'appName' => $settings->app_name ?: '3RDVN CRM',
+            'logoUrl' => $this->versionedPublicAsset($settings->logo_path) ?: asset('icons/3rdvn-icon.svg'),
+        ])->render());
     }
 
     protected function settingsStyles(): HtmlString
@@ -2817,6 +2828,7 @@ HTML);
                 : 'outlook',
             'url' => $soundPath ? asset('storage/'.$soundPath) : null,
             'volume' => max(0, min(100, (int) ($settings->notification_sound_volume ?? 80))) / 100,
+            'userId' => (string) auth()->id(),
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
 
         $script = <<<'HTML'
@@ -2829,23 +2841,12 @@ HTML);
         window.__crmNotificationSoundBound = true;
 
         const soundConfig = __CRM_SOUND_CONFIG__;
-        const storageKey = '3rdvn:last-unread-notification-count';
+        const notificationIdKey = `3rdvn:last-notification-id:${soundConfig.userId}`;
+        const notificationTimeKey = `3rdvn:last-notification-time:${soundConfig.userId}`;
         let audioContext = null;
         let audioUnlocked = false;
         let customAudio = null;
-
-        const currentUnreadCount = () => {
-            const trigger = document.querySelector('.fi-topbar-database-notifications-btn');
-
-            if (! trigger) {
-                return 0;
-            }
-
-            const text = (trigger.innerText || trigger.textContent || '').replace(/\s+/g, ' ').trim();
-            const numbers = text.match(/\d+/g);
-
-            return numbers?.length ? Number.parseInt(numbers[numbers.length - 1], 10) || 0 : 0;
-        };
+        let syncInFlight = false;
 
         const unlockAudio = () => {
             if (soundConfig.preset === 'off') {
@@ -2906,18 +2907,16 @@ HTML);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + (tones.length * 0.1) + duration);
 
             tones.forEach((frequency, index) => {
-                const osc = audioContext.createOscillator();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(frequency, now + index * 0.1);
-                osc.connect(gain);
-                osc.start(now + index * 0.1);
-                osc.stop(now + index * 0.1 + duration);
+                const oscillator = audioContext.createOscillator();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(frequency, now + index * 0.1);
+                oscillator.connect(gain);
+                oscillator.start(now + index * 0.1);
+                oscillator.stop(now + index * 0.1 + duration);
             });
         };
 
         window.crmPreviewNotificationSound = playNotificationSound;
-
-        const pushStorageKey = '3rdvn:last-native-notification-id';
 
         const requestPushPermission = () => {
             if ('Notification' in window && Notification.permission === 'default') {
@@ -2925,10 +2924,36 @@ HTML);
             }
         };
 
-        const syncNativeNotification = async (announce = true) => {
+        const showNativeNotification = async (item) => {
             if (!('Notification' in window) || Notification.permission !== 'granted') {
                 return;
             }
+
+            const options = {
+                body: item.body,
+                icon: '/favicon.ico',
+                badge: '/favicon.ico',
+                tag: `3rdvn-crm-${item.id}`,
+                renotify: true,
+                data: { url: item.url || '/' },
+            };
+
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.showNotification(item.title, options);
+                return;
+            }
+
+            const notification = new Notification(item.title, options);
+            notification.onclick = () => window.location.assign(item.url || '/');
+        };
+
+        const syncLatestNotification = async (announce = true) => {
+            if (syncInFlight) {
+                return;
+            }
+
+            syncInFlight = true;
 
             try {
                 const response = await fetch('/crm/notifications/latest', {
@@ -2942,63 +2967,47 @@ HTML);
 
                 const item = (await response.json()).notification;
 
-                if (! item?.id) {
+                if (! item?.id || ! item?.createdAt) {
                     return;
                 }
 
-                const previousId = window.localStorage.getItem(pushStorageKey);
-                window.localStorage.setItem(pushStorageKey, item.id);
+                const itemTime = Date.parse(item.createdAt);
+                const previousId = window.localStorage.getItem(notificationIdKey);
+                const previousTimeRaw = window.localStorage.getItem(notificationTimeKey);
+                const previousTime = previousTimeRaw === null ? null : Number.parseInt(previousTimeRaw, 10);
 
-                if (! announce || previousId === null || previousId === item.id) {
+                if (previousId === null || previousTime === null || Number.isNaN(itemTime)) {
+                    window.localStorage.setItem(notificationIdKey, item.id);
+                    window.localStorage.setItem(notificationTimeKey, String(Number.isNaN(itemTime) ? Date.now() : itemTime));
                     return;
                 }
 
-                const options = {
-                    body: item.body,
-                    icon: '/favicon.ico',
-                    badge: '/favicon.ico',
-                    tag: `3rdvn-crm-${item.id}`,
-                    renotify: true,
-                    data: { url: item.url || '/' },
-                };
-
-                if ('serviceWorker' in navigator) {
-                    const registration = await navigator.serviceWorker.ready;
-                    await registration.showNotification(item.title, options);
-                } else {
-                    const notification = new Notification(item.title, options);
-                    notification.onclick = () => window.location.assign(item.url || '/');
+                if (previousId === item.id) {
+                    return;
                 }
+
+                window.localStorage.setItem(notificationIdKey, item.id);
+
+                if (itemTime <= previousTime) {
+                    return;
+                }
+
+                window.localStorage.setItem(notificationTimeKey, String(itemTime));
+
+                if (! announce) {
+                    return;
+                }
+
+                playNotificationSound();
+                await showNativeNotification(item);
             } catch (error) {
                 // Notification polling must never interrupt CRM interactions.
+            } finally {
+                syncInFlight = false;
             }
         };
 
-        const syncUnreadCount = () => {
-            const count = currentUnreadCount();
-            const previousRaw = window.sessionStorage.getItem(storageKey);
-
-            if (previousRaw === null) {
-                window.sessionStorage.setItem(storageKey, String(count));
-                return;
-            }
-
-            const previous = Number.parseInt(previousRaw, 10) || 0;
-
-            if (count > previous) {
-                playNotificationSound();
-            }
-
-            if (count !== previous) {
-                window.sessionStorage.setItem(storageKey, String(count));
-            }
-        };
-
-        window.crmHandleRealtimeNotification = () => {
-            playNotificationSound();
-            syncNativeNotification(true);
-            setTimeout(syncUnreadCount, 80);
-        };
+        window.crmHandleRealtimeNotification = () => syncLatestNotification(true);
 
         document.addEventListener('pointerdown', () => {
             unlockAudio();
@@ -3006,23 +3015,14 @@ HTML);
         }, { once: true, passive: true });
         document.addEventListener('keydown', unlockAudio, { once: true });
 
-        syncNativeNotification(false);
-        setInterval(syncNativeNotification, 5000);
-        setTimeout(syncUnreadCount, 250);
-        setInterval(syncUnreadCount, 1500);
-        document.addEventListener('livewire:navigated', () => setTimeout(syncUnreadCount, 250));
-        document.addEventListener('livewire:update', () => setTimeout(syncUnreadCount, 80));
-        document.addEventListener('livewire:updated', () => setTimeout(syncUnreadCount, 80));
-
-        new MutationObserver(() => window.requestAnimationFrame(syncUnreadCount))
-            .observe(document.body || document.documentElement, { childList: true, subtree: true, characterData: true });
+        syncLatestNotification(false);
+        window.setInterval(() => syncLatestNotification(true), 5000);
     })();
 </script>
 HTML;
 
         return new HtmlString(str_replace('__CRM_SOUND_CONFIG__', $soundConfig, $script));
     }
-
     protected function notificationPanelScript(): HtmlString
     {
         return new HtmlString(<<<'HTML'

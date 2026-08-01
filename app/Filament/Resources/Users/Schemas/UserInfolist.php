@@ -65,6 +65,7 @@ class UserInfolist
                                                     ->label('Phòng ban')
                                                     ->formatStateUsing(fn (?string $state): string => UserSpecOptions::labelFor('department', $state))
                                                     ->placeholder('-'),
+                                                TextEntry::make('team.name')->label('Team')->placeholder('-'),
                                                 TextEntry::make('employment_status')
                                                     ->label('Trạng thái')
                                                     ->formatStateUsing(fn (?string $state): string => UserSpecOptions::labelFor('employment_status', $state))
