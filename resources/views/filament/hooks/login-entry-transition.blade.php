@@ -27,7 +27,7 @@
     </div>
 
     <div class="crm-entry-copy">
-        <span class="crm-entry-kicker">Phiên đăng nhập đã xác thực</span>
+        <span class="crm-entry-kicker" data-entry-kicker>Phiên đăng nhập đã xác thực</span>
         <strong data-entry-label>Đang chuẩn bị không gian làm việc</strong>
         <div class="crm-entry-track" aria-hidden="true"><span></span></div>
         <small>{{ $brandName }} · CRM Workspace</small>
@@ -124,6 +124,8 @@
             left 1.12s cubic-bezier(.16, 1, .3, 1),
             width 1.12s cubic-bezier(.16, 1, .3, 1),
             height 1.12s cubic-bezier(.16, 1, .3, 1),
+            opacity .5s ease,
+            transform 1.12s cubic-bezier(.16, 1, .3, 1),
             filter .5s ease;
         will-change: top, left, width, height;
     }
@@ -166,13 +168,13 @@
         width: min(440px, 80vw);
         height: min(136px, 25vw);
         padding: clamp(18px, 3vw, 27px);
-        border: 1px solid rgba(255, 255, 255, .22);
+        border: 1px solid rgba(255, 255, 255, .82);
         border-radius: 22px;
-        background: rgba(255, 255, 255, .1);
+        background: rgba(255, 255, 255, .96);
         box-shadow:
             0 28px 80px rgba(0, 0, 0, .32),
-            inset 0 1px 0 rgba(255, 255, 255, .17),
-            0 0 52px rgba(59, 130, 246, .18);
+            inset 0 1px 0 rgba(255, 255, 255, .9),
+            0 0 58px rgba(59, 130, 246, .24);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         transition:
@@ -189,7 +191,7 @@
         width: 100%;
         height: 100%;
         object-fit: contain;
-        filter: brightness(0) invert(1);
+        filter: none;
         transition: filter .5s ease;
     }
 
@@ -250,6 +252,66 @@
         letter-spacing: .14em;
         text-transform: uppercase;
         animation: crm-entry-copy-in .55s ease .42s both;
+    }
+
+    .crm-entry-transition.is-originating {
+        clip-path: inset(
+            var(--crm-entry-origin-top, 50%)
+            var(--crm-entry-origin-right, 50%)
+            var(--crm-entry-origin-bottom, 50%)
+            var(--crm-entry-origin-left, 50%)
+            round var(--crm-entry-origin-radius, 28px)
+        );
+        transition: clip-path .92s cubic-bezier(.76, 0, .24, 1);
+    }
+
+    .crm-entry-transition.is-originating.is-authenticating {
+        clip-path: inset(0 0 0 0 round 0);
+    }
+
+    .crm-entry-transition.is-originating .crm-entry-stage {
+        top: var(--crm-entry-origin-y, 50%);
+        left: var(--crm-entry-origin-x, 50%);
+        width: min(var(--crm-entry-origin-width, 420px), 72vw);
+        height: min(112px, 22vw);
+        opacity: 0;
+        filter: blur(12px);
+        animation: none;
+        transform: translate(-50%, -50%) scale(.72);
+    }
+
+    .crm-entry-transition.is-originating.is-authenticating .crm-entry-stage {
+        top: 50%;
+        left: 50%;
+        width: min(540px, 88vw);
+        height: min(290px, 48vw);
+        opacity: 1;
+        filter: none;
+        transform: translate(-50%, -50%) scale(1);
+        transition-delay: .16s;
+    }
+
+    .crm-entry-transition.is-originating .crm-entry-copy {
+        opacity: 0;
+        filter: blur(8px);
+        transform: translate(-50%, 12px);
+    }
+
+    .crm-entry-transition.is-originating.is-authenticating .crm-entry-copy {
+        opacity: 1;
+        filter: none;
+        transform: translate(-50%, 0);
+        transition-delay: .54s;
+    }
+
+    .crm-entry-transition.is-originating.is-cancelling {
+        opacity: 0;
+        transition: opacity .34s ease;
+        pointer-events: none;
+    }
+
+    .crm-entry-transition.is-resuming .crm-entry-stage {
+        animation: none;
     }
 
     .crm-entry-transition.is-docking {
@@ -424,6 +486,56 @@
             overlay.remove();
         };
 
+        const resetLoginOrigin = () => {
+            if (started || ! window.location.pathname.startsWith('/authen/login')) return;
+
+            overlay.classList.add('is-cancelling');
+
+            timers.push(window.setTimeout(() => {
+                overlay.style.display = 'none';
+                overlay.classList.remove('is-originating', 'is-authenticating', 'is-cancelling');
+                document.documentElement.classList.remove('crm-entry-running');
+                consumeMarker();
+            }, 360));
+        };
+
+        const beginFromLogin = (event) => {
+            if (started || ! window.location.pathname.startsWith('/authen/login')) return;
+
+            clearTimers();
+
+            const card = document.querySelector('.crm-login-form-wrap');
+            const rect = event.detail?.rect ?? card?.getBoundingClientRect();
+
+            if (! rect) return;
+
+            overlay.style.setProperty('--crm-entry-origin-top', String(Math.max(0, rect.top)) + 'px');
+            overlay.style.setProperty('--crm-entry-origin-right', String(Math.max(0, window.innerWidth - rect.right)) + 'px');
+            overlay.style.setProperty('--crm-entry-origin-bottom', String(Math.max(0, window.innerHeight - rect.bottom)) + 'px');
+            overlay.style.setProperty('--crm-entry-origin-left', String(Math.max(0, rect.left)) + 'px');
+            overlay.style.setProperty('--crm-entry-origin-x', String(rect.left + (rect.width / 2)) + 'px');
+            overlay.style.setProperty('--crm-entry-origin-y', String(rect.top + (rect.height / 2)) + 'px');
+            overlay.style.setProperty('--crm-entry-origin-width', String(rect.width) + 'px');
+            overlay.style.setProperty('--crm-entry-origin-radius', window.innerWidth <= 520 ? '22px' : '28px');
+
+            const kicker = overlay.querySelector('[data-entry-kicker]');
+            const label = overlay.querySelector('[data-entry-label]');
+
+            if (kicker) kicker.textContent = 'Đang xác thực phiên đăng nhập';
+            if (label) label.textContent = 'Đang mở không gian làm việc';
+
+            overlay.classList.remove('is-docking', 'is-resuming', 'is-cancelling');
+            overlay.classList.add('is-originating');
+            document.documentElement.classList.add('crm-entry-running');
+            overlay.style.display = '';
+
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => overlay.classList.add('is-authenticating'));
+            });
+
+            timers.push(window.setTimeout(resetLoginOrigin, 2800));
+        };
+
         const dock = () => {
             const target = visibleLogoTarget();
             const fallback = {
@@ -455,11 +567,18 @@
             }
 
             started = true;
+            clearTimers();
             consumeMarker();
+            overlay.classList.remove('is-originating', 'is-authenticating', 'is-cancelling');
+            overlay.classList.add('is-resuming');
             document.documentElement.classList.add('crm-entry-running');
             overlay.style.display = '';
 
+            const kicker = overlay.querySelector('[data-entry-kicker]');
             const label = overlay.querySelector('[data-entry-label]');
+
+            if (kicker) kicker.textContent = 'Phiên đăng nhập đã xác thực';
+            if (label) label.textContent = 'Đang chuẩn bị không gian làm việc';
 
             timers.push(window.setTimeout(() => {
                 if (label) label.textContent = 'Đang đồng bộ dữ liệu và phân quyền';
@@ -474,6 +593,7 @@
             timers.push(window.setTimeout(finish, 4800));
         };
 
+        window.addEventListener('crm:login-submit', beginFromLogin);
         start();
         document.addEventListener('livewire:navigated', start);
     })();

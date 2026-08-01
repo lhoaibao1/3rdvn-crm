@@ -9,7 +9,26 @@
         <div class="crm-login-status" role="status">{{ session('status') }}</div>
     @endif
 
-    <form class="crm-login-form" wire:submit.prevent="authenticate" x-on:submit="window.sessionStorage.setItem('3rdvn:login-entry', String(Date.now()))">
+    <form
+        class="crm-login-form"
+        x-on:submit.prevent="
+            if ($el.dataset.authPending === 'true') return;
+
+            $el.dataset.authPending = 'true';
+            window.sessionStorage.setItem('3rdvn:login-entry', String(Date.now()));
+            window.dispatchEvent(new CustomEvent('crm:login-submit', {
+                detail: {
+                    rect: $root.querySelector('.crm-login-form-wrap')?.getBoundingClientRect(),
+                },
+            }));
+
+            window.setTimeout(() => {
+                $wire.authenticate()
+                    .catch(() => {})
+                    .finally(() => { $el.dataset.authPending = 'false'; });
+            }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 760);
+        "
+    >
         <div class="crm-login-field">
             <label class="crm-login-label" for="crm-login-identifier">User / UID</label>
             <div class="crm-login-control @error('data.identifier') is-invalid @enderror">

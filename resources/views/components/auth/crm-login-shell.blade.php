@@ -57,7 +57,7 @@
             overflow: hidden;
             color: #0f172a;
             background: #f8fafc;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             --crm-login-story-pad-x: clamp(34px, 4.2vw, 68px);
             --crm-login-story-pad-y: clamp(34px, 4.2vw, 68px);
         }
@@ -240,13 +240,13 @@
             width: min(430px, 78vw);
             height: min(132px, 24vw);
             padding: clamp(18px, 3vw, 26px);
-            border: 1px solid rgba(255, 255, 255, .2);
+            border: 1px solid rgba(255, 255, 255, .82);
             border-radius: 20px;
-            background: rgba(255, 255, 255, .1);
+            background: rgba(255, 255, 255, .96);
             box-shadow:
                 0 24px 70px rgba(0, 0, 0, .3),
-                inset 0 1px 0 rgba(255, 255, 255, .16),
-                0 0 44px rgba(59, 130, 246, .16);
+                inset 0 1px 0 rgba(255, 255, 255, .9),
+                0 0 52px rgba(59, 130, 246, .22);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             transition:
@@ -263,15 +263,16 @@
             height: 48px;
             padding: 8px 12px;
             border-radius: 12px;
-            background: rgba(255, 255, 255, .1);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+            border-color: rgba(255, 255, 255, .92);
+            background: rgba(255, 255, 255, .98);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
         }
 
         .crm-login-intro-emblem img {
             width: 100%;
             height: 100%;
             object-fit: contain;
-            filter: brightness(0) invert(1);
+            filter: none;
         }
 
         .crm-login-intro-emblem span {
@@ -409,11 +410,11 @@
             height: 48px;
             padding: 8px 12px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, .18);
+            border: 1px solid rgba(255, 255, 255, .82);
             border-radius: 12px;
-            color: #fff;
-            background: rgba(255, 255, 255, .1);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+            color: #0f172a;
+            background: rgba(255, 255, 255, .96);
+            box-shadow: 0 8px 28px rgba(2, 8, 23, .18), inset 0 1px 0 rgba(255, 255, 255, .9);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
         }
@@ -422,7 +423,7 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            filter: brightness(0) invert(1);
+            filter: none;
         }
 
         .crm-login-brand-mark span {
@@ -464,12 +465,12 @@
         .crm-login-kicker {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 22px;
-            color: #93c5fd;
-            font-size: .72rem;
-            font-weight: 750;
-            letter-spacing: .16em;
+            gap: 11px;
+            margin-bottom: 24px;
+            color: #a9d2ff;
+            font-size: .74rem;
+            font-weight: 680;
+            letter-spacing: .14em;
             text-transform: uppercase;
         }
 
@@ -483,24 +484,29 @@
         .crm-login-story h2 {
             max-width: 620px;
             margin: 0;
-            color: #fff;
-            font-size: clamp(2.7rem, 4.7vw, 4.9rem);
-            font-weight: 780;
-            line-height: .98;
-            letter-spacing: -.055em;
+            color: #f8fbff;
+            font-size: clamp(2.6rem, 4.35vw, 4.55rem);
+            font-weight: 640;
+            line-height: 1.045;
+            letter-spacing: -.045em;
+            text-wrap: balance;
         }
 
         .crm-login-story h2 span {
             display: block;
-            color: #8ec5ff;
+            margin-top: .08em;
+            color: #82beff;
+            font-weight: 760;
         }
 
         .crm-login-story-copy > p {
-            max-width: 540px;
-            margin: 28px 0 0;
-            color: rgba(226, 232, 240, .72);
-            font-size: clamp(.92rem, 1.15vw, 1.05rem);
-            line-height: 1.72;
+            max-width: 560px;
+            margin: 30px 0 0;
+            color: rgba(226, 232, 240, .79);
+            font-size: clamp(.96rem, 1.12vw, 1.08rem);
+            font-weight: 430;
+            line-height: 1.78;
+            letter-spacing: -.008em;
         }
 
         .crm-login-flow {
@@ -530,9 +536,9 @@
             display: block;
             margin-top: 6px;
             color: #e2e8f0;
-            font-size: .72rem;
-            font-weight: 650;
-            line-height: 1.3;
+            font-size: .75rem;
+            font-weight: 690;
+            line-height: 1.35;
             white-space: nowrap;
         }
 
