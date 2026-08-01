@@ -1,6 +1,14 @@
 @props([
     'title',
     'subtitle' => null,
+    'workspace' => 'CRM Workspace',
+    'environment' => null,
+    'environmentDescription' => null,
+    'storyKicker' => null,
+    'storyTitle' => 'Quản lý hồ sơ.',
+    'storyAccent' => 'Rõ ràng từng bước.',
+    'storyDescription' => 'Một không gian làm việc thống nhất để đội ngũ tiếp nhận, xử lý, phê duyệt và theo dõi hồ sơ chính xác hơn mỗi ngày.',
+    'flow' => null,
 ])
 
 @php
@@ -12,6 +20,18 @@
         ? asset('storage/'.$settings->login_background_image)
         : null;
     $coverStyle = $cover ? "url('{$cover}')" : 'none';
+    $isUat = str_starts_with(request()->getHost(), 'uat-');
+    $environment ??= $isUat ? 'UAT' : 'PROD';
+    $environmentDescription ??= $isUat
+        ? 'Môi trường kiểm thử đang hoạt động'
+        : 'Môi trường vận hành đang hoạt động';
+    $storyKicker ??= $workspace;
+    $flow ??= [
+        ['label' => 'Tiếp nhận'],
+        ['label' => 'Xử lý'],
+        ['label' => 'Phê duyệt'],
+        ['label' => 'Báo cáo'],
+    ];
 @endphp
 
 <div
@@ -1138,7 +1158,7 @@
             </div>
             <div class="crm-login-intro-line"><span></span></div>
             <strong>{{ $brandName }}</strong>
-            <small>CRM Workspace <span>UAT</span></small>
+            <small>{{ $workspace }} <span>{{ $environment }}</span></small>
         </div>
     </div>
 
@@ -1153,37 +1173,27 @@
                             <span>{{ $brandName }}</span>
                         @endif
                     </div>
-                    <span class="crm-login-env">UAT</span>
+                    <span class="crm-login-env">{{ $environment }}</span>
                 </header>
 
                 <div class="crm-login-story-copy">
-                    <span class="crm-login-kicker">CRM Workspace</span>
-                    <h2>Quản lý hồ sơ.<span>Rõ ràng từng bước.</span></h2>
-                    <p>Một không gian làm việc thống nhất để đội ngũ tiếp nhận, xử lý, phê duyệt và theo dõi hồ sơ chính xác hơn mỗi ngày.</p>
+                    <span class="crm-login-kicker">{{ $storyKicker }}</span>
+                    <h2>{{ $storyTitle }}<span>{{ $storyAccent }}</span></h2>
+                    <p>{{ $storyDescription }}</p>
 
-                    <div class="crm-login-flow" aria-label="Quy trình xử lý hồ sơ">
-                        <div class="crm-login-flow-item">
-                            <small>01</small>
-                            <strong>Tiếp nhận</strong>
-                        </div>
-                        <div class="crm-login-flow-item">
-                            <small>02</small>
-                            <strong>Xử lý</strong>
-                        </div>
-                        <div class="crm-login-flow-item">
-                            <small>03</small>
-                            <strong>Phê duyệt</strong>
-                        </div>
-                        <div class="crm-login-flow-item">
-                            <small>04</small>
-                            <strong>Báo cáo</strong>
-                        </div>
+                    <div class="crm-login-flow" aria-label="Quy trình {{ $workspace }}">
+                        @foreach ($flow as $index => $step)
+                            <div class="crm-login-flow-item">
+                                <small>{{ str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) }}</small>
+                                <strong>{{ $step['label'] }}</strong>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
 
                 <footer class="crm-login-story-footer">
                     <span>© {{ now()->year }} {{ $brandName }}</span>
-                    <span>Môi trường kiểm thử đang hoạt động</span>
+                    <span>{{ $environmentDescription }}</span>
                 </footer>
             </div>
         </aside>
@@ -1198,7 +1208,7 @@
                             <span>{{ $brandName }}</span>
                         @endif
                     </div>
-                    <span class="crm-login-env">UAT</span>
+                    <span class="crm-login-env">{{ $environment }}</span>
                 </div>
 
                 <header class="crm-login-welcome">

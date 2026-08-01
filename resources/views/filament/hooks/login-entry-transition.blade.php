@@ -446,6 +446,8 @@
         const storageKey = '3rdvn:login-entry';
         let started = false;
         let timers = [];
+        const isLoginPage = () => window.location.pathname.startsWith('/authen/login')
+            || document.documentElement.hasAttribute('data-crm-login-page');
 
         const clearTimers = () => {
             timers.forEach((timer) => window.clearTimeout(timer));
@@ -459,6 +461,8 @@
                 '.fi-topbar .fi-logo',
                 '.fi-sidebar-header .fi-logo',
                 '.fi-logo',
+                '.los-brand-mark img',
+                '.los-brand-mark',
             ];
 
             for (const selector of selectors) {
@@ -500,7 +504,7 @@
         };
 
         const resetLoginOrigin = () => {
-            if (started || ! window.location.pathname.startsWith('/authen/login')) return;
+            if (started || ! isLoginPage()) return;
 
             overlay.classList.add('is-cancelling');
 
@@ -513,7 +517,7 @@
         };
 
         const beginFromLogin = (event) => {
-            if (started || ! window.location.pathname.startsWith('/authen/login')) return;
+            if (started || ! isLoginPage()) return;
 
             clearTimers();
 
@@ -572,7 +576,7 @@
         };
 
         const start = () => {
-            if (started || window.location.pathname.startsWith('/authen/login')) return;
+            if (started || isLoginPage()) return;
 
             if (! validMarker()) {
                 overlay.remove();
