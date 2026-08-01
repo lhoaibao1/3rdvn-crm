@@ -36,7 +36,7 @@ class SaleProfilesTable
             ->extraAttributes(['class' => 'crm-users-table crm-leads-table crm-sale-profiles-table', 'data-crm-column-table' => 'sale-profiles'], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (SaleProfile $record): string => SaleProfileResource::getUrl('view', ['record' => $record]))
-            ->poll('3s')
+            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
@@ -49,7 +49,7 @@ class SaleProfilesTable
                 TextColumn::make('product_interest')->label('Sản phẩm')->searchable()->toggleable(),
                 TextColumn::make('saleOwner.name')->label('Nhân viên bán hàng')->placeholder('-')->sortable()->toggleable(),
                 TextColumn::make('processingOwner.name')->label('Người xử lý')->placeholder('-')->sortable()->toggleable(),
-                TextColumn::make('team.name')->label('Team')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('team.name')->label('Team')->badge()->color('info')->placeholder('-')->toggleable(),
                 TextColumn::make('sourceLead.lead_code')->label('Mã Lead')->placeholder('-')->badge()->color('gray')->toggleable(),
                 TextColumn::make('status')
                     ->label('Trạng thái')
@@ -122,6 +122,12 @@ class SaleProfilesTable
                         'completed' => 'Hoàn tất',
                         'rejected' => 'Từ chối',
                     ])
+                    ->native(false),
+                SelectFilter::make('team_id')
+                    ->label('Team')
+                    ->relationship('team', 'name')
+                    ->searchable()
+                    ->preload()
                     ->native(false),
                 SelectFilter::make('processing_owner_id')
                     ->label('Người xử lý')

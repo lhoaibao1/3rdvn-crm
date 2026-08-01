@@ -59,7 +59,7 @@ class UsersTable
                     ->color('gray')
                     ->toggleable(),
                 TextColumn::make('sales_channel')->label('Kênh')->badge()->color('success')->toggleable(),
-                TextColumn::make('team.name')->label('Team')->badge()->color('info')->toggleable(),
+                TextColumn::make('team_display')->label('Team')->state(fn (User $record): ?string => $record->team?->name ?: $record->managedTeam?->name)->badge()->color('info')->placeholder('-')->toggleable(),
                 TextColumn::make('teamLeader.name')->label('Team Leader')->toggleable(),
                 TextColumn::make('courierManager.name')->label('Courier Manager')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('am.name')->label('AM')->toggleable(isToggledHiddenByDefault: true),

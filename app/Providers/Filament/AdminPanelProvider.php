@@ -58,7 +58,7 @@ class AdminPanelProvider extends PanelProvider
                 condition: fn () => (bool) UiSetting::current()->show_notifications,
                 position: DatabaseNotificationsPosition::Topbar,
             )
-            ->databaseNotificationsPolling('5s')
+            ->databaseNotificationsPolling(null)
 
             ->userMenuItems([
                 'profile' => fn (Action $action): Action => $action->hidden(),
@@ -88,6 +88,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_AFTER, fn () => $this->chatLauncher())
             ->renderHook(PanelsRenderHook::TOPBAR_END, fn () => $this->topbarUserMeta())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->chatAssets())
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.form-drafts'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->pwaServiceWorkerScript())
             ->colors([
                 'primary' => Color::Blue,
@@ -186,6 +187,10 @@ class AdminPanelProvider extends PanelProvider
         --crm-sidebar: {$sidebar};
     }
 
+    .crm-application-summary .fi-in-entry-label {
+        font-weight: 700;
+    }
+
     html.fi, .fi-body {
         font-family: {$font};
     }
@@ -248,13 +253,13 @@ class AdminPanelProvider extends PanelProvider
         margin: auto !important;
         display: flex !important;
         flex-direction: column !important;
-        overflow: visible !important;
+        overflow: hidden !important;
     }
 
     .fi-modal-window.crm-lead-process-modal {
-        width: min(680px, calc(100vw - 32px)) !important;
-        max-width: min(680px, calc(100vw - 32px)) !important;
-        height: auto !important;
+        width: min(720px, calc(100vw - 32px)) !important;
+        max-width: min(720px, calc(100vw - 32px)) !important;
+        height: min(640px, calc(100dvh - 32px)) !important;
         max-height: calc(100dvh - 32px) !important;
     }
 
@@ -272,9 +277,69 @@ class AdminPanelProvider extends PanelProvider
         overflow: auto !important;
         padding: 12px 18px !important;
         overscroll-behavior: contain !important;
+        -webkit-overflow-scrolling: touch !important;
         scrollbar-gutter: stable both-edges !important;
+        touch-action: pan-y !important;
     }
 
+    .fi-modal:has(.crm-assignment-modal) > .fi-modal-window-ctn,
+    .fi-modal-window-ctn:has(> .crm-assignment-modal) {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 12px !important;
+        overflow: hidden !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal {
+        width: min(460px, calc(100vw - 24px)) !important;
+        max-width: min(460px, calc(100vw - 24px)) !important;
+        max-height: min(600px, calc(100dvh - 24px)) !important;
+        margin: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal > .fi-modal-header,
+    .fi-modal-window.crm-assignment-modal > .fi-modal-footer {
+        flex: 0 0 auto !important;
+        padding: 12px 16px !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal > .fi-modal-content {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        padding: 12px 16px !important;
+        overscroll-behavior: contain !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-y !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal .crm-assignee-option-list {
+        max-height: min(280px, 38dvh) !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        border: 1px solid var(--crm-border) !important;
+        border-radius: 12px !important;
+        background: var(--crm-surface) !important;
+        padding: 4px !important;
+        overscroll-behavior: contain !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal .crm-assignee-option-list .fi-fo-radio-label {
+        min-height: 44px !important;
+        padding: 10px 8px !important;
+        border-radius: 8px !important;
+        cursor: pointer !important;
+    }
+
+    .fi-modal-window.crm-assignment-modal .crm-assignee-option-list .fi-fo-radio-label:hover {
+        background: rgba(37, 99, 235, .08) !important;
+    }
     .fi-modal-window.crm-lead-modal .fi-tabs,
     .fi-modal-window.crm-lead-modal [role="tablist"] {
         max-width: 100% !important;
@@ -3023,6 +3088,7 @@ HTML;
 
         return new HtmlString(str_replace('__CRM_SOUND_CONFIG__', $soundConfig, $script));
     }
+
     protected function notificationPanelScript(): HtmlString
     {
         return new HtmlString(<<<'HTML'

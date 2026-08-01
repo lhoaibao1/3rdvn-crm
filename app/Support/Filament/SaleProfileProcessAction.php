@@ -2,11 +2,11 @@
 
 namespace App\Support\Filament;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\SaleProfile;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
@@ -23,6 +23,7 @@ class SaleProfileProcessAction
             ->modalHeading(fn (?SaleProfile $record = null): string => 'Xử lý Hồ sơ #'.(self::resolveRecord($recordResolver, $record)?->getKey() ?: ''))
             ->extraModalWindowAttributes(['class' => 'crm-lead-modal crm-lead-process-modal'])
             ->modalWidth('3xl')
+            ->modalAutofocus(false)
             ->modalSubmitActionLabel('Lưu xử lý')
             ->modalCancelActionLabel('Hủy')
             ->fillForm(fn (?SaleProfile $record = null): array => self::initialData(self::resolveRecord($recordResolver, $record)))
@@ -74,7 +75,7 @@ class SaleProfileProcessAction
         return $profile instanceof SaleProfile
             && $user instanceof User
             && ! $profile->trashed()
-            && ($user->hasRole('Admin') || (int) $profile->processing_owner_id === (int) $user->getKey());
+            && ($user->hasAnyRole(['Admin', 'Sales Admin']) || (int) $profile->processing_owner_id === (int) $user->getKey());
     }
 
     private static function initialData(?SaleProfile $profile): array

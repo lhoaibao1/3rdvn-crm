@@ -2,14 +2,15 @@
 
 namespace App\Filament\Resources\ProjectReports\Schemas;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\ProjectReport;
 use App\Models\User;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Reports\ProjectReportAccess;
 use App\Support\Reports\ProjectReportProductCatalog;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -35,7 +36,7 @@ class ProjectReportForm
                     Select::make('created_by_id')
                         ->label('Người tạo')
                         ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->searchable()
                         ->preload()
                         ->live()
@@ -55,10 +56,10 @@ class ProjectReportForm
                     Select::make('status')
                         ->label('Trạng thái')
                         ->options(ProjectReport::statusOptions())
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->native(false),
-                    DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(),
-                    DateTimePicker::make('updated_at')->label('Ngày cập nhật')->seconds(false)->required(),
+                    DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
+                    DateTimePicker::make('updated_at')->label('Ngày cập nhật')->seconds(false)->required(AdminWorkflowOverride::required()),
                 ]),
             Section::make('Thông tin báo cáo')
                 ->columnSpanFull()
@@ -73,7 +74,7 @@ class ProjectReportForm
                                     ? ProjectReportAccess::projectOptions($user)
                                     : ProjectReportAccess::creatableProjectOptions($user);
                             })
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->searchable()
                             ->preload()
                             ->live()
@@ -90,20 +91,20 @@ class ProjectReportForm
                         TextInput::make('sales_code')
                             ->label('Mã bán hàng')
                             ->readOnly()
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->maxLength(120),
                         TextInput::make('customer_name')
                             ->label('Họ tên khách hàng')
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->maxLength(255),
                         TextInput::make('identity_number')
                             ->label('CCCD/CMND')
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->maxLength(30),
                         TextInput::make('phone')
                             ->label('Số điện thoại')
                             ->tel()
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->maxLength(30),
                         Select::make('product_code')
                             ->label('Sản phẩm/Scheme')
@@ -119,7 +120,7 @@ class ProjectReportForm
                                 $value,
                             ) ?? $value)
                             ->disabled(fn (Get $get): bool => blank($get('sales_project_id')))
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->searchable()
                             ->live()
                             ->native(false),
@@ -128,12 +129,12 @@ class ProjectReportForm
                             ->mask(RawJs::make('$money($input, ",", ".", 0)'))
                             ->stripCharacters('.')
                             ->suffix('VNĐ')
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->rules(['integer', 'min:1']),
                         Select::make('province_code')
                             ->label('Tỉnh/Thành phố')
                             ->options(fn (): array => VietnamAddressCatalog::provinceOptions())
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->searchable()
                             ->live()
                             ->afterStateUpdated(function (Set $set, ?string $state): void {
@@ -146,7 +147,7 @@ class ProjectReportForm
                             ->label('Quận/Huyện')
                             ->options(fn (Get $get): array => VietnamAddressCatalog::districtOptions($get('province_code')))
                             ->disabled(fn (Get $get): bool => blank($get('province_code')))
-                            ->required()
+                            ->required(AdminWorkflowOverride::required())
                             ->searchable()
                             ->live()
                             ->afterStateUpdated(fn (Get $get, Set $set, ?string $state): mixed => $set(

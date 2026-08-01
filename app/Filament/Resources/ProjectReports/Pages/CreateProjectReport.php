@@ -6,6 +6,7 @@ use App\Filament\Resources\ProjectReports\ProjectReportResource;
 use App\Models\ProjectReport;
 use App\Support\Reports\ProjectReportAccess;
 use App\Support\Reports\ProjectReportProductCatalog;
+use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +40,7 @@ class CreateProjectReport extends CreateRecord
     {
         $user = auth()->user();
         $projectId = $data['sales_project_id'] ?? null;
+        $salesLine = SalesLineSnapshot::hierarchyFromUser($user);
 
         if (! ProjectReportAccess::canUseProject($user, $projectId)) {
             throw ValidationException::withMessages([
@@ -78,6 +80,7 @@ class CreateProjectReport extends CreateRecord
         return DB::transaction(fn (): ProjectReport => ProjectReport::query()->create([
             'sales_project_id' => $project->getKey(),
             'created_by_id' => $user->getKey(),
+            ...$salesLine,
             'customer_name' => trim((string) $data['customer_name']),
             'province_code' => (string) $data['province_code'],
             'province_name' => $provinceName,

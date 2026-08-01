@@ -20,7 +20,7 @@ class RecordAssignment
             return false;
         }
 
-        if ($actor->hasRole('Admin')) {
+        if ($actor->hasAnyRole(['Admin', 'Sales Admin'])) {
             return $record instanceof Lead || $record instanceof Application || $record instanceof SaleProfile;
         }
 
@@ -110,7 +110,7 @@ class RecordAssignment
             if ($record->convertedSaleProfile instanceof SaleProfile) {
                 $record->convertedSaleProfile->forceFill([
                     'processing_owner_id' => $assignee->getKey(),
-                    'team_id' => $assignee->team_id,
+                    'team_id' => SalesLineSnapshot::hierarchyFromUser($assignee)['team_id'],
                 ])->save();
             }
 
@@ -118,14 +118,6 @@ class RecordAssignment
         }
 
         if ($record instanceof Application) {
-            $record->loadMissing('salesProject:id,slug');
-
-            if (in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true)) {
-                $record->forceFill(['assigned_sale_id' => $assignee->getKey()])->save();
-
-                return;
-            }
-
             $record->forceFill(self::leadLikeAssignmentAttributes($assignee))->save();
 
             return;
@@ -134,7 +126,7 @@ class RecordAssignment
         if ($record instanceof SaleProfile) {
             $record->forceFill([
                 'processing_owner_id' => $assignee->getKey(),
-                'team_id' => $assignee->team_id,
+                'team_id' => SalesLineSnapshot::hierarchyFromUser($assignee)['team_id'],
             ])->save();
         }
     }
@@ -205,12 +197,12 @@ class RecordAssignment
             ->orderBy('name')
             ->get()
             ->filter(function (User $user) use ($actor, $slug): bool {
-                if ($actor?->hasRole('Admin')) {
+                if ($actor?->hasAnyRole(['Admin', 'Sales Admin'])) {
                     return true;
                 }
 
                 if (blank($slug)) {
-                    return ! $user->hasRole('Admin');
+                    return ! $user->hasAnyRole(['Admin', 'Sales Admin']);
                 }
 
                 return ProcessingAssignmentConfig::canReceiveProject($user, $slug);

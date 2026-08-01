@@ -21,6 +21,7 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
@@ -44,7 +45,7 @@ class DataCenterLeadsTable
                 'data-crm-column-table' => 'data-center',
             ], merge: true)
             ->recordUrl(fn (DataCenterLead $record): string => DataCenterLeadResource::getUrl('view', ['record' => $record]))
-            ->poll('5s')
+            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
@@ -61,6 +62,7 @@ class DataCenterLeadsTable
                     ->color(fn (?string $state): string => DataCenterStatus::color($state))
                     ->sortable(),
                 TextColumn::make('assignedUser.name')->label('Người xử lý')->placeholder('Chưa phân')->sortable(),
+                TextColumn::make('team.name')->label('Team')->badge()->color('info')->placeholder('-')->sortable()->toggleable(),
                 TextColumn::make('teamLeader.name')->label('Team Leader')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('am.name')->label('AM')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('zd.name')->label('ZD')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
@@ -107,6 +109,12 @@ class DataCenterLeadsTable
                 SelectFilter::make('assigned_user_id')
                     ->label('Người xử lý')
                     ->relationship('assignedUser', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('team_id')
+                    ->label('Team')
+                    ->relationship('team', 'name')
                     ->searchable()
                     ->preload()
                     ->native(false),
@@ -207,18 +215,29 @@ class DataCenterLeadsTable
             ->visible(fn (DataCenterLead $record): bool => DataCenterAccess::canDistribute(auth()->user())
                 && DataCenterAccess::canView(auth()->user(), $record))
             ->modalHeading(fn (DataCenterLead $record): string => 'Gán xử lý '.$record->referral_code)
-            ->modalWidth('lg')
+            ->extraModalWindowAttributes(['class' => 'crm-assignment-modal'])
+            ->modalWidth('md')
+            ->modalAutofocus(false)
             ->modalSubmitActionLabel('Lưu phân công')
             ->modalCancelActionLabel('Hủy')
             ->schema(fn (DataCenterLead $record): array => [
+                TextInput::make('assignee_search')
+                    ->label('Tìm nhân viên')
+                    ->placeholder('Nhập tên, UID hoặc mã nhân viên')
+                    ->prefixIcon(Heroicon::OutlinedMagnifyingGlass)
+                    ->live(debounce: 300)
+                    ->dehydrated(false),
                 Radio::make('assignee_id')
                     ->label('Chọn nhân viên xử lý')
-                    ->options(self::assignmentOptions())
+                    ->options(fn (Get $get): array => self::assignmentOptions(
+                        trim((string) $get('assignee_search')) ?: null,
+                    ))
                     ->default($record->assigned_user_id ?? 0)
                     ->columns(1)
+                    ->extraAttributes(['class' => 'crm-assignee-option-list'])
                     ->required(),
             ])
-            ->action(function (DataCenterLead $record, array $data): void {
+            ->action(function (DataCenterLead $record, array $data, mixed $livewire): void {
                 $assignee = self::resolveAssignee($data);
 
                 if ($assignee instanceof User) {
@@ -227,6 +246,10 @@ class DataCenterLeadsTable
                 } else {
                     DataCenterLeadService::unassign($record, auth()->user());
                     $message = 'Đã hủy phân công Lead';
+                }
+
+                if (method_exists($livewire, 'flushCachedTableRecords')) {
+                    $livewire->flushCachedTableRecords();
                 }
 
                 Notification::make()->title($message)->success()->send();
@@ -241,19 +264,34 @@ class DataCenterLeadsTable
             ->color('primary')
             ->visible(fn (): bool => DataCenterAccess::canDistribute(auth()->user()))
             ->modalHeading('Gán các Lead Referral đã chọn')
-            ->modalWidth('lg')
+            ->extraModalWindowAttributes(['class' => 'crm-assignment-modal'])
+            ->modalWidth('md')
+            ->modalAutofocus(false)
             ->modalSubmitActionLabel('Lưu phân công')
             ->modalCancelActionLabel('Hủy')
             ->schema([
+                TextInput::make('assignee_search')
+                    ->label('Tìm nhân viên')
+                    ->placeholder('Nhập tên, UID hoặc mã nhân viên')
+                    ->prefixIcon(Heroicon::OutlinedMagnifyingGlass)
+                    ->live(debounce: 300)
+                    ->dehydrated(false),
                 Radio::make('assignee_id')
                     ->label('Chọn nhân viên xử lý')
-                    ->options(self::assignmentOptions())
+                    ->options(fn (Get $get): array => self::assignmentOptions(
+                        trim((string) $get('assignee_search')) ?: null,
+                    ))
                     ->columns(1)
+                    ->extraAttributes(['class' => 'crm-assignee-option-list'])
                     ->required(),
             ])
-            ->action(function (Collection $records, array $data): void {
+            ->action(function (Collection $records, array $data, mixed $livewire): void {
                 $assignee = self::resolveAssignee($data);
                 $count = DataCenterLeadService::assignMany($records, auth()->user(), $assignee);
+
+                if (method_exists($livewire, 'flushCachedTableRecords')) {
+                    $livewire->flushCachedTableRecords();
+                }
 
                 Notification::make()
                     ->title($assignee instanceof User
@@ -265,9 +303,9 @@ class DataCenterLeadsTable
             ->deselectRecordsAfterCompletion();
     }
 
-    private static function assignmentOptions(): array
+    private static function assignmentOptions(?string $search = null): array
     {
-        return [0 => 'None - Không phân công'] + DataCenterAccess::assignableUsers(auth()->user())
+        return [0 => 'Không phân công'] + DataCenterAccess::assignableUsers(auth()->user(), $search)
             ->get()
             ->mapWithKeys(fn (User $user): array => [$user->getKey() => DataCenterAccess::userLabel($user)])
             ->all();

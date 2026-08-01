@@ -76,7 +76,7 @@ class ProcessingAssignmentConfig extends Model
 
     public static function canReceiveProject(User $user, ?string $projectSlug): bool
     {
-        if (blank($projectSlug) || $user->hasRole('Admin')) {
+        if (blank($projectSlug) || $user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return false;
         }
 

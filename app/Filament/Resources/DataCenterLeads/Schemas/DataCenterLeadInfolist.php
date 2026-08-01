@@ -63,9 +63,10 @@ class DataCenterLeadInfolist
                                 ]),
                             Section::make('Line quản lý')
                                 ->columnSpanFull()
-                                ->columns(4)
+                                ->columns(5)
                                 ->schema([
                                     TextEntry::make('createdBy.name')->label('Người nhập')->placeholder('-'),
+                                    TextEntry::make('team.name')->label('Team')->badge()->color('info')->placeholder('-'),
                                     TextEntry::make('teamLeader.name')->label('Team Leader')->placeholder('-'),
                                     TextEntry::make('am.name')->label('AM')->placeholder('-'),
                                     TextEntry::make('zd.name')->label('ZD')->placeholder('-'),

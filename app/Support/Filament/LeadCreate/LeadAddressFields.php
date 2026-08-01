@@ -2,9 +2,10 @@
 
 namespace App\Support\Filament\LeadCreate;
 
+use App\Forms\Components\SearchableSelect as Select;
+use App\Support\AdminWorkflowOverride;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\Hidden;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -22,7 +23,7 @@ class LeadAddressFields
                 ->options(fn (): array => VietnamAddressCatalog::provinceOptions())
                 ->placeholder('Chọn tỉnh/thành phố')
                 ->live()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->afterStateUpdated(function (Set $set, ?string $state): void {
                     $set('province_name', VietnamAddressCatalog::provinceName($state));
                     $set('district_code', null);
@@ -39,7 +40,7 @@ class LeadAddressFields
                 ->placeholder('Chọn quận/huyện')
                 ->disabled(fn (Get $get): bool => blank($get('province_code')))
                 ->live()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
                     $set('district_name', VietnamAddressCatalog::districtName($get('province_code'), $state));
                     $set('ward_code', null);
@@ -54,7 +55,7 @@ class LeadAddressFields
                 ->placeholder('Chọn phường/xã')
                 ->disabled(fn (Get $get): bool => blank($get('district_code')))
                 ->live()
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->afterStateUpdated(fn (Get $get, Set $set, ?string $state): mixed => $set('ward_name', VietnamAddressCatalog::wardName($get('district_code'), $state)))
                 ->searchable()
                 ->preload()

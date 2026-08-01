@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Applications\ProjectWorkflowConfiguration;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -19,6 +20,7 @@ class SalesProject extends Model
         'description',
         'lead_form_schema',
         'module_form_schema',
+        'workflow_schema',
         'sort_order',
         'is_active',
     ];
@@ -27,6 +29,7 @@ class SalesProject extends Model
         'crm_module_id' => 'integer',
         'lead_form_schema' => 'array',
         'module_form_schema' => 'array',
+        'workflow_schema' => 'array',
         'sort_order' => 'integer',
         'is_active' => 'boolean',
     ];
@@ -40,9 +43,12 @@ class SalesProject extends Model
 
             $project->lead_form_schema = self::normalizeFieldSchema($project->lead_form_schema);
             $project->module_form_schema = self::normalizeFieldSchema($project->module_form_schema);
+
+            if (ProjectWorkflowConfiguration::supports($project->slug)) {
+                $project->workflow_schema = ProjectWorkflowConfiguration::normalizeForStorage($project);
+            }
         });
     }
-
 
     public static function normalizeFieldSchema(mixed $schema): array
     {

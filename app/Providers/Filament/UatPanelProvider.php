@@ -9,22 +9,22 @@ use App\Filament\Resources\ApiMappings\ApiMappingResource;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\CandidateApplications\CandidateApplicationResource;
 use App\Filament\Resources\CbpApplications\CbpApplicationResource;
+use App\Filament\Resources\CrmLookups\CrmLookupResource;
+use App\Filament\Resources\CrmModules\CrmModuleResource;
+use App\Filament\Resources\CrmTeams\CrmTeamResource;
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
 use App\Filament\Resources\HotLeads\HotLeadResource;
 use App\Filament\Resources\JobVacancies\JobVacancyResource;
 use App\Filament\Resources\Leads\LeadResource;
 use App\Filament\Resources\LotteFinanceApplications\LotteFinanceApplicationResource;
-use App\Filament\Resources\ProjectReports\ProjectReportResource;
-use App\Filament\Resources\SaleProfiles\SaleProfileResource;
-use App\Filament\Resources\Users\UserResource;
-use App\Filament\Resources\CrmLookups\CrmLookupResource;
-use App\Filament\Resources\CrmModules\CrmModuleResource;
-use App\Filament\Resources\CrmTeams\CrmTeamResource;
 use App\Filament\Resources\ProcessingAssignmentConfigs\ProcessingAssignmentConfigResource;
+use App\Filament\Resources\ProjectReports\ProjectReportResource;
 use App\Filament\Resources\Roles\RoleResource;
+use App\Filament\Resources\SaleProfiles\SaleProfileResource;
 use App\Filament\Resources\SalesChannels\SalesChannelResource;
 use App\Filament\Resources\SalesProjects\SalesProjectResource;
 use App\Filament\Resources\UiSettings\UiSettingResource;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\UiSetting;
 use Filament\Actions\Action;
 use Filament\Enums\DatabaseNotificationsPosition;
@@ -67,7 +67,7 @@ class UatPanelProvider extends AdminPanelProvider
                 condition: fn () => (bool) UiSetting::current()->show_notifications,
                 position: DatabaseNotificationsPosition::Topbar,
             )
-            ->databaseNotificationsPolling('5s')
+            ->databaseNotificationsPolling(null)
             ->userMenuItems([
                 'profile' => fn (Action $action): Action => $action->hidden(),
                 Action::make('change-password')
@@ -96,6 +96,7 @@ class UatPanelProvider extends AdminPanelProvider
             ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_AFTER, fn () => $this->chatLauncher())
             ->renderHook(PanelsRenderHook::TOPBAR_END, fn () => $this->topbarUserMeta())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->chatAssets())
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.form-drafts'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->pwaServiceWorkerScript())
             ->colors([
                 'primary' => Color::Blue,

@@ -39,6 +39,7 @@ class LeadsTable
             ->extraAttributes(['class' => 'crm-users-table crm-leads-table', 'data-crm-column-table' => 'leads'], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Lead $record): string => LeadResource::getUrl('view', ['record' => $record]))
+            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
@@ -52,7 +53,7 @@ class LeadsTable
                 TextColumn::make('source')->label('Nguồn')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('assignedSale.name')->label('Người xử lý')->placeholder('-')->sortable()->toggleable(),
                 TextColumn::make('createdBy.name')->label('Người tạo')->placeholder('-')->sortable()->toggleable(),
-                TextColumn::make('team.name')->label('Team')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('team.name')->label('Team')->badge()->color('info')->placeholder('-')->toggleable(),
                 TextColumn::make('teamLeader.name')->label('Team Leader')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('am.name')->label('AM')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('zd.name')->label('ZD')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
@@ -111,6 +112,12 @@ class LeadsTable
                         'Từ chối' => 'Từ chối',
                         'Khách hàng bị trùng' => 'Khách hàng bị trùng',
                     ])
+                    ->native(false),
+                SelectFilter::make('team_id')
+                    ->label('Team')
+                    ->relationship('team', 'name')
+                    ->searchable()
+                    ->preload()
                     ->native(false),
                 SelectFilter::make('assigned_sale_id')
                     ->label('Sale')

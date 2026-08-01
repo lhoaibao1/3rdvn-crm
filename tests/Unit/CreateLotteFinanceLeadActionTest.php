@@ -42,16 +42,19 @@ class CreateLotteFinanceLeadActionTest extends TestCase
 
     public function test_it_returns_bank_defaults_from_user_profile(): void
     {
-        $user = new class {
+        $user = new class
+        {
             public string $bank_name = 'Vietcombank';
+
             public string $bank_account_number = '0123456789';
+
             public string $bank_account_name = 'NGUYEN VAN A';
         };
 
         $defaults = CreateLotteFinanceLeadAction::defaultBankFields($user);
 
         $this->assertSame('bank', $defaults['disbursement_method']);
-        $this->assertSame('Vietcombank', $defaults['bank_name']);
+        $this->assertSame('VCB', $defaults['bank_name']);
         $this->assertSame('0123456789', $defaults['bank_account_number']);
         $this->assertSame('NGUYEN VAN A', $defaults['bank_account_name']);
     }

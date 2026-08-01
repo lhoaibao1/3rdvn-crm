@@ -12,12 +12,50 @@ class VietnamBankCatalog
      */
     public static function options(): array
     {
-        return collect(self::banks())
+        return collect(self::resolvableBanks())
             ->mapWithKeys(fn (array $bank): array => [
-                $bank['code'] => trim(($bank['short_name'] ?? $bank['code']).' - '.($bank['name'] ?? $bank['code'])),
+                $bank['code'] => self::bankLabel($bank),
             ])
             ->sort()
             ->all();
+    }
+
+    public static function codeFor(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $bank = collect(self::resolvableBanks())->first(fn (array $bank): bool => collect([
+            $bank['code'] ?? null,
+            $bank['short_name'] ?? null,
+            $bank['name'] ?? null,
+            self::bankLabel($bank),
+        ])->contains(fn (mixed $candidate): bool => filled($candidate)
+            && mb_strtolower(trim((string) $candidate)) === mb_strtolower($value)));
+
+        return $bank['code'] ?? $value;
+    }
+
+    public static function labelFor(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $bank = collect(self::resolvableBanks())->first(fn (array $bank): bool => collect([
+            $bank['code'] ?? null,
+            $bank['short_name'] ?? null,
+            $bank['name'] ?? null,
+            self::bankLabel($bank),
+        ])->contains(fn (mixed $candidate): bool => filled($candidate)
+            && mb_strtolower(trim((string) $candidate)) === mb_strtolower($value)));
+
+        return $bank ? self::bankLabel($bank) : $value;
     }
 
     public static function nameFor(?string $code): ?string
@@ -26,7 +64,7 @@ class VietnamBankCatalog
             return null;
         }
 
-        $bank = collect(self::banks())->firstWhere('code', $code);
+        $bank = collect(self::resolvableBanks())->firstWhere('code', $code);
 
         return $bank['name'] ?? null;
     }
@@ -63,6 +101,20 @@ class VietnamBankCatalog
         });
     }
 
+    private static function resolvableBanks(): array
+    {
+        try {
+            return self::banks();
+        } catch (\Throwable) {
+            return self::fallbackBanks();
+        }
+    }
+
+    private static function bankLabel(array $bank): string
+    {
+        return trim(($bank['short_name'] ?? $bank['code']).' - '.($bank['name'] ?? $bank['code']));
+    }
+
     /**
      * @return array<int, array{code: string, short_name: string, name: string}>
      */
@@ -73,7 +125,7 @@ class VietnamBankCatalog
             ['code' => 'TCB', 'short_name' => 'Techcombank', 'name' => 'Ngân hàng TMCP Kỹ thương Việt Nam'],
             ['code' => 'ACB', 'short_name' => 'ACB', 'name' => 'Ngân hàng TMCP Á Châu'],
             ['code' => 'BIDV', 'short_name' => 'BIDV', 'name' => 'Ngân hàng TMCP Đầu tư và Phát triển Việt Nam'],
-            ['code' => 'CTG', 'short_name' => 'VietinBank', 'name' => 'Ngân hàng TMCP Công thương Việt Nam'],
+            ['code' => 'ICB', 'short_name' => 'VietinBank', 'name' => 'Ngân hàng TMCP Công thương Việt Nam'],
             ['code' => 'MB', 'short_name' => 'MBBank', 'name' => 'Ngân hàng TMCP Quân đội'],
             ['code' => 'VPB', 'short_name' => 'VPBank', 'name' => 'Ngân hàng TMCP Việt Nam Thịnh Vượng'],
             ['code' => 'TPB', 'short_name' => 'TPBank', 'name' => 'Ngân hàng TMCP Tiên Phong'],

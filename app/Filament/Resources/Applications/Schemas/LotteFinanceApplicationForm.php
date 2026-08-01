@@ -5,10 +5,12 @@ namespace App\Filament\Resources\Applications\Schemas;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Models\User;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Assignments\RecordAssignment;
 use App\Support\Filament\LeadCreate\CreateLotteFinanceLeadAction;
 use App\Support\LotteFinanceDocuments;
+use App\Support\SalesLineSnapshot;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -48,8 +50,8 @@ class LotteFinanceApplicationForm
                     Select::make('created_by_id')
                         ->label('Người tạo')
                         ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
-                        ->searchable()->preload()->required(),
-                    DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(),
+                        ->searchable()->preload()->required(AdminWorkflowOverride::required()),
+                    DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
                     TextInput::make('status')
                         ->label('Trạng thái')
                         ->formatStateUsing(fn (?string $state): string => LotteFinanceWorkflow::statusLabel($state))
@@ -82,7 +84,7 @@ class LotteFinanceApplicationForm
                 ]),
             ...array_map(
                 fn ($component) => $component->visible($visibleOnEdit),
-                AclMixFields::components($locked),
+                LotteFinanceFields::components($locked),
             ),
             ...array_map(
                 fn ($component) => $component
@@ -111,8 +113,9 @@ class LotteFinanceApplicationForm
         }
 
         if ($canEditData) {
-            $data['payload'] = AclMixFields::normalize($data['payload']);
+            $data['payload'] = LotteFinanceFields::synchronizeLegacyFields($data['payload']);
         } else {
+            $data['payload']['fields'] = $existingPayload['fields'] ?? [];
             $data['payload']['module_fields'] = $existingPayload['module_fields'] ?? [];
             $data['payload']['documents'] = $existingPayload['documents'] ?? [];
         }
@@ -121,17 +124,32 @@ class LotteFinanceApplicationForm
             foreach (['application_code', 'assigned_sale_id', 'created_by_id', 'created_at', 'status'] as $field) {
                 $data[$field] = $record->{$field};
             }
+        } else {
+            foreach (['application_code', 'created_by_id', 'created_at', 'status'] as $field) {
+                if (blank($data[$field] ?? null) && filled($record->{$field})) {
+                    $data[$field] = $record->{$field};
+                }
+            }
+
         }
 
-        $moduleFields = data_get($data, 'payload.module_fields', []);
+        if (auth()->user()?->hasRole('Admin') && filled($data['created_by_id'] ?? null)) {
+            $data = array_replace($data, SalesLineSnapshot::hierarchyForUserId($data['created_by_id']));
+        }
+
         $leadFields = data_get($data, 'payload.fields', []);
-        $data['applicant_name'] = $moduleFields['customer_name'] ?? $leadFields['customer_name'] ?? $record->applicant_name;
-        $data['phone'] = $moduleFields['phone'] ?? $leadFields['phone'] ?? $record->phone;
-        $data['identity_number'] = $moduleFields['cccd'] ?? $moduleFields['cmnd'] ?? $leadFields['identity_number'] ?? $record->identity_number;
+        $data['applicant_name'] = $leadFields['customer_name'] ?? $record->applicant_name;
+        $data['phone'] = $leadFields['phone'] ?? $record->phone;
+        $data['identity_number'] = $leadFields['identity_number'] ?? $record->identity_number;
         $data['sales_project_id'] = $record->sales_project_id;
         $data['lead_id'] = null;
 
         return $data;
+    }
+
+    public static function prepareDataForFill(array $data): array
+    {
+        return LotteFinanceFields::prepareDataForFill($data);
     }
 
     private static function readOnly(string $name, string $label): TextInput

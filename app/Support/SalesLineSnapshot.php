@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CrmTeam;
 use App\Models\User;
 
 class SalesLineSnapshot
@@ -22,11 +23,28 @@ class SalesLineSnapshot
         return [
             'assigned_sale_id' => $user->getKey(),
             'created_by_id' => $user->getKey(),
-            'team_id' => $user->team_id,
+            'team_id' => self::teamId($user),
             'team_leader_id' => self::teamLeaderId($user),
             'am_id' => self::amId($user),
             'zd_id' => self::zdId($user),
         ];
+    }
+
+    public static function hierarchyFromUser(?User $user): array
+    {
+        $snapshot = self::fromUser($user);
+
+        return [
+            'team_id' => $snapshot['team_id'],
+            'team_leader_id' => $snapshot['team_leader_id'],
+            'am_id' => $snapshot['am_id'],
+            'zd_id' => $snapshot['zd_id'],
+        ];
+    }
+
+    public static function hierarchyForUserId(mixed $userId): array
+    {
+        return self::hierarchyFromUser(filled($userId) ? User::query()->find($userId) : null);
     }
 
     public static function fromLeadLike(object $record): array
@@ -39,6 +57,15 @@ class SalesLineSnapshot
             'am_id' => $record->am_id ?? null,
             'zd_id' => $record->zd_id ?? null,
         ];
+    }
+
+    private static function teamId(User $user): ?int
+    {
+        if (filled($user->team_id)) {
+            return (int) $user->team_id;
+        }
+
+        return CrmTeam::query()->where("manager_id", $user->getKey())->value("id");
     }
 
     private static function teamLeaderId(User $user): ?int

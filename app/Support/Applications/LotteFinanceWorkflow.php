@@ -5,6 +5,7 @@ namespace App\Support\Applications;
 use App\Models\Application;
 use App\Models\SalesProject;
 use App\Models\User;
+use App\Support\AdminWorkflowOverride;
 use App\Support\Assignments\RecordAssignment;
 use App\Support\LotteFinanceDocuments;
 use App\Support\Permissions\RecordVisibility;
@@ -25,13 +26,18 @@ class LotteFinanceWorkflow
 
     public const UW_APPROVAL = 'lotte_uw_approval';
 
+    public const UW_REJECTED = 'lotte_uw_rejected';
+
     public const UW_FIELD = 'lotte_uw_field';
 
+    /** Legacy status kept only so existing OP records can continue to eSign. */
     public const OP = 'lotte_op';
 
     public const ESIGN = 'lotte_esign';
 
     public const POST_APPROVAL = 'lotte_post_approval';
+
+    public const DISBURSED = 'lotte_disbursed';
 
     public const REJECTED = 'lotte_rejected';
 
@@ -39,20 +45,25 @@ class LotteFinanceWorkflow
     {
         return [
             self::PRE_CHECK => 'Pre-Check',
-            self::SALE_COMPLETION => 'Chờ Sale hoàn thiện thông tin',
+            self::SALE_COMPLETION => 'Chờ Sale bổ sung thông tin',
             self::RETURNED_TO_SALE => 'Trả về Sale',
             self::UW_CALL => 'UW Call',
             self::UW_APPROVAL => 'UW Approval',
+            self::UW_REJECTED => 'UW Rej',
             self::UW_FIELD => 'UW Field',
-            self::OP => 'OP',
             self::ESIGN => 'eSign',
             self::POST_APPROVAL => 'Post Approval',
+            self::DISBURSED => 'Đã giải ngân',
             self::REJECTED => 'Không Pass',
         ];
     }
 
     public static function statusLabel(?string $status): string
     {
+        if ($status === self::OP) {
+            return 'OP';
+        }
+
         return self::statusOptions()[$status] ?? ($status ?: '-');
     }
 
@@ -62,11 +73,28 @@ class LotteFinanceWorkflow
             self::PRE_CHECK => 'warning',
             self::SALE_COMPLETION => 'info',
             self::RETURNED_TO_SALE => 'warning',
-            self::UW_CALL, self::UW_APPROVAL, self::UW_FIELD, self::OP, self::ESIGN => 'primary',
-            self::POST_APPROVAL => 'success',
-            self::REJECTED => 'danger',
+            self::UW_CALL, self::UW_APPROVAL, self::UW_FIELD, self::OP, self::ESIGN, self::POST_APPROVAL => 'primary',
+            self::DISBURSED => 'success',
+            self::UW_REJECTED, self::REJECTED => 'danger',
             default => 'gray',
         };
+    }
+
+    /** @return array<string, string> */
+    public static function nextStatusOptions(Application $application): array
+    {
+        if (! $application->relationLoaded('salesProject') && $application->exists) {
+            $application->loadMissing('salesProject');
+        }
+
+        $project = $application->relationLoaded('salesProject')
+            ? $application->getRelation('salesProject')
+            : null;
+        $project = $project instanceof SalesProject
+            ? $project
+            : new SalesProject(['slug' => 'lotte-finance']);
+
+        return ProjectWorkflowConfiguration::nextStatusOptions($project, (string) $application->status);
     }
 
     public static function canCreate(?User $user): bool
@@ -74,7 +102,7 @@ class LotteFinanceWorkflow
         $project = self::project();
 
         return $user instanceof User
-            && $user->can('application.create')
+            && ($user->hasAnyRole(['Admin', 'Sales Admin']) || $user->can('application.create'))
             && $project instanceof SalesProject
             && SalesProjectAccess::canAccessProject($user, $project);
     }
@@ -163,8 +191,8 @@ class LotteFinanceWorkflow
         if (! $user instanceof User || ! $application instanceof Application || ! self::isLotteFinance($application)) {
             return false;
         }
-        if ($user->hasRole('Admin')) {
-            return ! in_array($application->status, [self::POST_APPROVAL, self::REJECTED], true);
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
+            return true;
         }
         if (! $user->can('application.update') || ! self::canView($user, $application) || ! in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE], true)) {
             return false;
@@ -181,17 +209,24 @@ class LotteFinanceWorkflow
         if (! $user instanceof User || ! $application instanceof Application || ! self::isLotteFinance($application)) {
             return false;
         }
+        if (in_array($application->status, [
+            self::SALE_COMPLETION,
+            self::RETURNED_TO_SALE,
+            self::UW_REJECTED,
+            self::UW_FIELD,
+            self::DISBURSED,
+            self::REJECTED,
+        ], true)) {
+            return false;
+        }
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
+            return true;
+        }
         if (! $user->can('application.update') || ! self::canView($user, $application)) {
             return false;
         }
         if ($application->status === self::PRE_CHECK) {
-            return $user->hasRole('Admin');
-        }
-        if (in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE, self::POST_APPROVAL, self::REJECTED], true)) {
             return false;
-        }
-        if ($user->hasRole('Admin')) {
-            return true;
         }
 
         $application->loadMissing('assignedSale');
@@ -214,12 +249,12 @@ class LotteFinanceWorkflow
             $review = is_array($payload['review'] ?? null) ? $payload['review'] : [];
             $workflow = is_array($payload['workflow'] ?? null) ? $payload['workflow'] : [];
 
-            if ($currentStatus === self::PRE_CHECK) {
+            if ($currentStatus === self::PRE_CHECK && ! array_key_exists('next_status', $data)) {
                 $passed = ($data['decision'] ?? null) === 'pass';
                 $nextStatus = $passed ? self::SALE_COMPLETION : self::REJECTED;
                 $applicationCode = trim((string) ($data['application_code'] ?? ''));
-                self::validateApplicationCode($application, $applicationCode);
-                if ($passed) {
+                self::validateApplicationCode($application, $applicationCode, $actor);
+                if ($passed && ! AdminWorkflowOverride::active($actor)) {
                     foreach (['lf_grade', 'ml_grade', 'maximum_limit', 'estimated_interest_rate'] as $field) {
                         if (blank($data[$field] ?? null)) {
                             throw ValidationException::withMessages([$field => 'Vui lòng nhập đầy đủ kết quả Pre-Check.']);
@@ -234,18 +269,41 @@ class LotteFinanceWorkflow
                     'b11t_check' => $checkLabel,
                     'aml_check' => $checkLabel,
                     'pcb_check' => $checkLabel,
-                    'lf_grade' => $passed ? $data['lf_grade'] : 'Không Pass',
-                    'ml_grade' => $passed ? $data['ml_grade'] : 'Không Pass',
+                    'lf_grade' => $passed ? ($data['lf_grade'] ?? null) : 'Không Pass',
+                    'ml_grade' => $passed ? ($data['ml_grade'] ?? null) : 'Không Pass',
                     'maximum_limit' => $passed ? self::digits($data['maximum_limit'] ?? null) : null,
-                    'estimated_interest_rate' => $passed ? $data['estimated_interest_rate'] : null,
+                    'estimated_interest_rate' => $passed ? ($data['estimated_interest_rate'] ?? null) : null,
                     'review_note' => $data['processing_note'] ?? null,
                     'reviewed_by_id' => $actor->getKey(),
                     'reviewed_at' => now()->toDateTimeString(),
                 ]);
-                $application->application_code = $applicationCode;
+                $application->application_code = $applicationCode !== '' ? $applicationCode : null;
             } else {
                 $nextStatus = (string) ($data['next_status'] ?? '');
-                self::validateTransition($currentStatus, $nextStatus);
+                self::validateTransition($application, $nextStatus, $actor);
+
+                if (array_key_exists('approved_amount', $data) || $nextStatus === self::UW_APPROVAL) {
+                    $approvedAmount = self::digits($data['approved_amount'] ?? null);
+
+                    if ($nextStatus === self::UW_APPROVAL && blank($approvedAmount) && ! AdminWorkflowOverride::active($actor)) {
+                        throw ValidationException::withMessages([
+                            'approved_amount' => 'Vui lòng nhập số tiền được phê duyệt.',
+                        ]);
+                    }
+
+                    if (filled($approvedAmount)) {
+                        $review['approved_amount'] = $approvedAmount;
+                    }
+
+                    if ($nextStatus === self::UW_APPROVAL) {
+                        $approvalNote = $data['processing_note'] ?? null;
+                        $review['approval_note'] = filled($approvalNote)
+                            ? $approvalNote
+                            : ($review['approval_note'] ?? null);
+                        $review['approved_by_id'] = $actor->getKey();
+                        $review['approved_at'] = now()->toDateTimeString();
+                    }
+                }
             }
 
             $workflow['last_transition'] = [
@@ -320,27 +378,22 @@ class LotteFinanceWorkflow
             && RecordVisibility::canAccessUserOwnedRecord($user, $application, 'assigned_sale_id', 'assignedSale');
     }
 
-    private static function validateTransition(string $currentStatus, string $nextStatus): void
+    private static function validateTransition(Application $application, string $nextStatus, User $actor): void
     {
-        $allowed = match ($currentStatus) {
-            self::UW_CALL => [self::UW_APPROVAL, self::UW_FIELD, self::RETURNED_TO_SALE],
-            self::UW_APPROVAL => [self::UW_FIELD, self::OP, self::RETURNED_TO_SALE],
-            self::UW_FIELD => [self::UW_APPROVAL, self::OP, self::RETURNED_TO_SALE],
-            self::OP => [self::ESIGN, self::RETURNED_TO_SALE],
-            self::ESIGN => [self::POST_APPROVAL, self::RETURNED_TO_SALE],
-            default => [],
-        };
+        $allowed = array_keys(self::nextStatusOptions($application));
+
         if (! in_array($nextStatus, $allowed, true)) {
             throw ValidationException::withMessages(['next_status' => 'Bước xử lý không hợp lệ.']);
         }
     }
 
-    private static function validateApplicationCode(Application $application, string $applicationCode): void
+    private static function validateApplicationCode(Application $application, string $applicationCode, User $actor): void
     {
-        if ($applicationCode === '') {
+        if ($applicationCode === '' && ! AdminWorkflowOverride::active($actor)) {
             throw ValidationException::withMessages(['application_code' => 'Vui lòng nhập mã hồ sơ.']);
         }
-        if (Application::withTrashed()->where('application_code', $applicationCode)->whereKeyNot($application->getKey())->exists()) {
+        if ($applicationCode !== ''
+            && Application::withTrashed()->where('application_code', $applicationCode)->whereKeyNot($application->getKey())->exists()) {
             throw ValidationException::withMessages(['application_code' => 'Mã hồ sơ đã tồn tại.']);
         }
     }

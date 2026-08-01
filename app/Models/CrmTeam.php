@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CrmTeam extends Model
 {
@@ -55,6 +56,56 @@ class CrmTeam extends Model
                     'am_id' => $manager?->am_id,
                     'zd_id' => $manager?->zd_id,
                 ]);
+
+            $this->syncModuleRecords($memberIds, $manager);
         });
+    }
+
+    private function syncModuleRecords(array $memberIds, ?User $manager): void
+    {
+        $userIds = collect($memberIds)
+            ->push($manager?->getKey())
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->all();
+
+        $tables = [
+            'leads' => ['team_leader_id', 'assigned_sale_id', 'created_by_id'],
+            'applications' => ['team_leader_id', 'assigned_sale_id', 'created_by_id'],
+            'data_center_leads' => ['team_leader_id', 'assigned_user_id', 'created_by_id'],
+            'sale_profiles' => [null, 'sale_owner_id', 'processing_owner_id'],
+            'project_reports' => ['team_leader_id', 'created_by_id'],
+        ];
+
+        foreach ($tables as $table => $columns) {
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'team_id')) {
+                continue;
+            }
+
+            DB::table($table)
+                ->where(function ($query) use ($columns, $manager, $userIds): void {
+                    $hasCondition = false;
+
+                    foreach ($columns as $column) {
+                        if (! $column || ! Schema::hasColumn($query->from, $column)) {
+                            continue;
+                        }
+
+                        if ($column === 'team_leader_id' && $manager) {
+                            $query->{$hasCondition ? 'orWhere' : 'where'}($column, $manager->getKey());
+                            $hasCondition = true;
+                        } elseif ($userIds !== []) {
+                            $query->{$hasCondition ? 'orWhereIn' : 'whereIn'}($column, $userIds);
+                            $hasCondition = true;
+                        }
+                    }
+
+                    if (! $hasCondition) {
+                        $query->whereRaw('1 = 0');
+                    }
+                })
+                ->update(['team_id' => $this->getKey()]);
+        }
     }
 }

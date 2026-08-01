@@ -2,12 +2,13 @@
 
 namespace App\Support\Filament;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\SalesProject;
+use App\Support\AdminWorkflowOverride;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\Hidden;
-use App\Forms\Components\SearchableSelect as Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -66,7 +67,6 @@ class LeadFormFieldFactory
                     ->label($label)
                     ->placeholder('-');
 
-
                 if ($type === 'number') {
                     $entry->numeric();
                 }
@@ -106,7 +106,7 @@ class LeadFormFieldFactory
         $required = (bool) ($field['required'] ?? false);
         $placeholder = filled($field['placeholder'] ?? null) ? (string) $field['placeholder'] : null;
 
-        $options = self::options($field["options"] ?? null);
+        $options = self::options($field['options'] ?? null);
 
         if ($key === 'province_code') {
             $component = Select::make($statePath)
@@ -124,7 +124,7 @@ class LeadFormFieldFactory
                 })
                 ->native(false);
 
-            if ($required && ! $disabled) {
+            if ($required && ! $disabled && AdminWorkflowOverride::required()) {
                 $component->required();
             }
 
@@ -149,7 +149,7 @@ class LeadFormFieldFactory
                 })
                 ->native(false);
 
-            if ($required && ! $disabled) {
+            if ($required && ! $disabled && AdminWorkflowOverride::required()) {
                 $component->required();
             }
 
@@ -172,7 +172,7 @@ class LeadFormFieldFactory
                 })
                 ->native(false);
 
-            if ($required && ! $disabled) {
+            if ($required && ! $disabled && AdminWorkflowOverride::required()) {
                 $component->required();
             }
 
@@ -180,23 +180,23 @@ class LeadFormFieldFactory
         }
 
         $component = match ($type) {
-            "textarea" => Textarea::make($statePath)->rows(2),
-            "number" => TextInput::make($statePath)->numeric(),
-            "date" => TextInput::make($statePath)
-                ->mask("99/99/9999")
-                ->placeholder("dd/mm/yyyy")
+            'textarea' => Textarea::make($statePath)->rows(2),
+            'number' => TextInput::make($statePath)->numeric(),
+            'date' => TextInput::make($statePath)
+                ->mask('99/99/9999')
+                ->placeholder('dd/mm/yyyy')
                 ->maxLength(10)
-                ->rule("date_format:d/m/Y"),
-            "select" => TextInput::make($statePath)
+                ->rule('date_format:d/m/Y'),
+            'select' => TextInput::make($statePath)
                 ->datalist(array_values($options)),
-            "email" => TextInput::make($statePath)->email(),
-            "phone" => TextInput::make($statePath)->tel(),
+            'email' => TextInput::make($statePath)->email(),
+            'phone' => TextInput::make($statePath)->tel(),
             default => TextInput::make($statePath),
         };
 
         $component->label($label);
 
-        if ($required && ! $disabled) {
+        if ($required && ! $disabled && AdminWorkflowOverride::required()) {
             $component->required();
         }
 
@@ -210,7 +210,6 @@ class LeadFormFieldFactory
 
         return $component;
     }
-
 
     private static function readState(Get $get, string $stateRoot, string $key): mixed
     {
@@ -243,7 +242,7 @@ class LeadFormFieldFactory
         return [
             TextInput::make('payload.fields.lead_name')
                 ->label('Tên lead')
-                ->required()
+                ->required(AdminWorkflowOverride::required())
                 ->maxLength(255),
             TextInput::make('payload.fields.phone')
                 ->label('Số điện thoại')

@@ -35,13 +35,13 @@ class Dashboard extends BaseDashboard
 
     protected static ?string $navigationLabel = 'Performance';
 
-    protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedChartBar;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
     protected static ?int $navigationSort = -2;
 
     protected string $view = 'filament.pages.dashboard';
 
-    protected Width | string | null $maxContentWidth = Width::Full;
+    protected Width|string|null $maxContentWidth = Width::Full;
 
     public int $period = 7;
 
@@ -60,7 +60,9 @@ class Dashboard extends BaseDashboard
         AclMixWorkflow::REJECTED,
         AclMixWorkflow::COMPLETED,
         LotteFinanceWorkflow::REJECTED,
-        LotteFinanceWorkflow::POST_APPROVAL,
+        LotteFinanceWorkflow::UW_REJECTED,
+        LotteFinanceWorkflow::UW_FIELD,
+        LotteFinanceWorkflow::DISBURSED,
         'rejected',
         'Từ chối',
         'completed',
@@ -75,7 +77,7 @@ class Dashboard extends BaseDashboard
         return (bool) ($user?->hasRole('Admin') || $user?->can('dashboard.view'));
     }
 
-    public function getHeading(): string | Htmlable | null
+    public function getHeading(): string|Htmlable|null
     {
         return null;
     }
@@ -119,7 +121,9 @@ class Dashboard extends BaseDashboard
                 AclMixWorkflow::REJECTED,
                 AclMixWorkflow::COMPLETED,
                 LotteFinanceWorkflow::REJECTED,
-                LotteFinanceWorkflow::POST_APPROVAL,
+                LotteFinanceWorkflow::UW_REJECTED,
+                LotteFinanceWorkflow::UW_FIELD,
+                LotteFinanceWorkflow::DISBURSED,
                 'rejected',
                 'Từ chối',
                 'completed',
@@ -145,7 +149,7 @@ class Dashboard extends BaseDashboard
             ->whereBetween('updated_at', [$start, $end])
             ->whereIn('status', [
                 AclMixWorkflow::COMPLETED,
-                LotteFinanceWorkflow::POST_APPROVAL,
+                LotteFinanceWorkflow::DISBURSED,
                 'completed',
                 'Hoàn thành',
                 'post_approval',
@@ -255,7 +259,7 @@ class Dashboard extends BaseDashboard
         $user = Auth::user();
         $query = Application::query()->with(['salesProject', 'assignedSale']);
 
-        if (! $user?->hasRole('Admin')) {
+        if (! $user?->hasAnyRole(['Admin', 'Sales Admin'])) {
             $slugs = SalesProjectAccess::userProjectSlugs($user);
 
             if ($slugs === []) {
@@ -313,7 +317,7 @@ class Dashboard extends BaseDashboard
         $user = Auth::user();
         $projectQuery = SalesProject::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name');
 
-        if (! $user?->hasRole('Admin')) {
+        if (! $user?->hasAnyRole(['Admin', 'Sales Admin'])) {
             $slugs = SalesProjectAccess::userProjectSlugs($user);
             $projectQuery->whereIn('slug', $slugs ?: ['__none__']);
         }
@@ -367,7 +371,7 @@ class Dashboard extends BaseDashboard
         $successfulLeadStatuses = ['Khách hàng thoả mãn điều kiện', 'Đã chuyển Application', 'converted', 'completed'];
         $successfulApplicationStatuses = [
             AclMixWorkflow::COMPLETED,
-            LotteFinanceWorkflow::POST_APPROVAL,
+            LotteFinanceWorkflow::DISBURSED,
             'completed',
             'Hoàn thành',
             'post_approval',
@@ -425,6 +429,7 @@ class Dashboard extends BaseDashboard
             'courierSuccessApplicationCount' => $successfulApplicationCount,
         ];
     }
+
     private function dashboardConfiguration(string $role, array $stats): array
     {
         $profile = [
@@ -622,7 +627,7 @@ class Dashboard extends BaseDashboard
             ->implode(' · ') ?: 'Phạm vi cá nhân';
     }
 
-    private function metric(string $label, int | string $value, string $meta, int $direction, string $icon, string $tone): array
+    private function metric(string $label, int|string $value, string $meta, int $direction, string $icon, string $tone): array
     {
         return compact('label', 'value', 'meta', 'direction', 'icon', 'tone');
     }

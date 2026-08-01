@@ -2,8 +2,9 @@
 
 namespace App\Support\Filament\LeadCreate;
 
-use Filament\Actions\Action;
 use App\Forms\Components\SearchableSelect as Select;
+use App\Support\AdminWorkflowOverride;
+use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Icons\Heroicon;
@@ -35,22 +36,22 @@ class CreateAclMixLeadAction
                 ->schema([
                     TextInput::make('customer_name')
                         ->label('Họ tên khách hàng')
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->maxLength(255),
                     TextInput::make('phone')
                         ->label('Số điện thoại')
                         ->tel()
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->maxLength(30),
                     TextInput::make('identity_number')
                         ->label('CCCD/CMND')
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->maxLength(30),
                     TextInput::make('birthday')
                         ->label('Ngày sinh')
                         ->mask('99/99/9999')
                         ->placeholder('dd/mm/yyyy')
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->rule('date_format:d/m/Y')
                         ->maxLength(10),
                     Select::make('noi_cap')
@@ -62,13 +63,13 @@ class CreateAclMixLeadAction
                         ->placeholder('Chọn nơi cấp')
                         ->searchable()
                         ->preload()
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->native(false),
                     TextInput::make('date_cap')
                         ->label('Ngày cấp')
                         ->mask('99/99/9999')
                         ->placeholder('dd/mm/yyyy')
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->rule('date_format:d/m/Y')
                         ->maxLength(10),
                     ...LeadAddressFields::make(),

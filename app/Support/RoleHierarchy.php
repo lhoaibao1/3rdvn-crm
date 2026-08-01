@@ -8,14 +8,17 @@ use Illuminate\Validation\ValidationException;
 
 class RoleHierarchy
 {
-    public const ORDER = ['Admin', 'ZD', 'AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'];
+    public const ORDER = ['Admin', 'Sales Admin', 'ZD', 'AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'];
+
+    public const OPERATIONAL_ADMIN_ROLES = ['Admin', 'Sales Admin'];
 
     public const SALES_ROLES = ['Direct Sale', 'Telesale', 'CTV'];
 
     public const COURIER_ROLES = ['Courier'];
 
     public const ASSIGNABLE = [
-        'Admin' => ['Admin', 'ZD', 'AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'],
+        'Admin' => ['Admin', 'Sales Admin', 'ZD', 'AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'],
+        'Sales Admin' => ['ZD', 'AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'],
         'ZD' => ['AM', 'Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'],
         'AM' => ['Team Leader', 'Courier Manager', 'Courier', 'Direct Sale', 'Telesale', 'CTV'],
         'Team Leader' => ['Direct Sale', 'Telesale', 'CTV'],
@@ -43,6 +46,11 @@ class RoleHierarchy
         }
 
         return null;
+    }
+
+    public static function isOperationalAdmin(?User $user): bool
+    {
+        return $user instanceof User && $user->hasAnyRole(self::OPERATIONAL_ADMIN_ROLES);
     }
 
     public static function assignableRoles(?User $actor = null): array
@@ -94,10 +102,9 @@ class RoleHierarchy
             return false;
         }
 
-        if ($actor->hasRole('Admin')) {
+        if (self::isOperationalAdmin($actor)) {
             return true;
         }
-
         if ($actor->hasRole('ZD')) {
             return self::targetBelongsToManager($target, 'zd_id', $actor->getKey());
         }
@@ -140,7 +147,7 @@ class RoleHierarchy
             return false;
         }
 
-        if ($actor->hasRole('Admin')) {
+        if (self::isOperationalAdmin($actor)) {
             return self::canAssignRole($actor, $role);
         }
 
@@ -182,7 +189,7 @@ class RoleHierarchy
             return $query->whereRaw('1 = 0');
         }
 
-        if ($actor->hasRole('Admin')) {
+        if (self::isOperationalAdmin($actor)) {
             return $query;
         }
 
@@ -271,7 +278,7 @@ class RoleHierarchy
             }
         }
 
-        if (in_array($role, ['Admin', 'ZD'], true)) {
+        if (in_array($role, ['Admin', 'Sales Admin', 'ZD'], true)) {
             return [
                 'zd_id' => null,
                 'am_id' => null,
@@ -326,7 +333,7 @@ class RoleHierarchy
             }
         }
 
-        if (in_array($role, ['Admin', 'ZD'], true)) {
+        if (in_array($role, ['Admin', 'Sales Admin', 'ZD'], true)) {
             $data['zd_id'] = null;
             $data['am_id'] = null;
             $data['team_leader_id'] = null;
@@ -370,7 +377,7 @@ class RoleHierarchy
             return;
         }
 
-        if (in_array($role, ['Admin', 'ZD'], true)) {
+        if (in_array($role, ['Admin', 'Sales Admin', 'ZD'], true)) {
             return;
         }
 

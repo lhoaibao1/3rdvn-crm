@@ -50,7 +50,7 @@ class HotLeadAccess
             && blank($lead->converted_sale_profile_id)
             && blank($lead->converted_at)
             && ! in_array($lead->status, ['Từ chối', 'Khách hàng bị trùng'], true)
-            && ($user?->hasRole('Admin') || (int) $lead->assigned_sale_id === (int) $user?->getKey());
+            && ($user?->hasAnyRole(['Admin', 'Sales Admin']) || (int) $lead->assigned_sale_id === (int) $user?->getKey());
     }
 
     public static function applyVisibleTo(Builder $query, ?User $user): Builder
@@ -65,7 +65,7 @@ class HotLeadAccess
             return $query->whereRaw('1 = 0');
         }
 
-        if ($user?->hasRole('Admin')) {
+        if ($user?->hasAnyRole(['Admin', 'Sales Admin'])) {
             return $query;
         }
 
@@ -95,7 +95,7 @@ class HotLeadAccess
             return false;
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return true;
         }
 

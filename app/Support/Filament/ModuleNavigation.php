@@ -35,7 +35,7 @@ class ModuleNavigation
 
         $roles = collect($module->required_roles ?? [])->filter();
 
-        if ($roles->isNotEmpty() && (! $user->hasAnyRole($roles->all()))) {
+        if ($roles->isNotEmpty() && ! $user->hasAnyRole(['Admin', 'Sales Admin']) && ! $user->hasAnyRole($roles->all())) {
             return false;
         }
 

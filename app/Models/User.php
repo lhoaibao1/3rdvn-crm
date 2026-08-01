@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
@@ -431,6 +432,11 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
     public function team(): BelongsTo
     {
         return $this->belongsTo(CrmTeam::class, 'team_id');
+    }
+
+    public function managedTeam(): HasOne
+    {
+        return $this->hasOne(CrmTeam::class, "manager_id");
     }
 
     public function teamLeader(): BelongsTo

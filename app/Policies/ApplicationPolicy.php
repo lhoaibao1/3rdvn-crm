@@ -13,11 +13,15 @@ class ApplicationPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('application.view');
+        return $user->hasRole('Admin') || $user->can('application.view');
     }
 
     public function view(User $user, Application $application): bool
     {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
+            return true;
+        }
+
         return $user->can('application.view')
             && SalesProjectAccess::canAccessProject($user, $application->salesProject)
             && RecordVisibility::canAccessUserOwnedRecord($user, $application, 'assigned_sale_id', 'assignedSale');
@@ -25,11 +29,15 @@ class ApplicationPolicy
 
     public function create(User $user): bool
     {
-        return $user->can('application.create');
+        return $user->hasRole('Admin') || $user->can('application.create');
     }
 
     public function update(User $user, Application $application): bool
     {
+        if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
+            return true;
+        }
+
         if ($application->salesProject?->slug === 'acl-mix') {
             return AclMixWorkflow::canEditData($user, $application);
         }
@@ -43,6 +51,11 @@ class ApplicationPolicy
     }
 
     public function delete(User $user, Application $application): bool
+    {
+        return $user->hasRole('Admin');
+    }
+
+    public function deleteAny(User $user): bool
     {
         return $user->hasRole('Admin');
     }

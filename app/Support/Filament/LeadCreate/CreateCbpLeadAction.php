@@ -2,6 +2,7 @@
 
 namespace App\Support\Filament\LeadCreate;
 
+use App\Support\AdminWorkflowOverride;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
@@ -34,16 +35,16 @@ class CreateCbpLeadAction
                 ->schema([
                     TextInput::make('customer_name')
                         ->label('Họ tên')
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->maxLength(255),
                     TextInput::make('identity_number')
                         ->label('CCCD')
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->maxLength(30),
                     TextInput::make('phone')
                         ->label('Số điện thoại')
                         ->tel()
-                        ->required()
+                        ->required(AdminWorkflowOverride::required())
                         ->maxLength(30),
                 ]),
         ];

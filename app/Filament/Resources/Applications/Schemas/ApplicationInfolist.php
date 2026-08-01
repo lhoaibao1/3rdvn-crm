@@ -35,17 +35,12 @@ class ApplicationInfolist
                         ->icon(Heroicon::RectangleStack)
                         ->columns(12)
                         ->schema([
-                            Section::make('Thông tin chính')
-                                ->columnSpan(8)
-                                ->columns(2)
+                            Section::make('Thông tin Application')
+                                ->columnSpanFull()
+                                ->extraAttributes(['class' => 'crm-application-summary'])
+                                ->columns(6)
                                 ->schema([
                                     TextEntry::make('application_code')->label('Mã hồ sơ')->placeholder('-'),
-                                    TextEntry::make('salesProject.name')->label('Dự án')->placeholder('-'),
-                                    TextEntry::make('applicant_name')->label('Khách hàng')->placeholder('-'),
-                                    TextEntry::make('phone')->label('SĐT')->placeholder('-'),
-                                    TextEntry::make('identity_number')->label('CCCD/CMND')->placeholder('-'),
-                                    TextEntry::make('assignedSale.name')->label(fn (Application $record): string => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true) ? 'Người xử lý' : 'Sale phụ trách')->placeholder('-'),
-                                    TextEntry::make('lead.lead_code')->label('Lead ID')->placeholder('-')->visible(fn (Application $record): bool => ! in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true)),
                                     TextEntry::make('status')->label('Trạng thái')->badge()
                                         ->color(fn (?string $state, Application $record): string => match ($record->salesProject?->slug) {
                                             'acl-mix' => AclMixWorkflow::statusColor($state),
@@ -53,62 +48,255 @@ class ApplicationInfolist
                                             default => 'gray',
                                         })
                                         ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))->placeholder('-'),
-                                ]),
-                            Section::make('Hệ thống')
-                                ->columnSpan(4)
-                                ->schema([
-                                    TextEntry::make('created_at')->label('Ngày tạo')->dateTime('H:i d/m/Y')->placeholder('-'),
-                                    TextEntry::make('updated_at')->label('Cập nhật')->dateTime('H:i d/m/Y')->placeholder('-'),
-                                    TextEntry::make('note')->label('Ghi chú')->placeholder('-'),
-                                ]),
-                            Section::make('Thông tin hồ sơ')
-                                ->visible(fn (Application $record): bool => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
-                                ->columnSpanFull()
-                                ->columns(2)
-                                ->schema(AclMixFields::entries()),
-                            Section::make('Thông tin sản phẩm và khoản vay')
-                                ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance')
-                                ->columnSpanFull()
-                                ->columns(3)
-                                ->schema([
-                                    TextEntry::make('payload.fields.scheme_code')->label('Mã Scheme')->placeholder('-'),
-                                    TextEntry::make('payload.fields.scheme_product_type')->label('Loại sản phẩm')->placeholder('-'),
-                                    TextEntry::make('payload.fields.scheme_product')->label('Sản phẩm')->placeholder('-'),
-                                    TextEntry::make('payload.fields.scheme_name')->label('Tên Scheme')->placeholder('-')->columnSpan(2),
-                                    TextEntry::make('payload.fields.scheme_product_line')->label('Dòng sản phẩm')->placeholder('-'),
-                                    TextEntry::make('payload.fields.scheme_loan_period')->label('Thời hạn tối đa')->placeholder('-'),
-                                    TextEntry::make('payload.fields.scheme_description')->label('Mô tả Scheme')->placeholder('-')->columnSpanFull(),
-                                    TextEntry::make('payload.fields.loan_purpose_name')->label('Mục đích vay')->placeholder('-'),
-                                    TextEntry::make('payload.fields.loan_amount')->label('Số tiền vay')->money('VND', locale: 'vi')->placeholder('-'),
-                                    TextEntry::make('payload.fields.combo_loan_amount')->label('Tổng số tiền vay')->money('VND', locale: 'vi')->placeholder('-'),
-                                    TextEntry::make('payload.fields.loan_term_months')->label('Thời gian vay')->suffix(' tháng')->placeholder('-'),
-                                    TextEntry::make('payload.fields.insurance_label')->label('Bảo hiểm khoản vay')->placeholder('-'),
-                                    TextEntry::make('payload.fields.scheme_interest_rate')->label('Lãi suất')->suffix('%')->placeholder('-'),
-                                    TextEntry::make('payload.fields.estimated_insurance_amount')->label('Phí bảo hiểm dự kiến')->money('VND', locale: 'vi')->placeholder('-'),
-                                    TextEntry::make('payload.fields.estimated_monthly_payment')->label('Số tiền đóng hằng tháng')->money('VND', locale: 'vi')->placeholder('-'),
-                                    TextEntry::make('payload.fields.estimated_total_payment')->label('Tổng thanh toán dự kiến')->money('VND', locale: 'vi')->placeholder('-'),
-                                    TextEntry::make('payload.fields.ekyc_status')->label('Trạng thái eKYC')->placeholder('-'),
-                                    TextEntry::make('payload.fields.ekyc_request_id')->label('eKYC Request ID')->placeholder('-'),
-                                    TextEntry::make('payload.fields.ekyc_completed_at')->label('Hoàn tất eKYC')->placeholder('-'),
-                                ]),
-                            Section::make('Dữ liệu Lead')
-                                ->visible(fn (Application $record): bool => ! in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
-                                ->columnSpanFull()
-                                ->columns(3)
-                                ->schema(fn (Application $record): array => LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'lead', 'payload.fields')),
-                            Section::make('Thông tin nhân viên bán hàng')
-                                ->columnSpanFull()
-                                ->columns(3)
-                                ->schema([
-                                    TextEntry::make('createdBy.name')->label('NVKD')->placeholder('-'),
-                                    TextEntry::make('createdBy.uid')->label('UID')->placeholder('-'),
-                                    TextEntry::make('createdBy.employee_code')->label('Employee Code')->placeholder('-'),
+                                    TextEntry::make('salesProject.name')->label('Dự án')->placeholder('-'),
+                                    TextEntry::make('applicant_name')->label('Khách hàng')->placeholder('-'),
+                                    TextEntry::make('payload.review.product')
+                                        ->label('Sản phẩm')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix'),
+                                    TextEntry::make('payload.review.pre_approved_amount')
+                                        ->label('Số tiền phê duyệt sơ bộ')
+                                        ->formatStateUsing(fn (mixed $state): string => filled($state)
+                                            ? number_format((int) preg_replace('/\D+/', '', (string) $state), 0, ',', '.').' VNĐ'
+                                            : '-')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix'),
+                                    TextEntry::make('payload.review.pre_approved_months')
+                                        ->label('Số tháng phê duyệt')
+                                        ->formatStateUsing(fn (mixed $state): string => filled($state) ? $state.' tháng' : '-')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix'),
+                                    TextEntry::make('payload.review.pre_approved_interest_rate')
+                                        ->label('Lãi suất phê duyệt')
+                                        ->formatStateUsing(fn (mixed $state): string => filled($state)
+                                            ? rtrim(rtrim(number_format((float) $state, 2, '.', ''), '0'), '.').'%'
+                                            : '-')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix'),
+                                    TextEntry::make('payload.review.review_note')
+                                        ->label('Ghi chú phê duyệt')
+                                        ->placeholder('-')
+                                        ->columnSpanFull()
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix'),
+                                    TextEntry::make('payload.fields.scheme_code')
+                                        ->label('Scheme')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    TextEntry::make('lotte_product')
+                                        ->label('Sản phẩm')
+                                        ->state(fn (Application $record): mixed => data_get($record->payload, 'fields.scheme_product')
+                                            ?: data_get($record->payload, 'fields.scheme_name'))
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    TextEntry::make('payload.fields.loan_amount')
+                                        ->label('Số tiền vay')
+                                        ->money('VND', locale: 'vi')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    TextEntry::make('payload.review.maximum_limit')
+                                        ->label('Hạn mức tối đa')
+                                        ->money('VND', locale: 'vi')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    TextEntry::make('payload.review.approved_amount')
+                                        ->label('Số tiền được phê duyệt')
+                                        ->money('VND', locale: 'vi')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    TextEntry::make('payload.review.approved_at')
+                                        ->label('Thời gian Approval')
+                                        ->dateTime('H:i d/m/Y')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    TextEntry::make('lotte_interest_rate')
+                                        ->label('Lãi suất')
+                                        ->state(fn (Application $record): mixed => data_get($record->payload, 'review.estimated_interest_rate')
+                                            ?: data_get($record->payload, 'fields.scheme_interest_rate'))
+                                        ->formatStateUsing(fn (mixed $state): string => filled($state) ? rtrim(rtrim(number_format((float) $state, 2, '.', ''), '0'), '.').'%' : '-')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    TextEntry::make('payload.review.decision')
+                                        ->label('Pre-Check')
+                                        ->badge()
+                                        ->color(fn (mixed $state): string => match ($state) {
+                                            'Pass' => 'success',
+                                            'Không Pass' => 'danger',
+                                            default => 'gray',
+                                        })
+                                        ->placeholder('Chờ xử lý')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    TextEntry::make('payload.review.reviewed_at')
+                                        ->label('Thời gian Pre-Check')
+                                        ->dateTime('H:i d/m/Y')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'),
+                                    ...self::lottePreCheckEntries(),
+                                    TextEntry::make('sales_creator_compact')
+                                        ->label('NVKD')
+                                        ->state(fn (Application $record): string => collect([
+                                            $record->createdBy?->name,
+                                            $record->createdBy?->uid,
+                                            $record->createdBy?->employee_code,
+                                        ])->filter()->implode(' · '))
+                                        ->placeholder('-'),
                                     TextEntry::make('team.name')->label('Team')->placeholder('-'),
                                     TextEntry::make('teamLeader.name')->label('Team Leader')->placeholder('-'),
-                                    TextEntry::make('am.name')->label('AM')->placeholder('-'),
-                                    TextEntry::make('zd.name')->label('ZD')->placeholder('-'),
                                     TextEntry::make('assignedSale.name')->label('Người xử lý')->placeholder('-'),
-                                    TextEntry::make('created_at')->label('Thời gian tạo')->dateTime('H:i d/m/Y')->placeholder('-'),
+                                    TextEntry::make('created_at')
+                                        ->label('Ngày tạo')
+                                        ->dateTime('H:i d/m/Y')
+                                        ->placeholder('-'),
+                                    TextEntry::make('updated_at')
+                                        ->label('Cập nhật')
+                                        ->dateTime('H:i d/m/Y')
+                                        ->placeholder('-'),
+                                    TextEntry::make('payload.review.review_note')
+                                        ->label('Ghi chú Pre-Check')
+                                        ->placeholder('-')
+                                        ->columnSpan(2)
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance' && filled(data_get($record->payload, 'review.review_note'))),
+                                    TextEntry::make('payload.review.approval_note')
+                                        ->label('Ghi chú Approval')
+                                        ->placeholder('-')
+                                        ->columnSpan(2)
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance' && filled(data_get($record->payload, 'review.approval_note'))),
+                                    TextEntry::make('lotte_file_note')
+                                        ->label('Ghi chú hồ sơ')
+                                        ->state(fn (Application $record): mixed => $record->note
+                                            ?: data_get($record->payload, 'fields.note'))
+                                        ->placeholder('-')
+                                        ->columnSpanFull()
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance' && filled($record->note ?: data_get($record->payload, 'fields.note'))),
+                                    TextEntry::make('note')
+                                        ->label(fn (Application $record): string => $record->salesProject?->slug === 'acl-mix' ? 'Ghi chú xử lý' : 'Ghi chú')
+                                        ->placeholder('-')
+                                        ->columnSpanFull()
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug !== 'lotte-finance'
+                                            && ($record->salesProject?->slug !== 'acl-mix'
+                                                || (filled($record->note)
+                                                    && $record->note !== data_get($record->payload, 'review.review_note')))),
+                                ]),
+                            Section::make('Thông tin hồ sơ')
+                                ->columnSpanFull()
+                                ->schema([
+                                    Section::make('Thông tin khách hàng')
+                                        ->columns(3)
+                                        ->schema(fn (Application $record): array => match ($record->salesProject?->slug) {
+                                            'acl-mix' => AclMixFields::entriesFor([
+                                                'customer_name',
+                                                'cccd',
+                                                'cmnd',
+                                                'date_of_birth',
+                                                'identity_issued_date',
+                                                'identity_issued_place',
+                                                'identity_expiry_date',
+                                                'phone',
+                                                'education',
+                                                'marital_status',
+                                            ]),
+                                            'lotte-finance' => LotteFinanceFields::personalEntries(),
+                                            default => LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'lead', 'payload.fields'),
+                                        }),
+                                    Section::make('Địa chỉ cư trú hiện tại')
+                                        ->visible(fn (Application $record): bool => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
+                                        ->columns(3)
+                                        ->schema(fn (Application $record): array => $record->salesProject?->slug === 'lotte-finance'
+                                            ? LotteFinanceFields::currentAddressEntries()
+                                            : AclMixFields::entriesFor([
+                                                'current_province_code',
+                                                'current_district_code',
+                                                'current_ward_code',
+                                                'current_address_line',
+                                            ])),
+                                    Section::make('Địa chỉ thường trú')
+                                        ->visible(fn (Application $record): bool => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
+                                        ->columns(3)
+                                        ->schema(fn (Application $record): array => $record->salesProject?->slug === 'lotte-finance'
+                                            ? LotteFinanceFields::permanentAddressEntries()
+                                            : AclMixFields::entriesFor([
+                                                'permanent_same_as_current',
+                                                'permanent_province_code',
+                                                'permanent_district_code',
+                                                'permanent_ward_code',
+                                                'permanent_address_line',
+                                            ])),
+                                    Section::make('Thông tin công việc')
+                                        ->visible(fn (Application $record): bool => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
+                                        ->columns(3)
+                                        ->schema(fn (Application $record): array => $record->salesProject?->slug === 'lotte-finance'
+                                            ? LotteFinanceFields::workEntries()
+                                            : AclMixFields::entriesFor([
+                                                'employer_name',
+                                                'employer_tax_code',
+                                                'employer_phone',
+                                                'contract_type',
+                                                'working_years',
+                                                'working_months',
+                                                'monthly_income',
+                                                'experience_years',
+                                                'experience_months',
+                                            ])),
+                                    Section::make('Địa chỉ nơi làm việc')
+                                        ->visible(fn (Application $record): bool => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
+                                        ->columns(3)
+                                        ->schema(fn (Application $record): array => $record->salesProject?->slug === 'lotte-finance'
+                                            ? LotteFinanceFields::workAddressEntries()
+                                            : AclMixFields::entriesFor([
+                                                'work_province_code',
+                                                'work_district_code',
+                                                'work_ward_code',
+                                                'work_address_line',
+                                            ])),
+                                    Section::make('Thông tin tham chiếu')
+                                        ->visible(fn (Application $record): bool => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
+                                        ->columns(3)
+                                        ->schema(fn (Application $record): array => $record->salesProject?->slug === 'lotte-finance'
+                                            ? LotteFinanceFields::contactEntries()
+                                            : AclMixFields::entriesFor([
+                                                'spouse_name',
+                                                'spouse_identity_number',
+                                                'spouse_phone',
+                                                'reference_1_name',
+                                                'reference_1_relationship',
+                                                'reference_1_phone',
+                                                'reference_2_name',
+                                                'reference_2_relationship',
+                                                'reference_2_phone',
+                                            ])),
+                                    Section::make('Chi tiết sản phẩm')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance')
+                                        ->columns(3)
+                                        ->schema([
+                                            TextEntry::make('payload.fields.scheme_product_type')->label('Loại sản phẩm')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_name')->label('Tên Scheme')->placeholder('-')->columnSpan(2),
+                                            TextEntry::make('payload.fields.scheme_product_line')->label('Dòng sản phẩm')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_loan_period')->label('Thời hạn tối đa')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_description')->label('Mô tả Scheme')->placeholder('-')->columnSpanFull(),
+                                        ]),
+                                    Section::make('Thông tin khoản vay')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance')
+                                        ->columns(3)
+                                        ->schema([
+                                            TextEntry::make('payload.fields.loan_purpose_name')->label('Mục đích vay')->placeholder('-'),
+                                            TextEntry::make('payload.fields.combo_loan_amount')->label('Tổng số tiền vay')->money('VND', locale: 'vi')->placeholder('-'),
+                                            TextEntry::make('payload.fields.loan_term_months')->label('Thời gian vay')->suffix(' tháng')->placeholder('-'),
+                                            TextEntry::make('payload.fields.insurance_label')->label('Bảo hiểm khoản vay')->placeholder('-'),
+                                            TextEntry::make('payload.fields.estimated_insurance_amount')->label('Phí bảo hiểm dự kiến')->money('VND', locale: 'vi')->placeholder('-'),
+                                            TextEntry::make('payload.fields.estimated_monthly_payment')->label('Số tiền đóng hằng tháng')->money('VND', locale: 'vi')->placeholder('-'),
+                                            TextEntry::make('payload.fields.estimated_total_payment')->label('Tổng thanh toán dự kiến')->money('VND', locale: 'vi')->placeholder('-'),
+                                        ]),
+                                    Section::make('Thông tin giải ngân')
+                                        ->visible(fn (Application $record): bool => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
+                                        ->columns(3)
+                                        ->schema(fn (Application $record): array => $record->salesProject?->slug === 'lotte-finance'
+                                            ? LotteFinanceFields::disbursementEntries()
+                                            : AclMixFields::entriesFor([
+                                                'disbursement_method',
+                                                'bank_name',
+                                                'bank_account_number',
+                                                'bank_account_name',
+                                                'note',
+                                            ])),
                                 ]),
                         ]),
 
@@ -128,10 +316,10 @@ class ApplicationInfolist
 
                     Tab::make('Thông tin phê duyệt')
                         ->icon(Heroicon::ClipboardDocumentCheck)
+                        ->visible(fn (Application $record): bool => ! in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
                         ->columns(12)
                         ->schema([
                             Section::make('Thông tin phê duyệt')
-                                ->visible(fn (Application $record): bool => $record->salesProject?->slug !== 'lotte-finance')
                                 ->columnSpanFull()
                                 ->columns(2)
                                 ->schema([
@@ -139,22 +327,6 @@ class ApplicationInfolist
                                     TextEntry::make('payload.review.pre_approved_amount')->label('Số tiền phê duyệt sơ bộ')->formatStateUsing(fn (mixed $state): string => filled($state) ? number_format((int) preg_replace('/\D+/', '', (string) $state), 0, ',', '.').' VNĐ' : '-')->placeholder('-'),
                                     TextEntry::make('payload.review.pre_approved_months')->label('Số tháng phê duyệt')->placeholder('-'),
                                     TextEntry::make('payload.review.pre_approved_interest_rate')->label('Lãi suất phê duyệt')->formatStateUsing(fn (mixed $state): string => filled($state) ? rtrim(rtrim((string) $state, '0'), '.').'%' : '-')->placeholder('-'),
-                                    TextEntry::make('payload.review.review_note')->label('Ghi chú kiểm tra')->placeholder('-')->columnSpanFull(),
-                                ]),
-                            Section::make('Kết quả Pre-Check')
-                                ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance')
-                                ->columnSpanFull()
-                                ->columns(3)
-                                ->schema([
-                                    TextEntry::make('payload.review.decision')->label('Quyết định')->badge()->placeholder('Chờ xử lý'),
-                                    TextEntry::make('payload.review.blacklist_check')->label('Kiểm tra Blacklist')->placeholder('-'),
-                                    TextEntry::make('payload.review.b11t_check')->label('Kiểm tra B11T')->placeholder('-'),
-                                    TextEntry::make('payload.review.aml_check')->label('Kiểm tra AML')->placeholder('-'),
-                                    TextEntry::make('payload.review.pcb_check')->label('Kiểm tra PCB')->placeholder('-'),
-                                    TextEntry::make('payload.review.lf_grade')->label('LF Grade')->placeholder('-'),
-                                    TextEntry::make('payload.review.ml_grade')->label('ML Grade')->placeholder('-'),
-                                    TextEntry::make('payload.review.maximum_limit')->label('Hạn mức tối đa')->money('VND', locale: 'vi')->placeholder('-'),
-                                    TextEntry::make('payload.review.estimated_interest_rate')->label('Lãi suất dự kiến')->suffix('%')->placeholder('-'),
                                     TextEntry::make('payload.review.review_note')->label('Ghi chú kiểm tra')->placeholder('-')->columnSpanFull(),
                                 ]),
                         ]),
@@ -183,6 +355,29 @@ class ApplicationInfolist
                         ]),
                 ]),
         ];
+    }
+
+    private static function lottePreCheckEntries(): array
+    {
+        return collect([
+            'blacklist_check' => 'Blacklist',
+            'b11t_check' => 'B11T',
+            'aml_check' => 'AML',
+            'pcb_check' => 'PCB',
+            'lf_grade' => 'LF Grade',
+            'ml_grade' => 'ML Grade',
+        ])->map(fn (string $label, string $key): TextEntry => TextEntry::make('payload.review.'.$key)
+            ->label($label)
+            ->badge()
+            ->color(fn (mixed $state): string => match ($state) {
+                'Pass' => 'success',
+                'Không Pass' => 'danger',
+                default => 'gray',
+            })
+            ->placeholder('-')
+            ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance'))
+            ->values()
+            ->all();
     }
 
     private static function renderHistoryTimeline(Application $record): HtmlString

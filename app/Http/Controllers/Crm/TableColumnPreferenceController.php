@@ -16,6 +16,7 @@ class TableColumnPreferenceController extends Controller
         'leads',
         'applications.acl-mix',
         'applications.cbp',
+        'applications.lotte-finance',
     ];
 
     public function store(Request $request): JsonResponse

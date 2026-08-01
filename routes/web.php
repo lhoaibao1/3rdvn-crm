@@ -5,12 +5,29 @@ use App\Http\Controllers\CandidateApplicationController;
 use App\Http\Controllers\CorporateWebsiteController;
 use App\Http\Controllers\Crm\LatestNotificationController;
 use App\Http\Controllers\Crm\TableColumnPreferenceController;
+use App\Http\Controllers\LosApplicationLookupController;
+use App\Http\Controllers\LosAuthenticationController;
 use App\Http\Controllers\MailSsoController;
 use App\Models\User;
 use App\Support\DataCenter\LeadReferralImportTemplate;
 use App\Support\Permissions\DataCenterAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+Route::domain('los.3rdvn.io.vn')->group(function (): void {
+    Route::get('/login', [LosAuthenticationController::class, 'create'])->name('los.login');
+    Route::post('/login', [LosAuthenticationController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('los.login.store');
+
+    Route::middleware('auth')->group(function (): void {
+        Route::get('/', [LosApplicationLookupController::class, 'index'])->name('los.index');
+        Route::post('/tra-cuu', [LosApplicationLookupController::class, 'search'])
+            ->middleware('throttle:20,1')
+            ->name('los.search');
+        Route::post('/logout', [LosAuthenticationController::class, 'destroy'])->name('los.logout');
+    });
+});
 
 $publicWebsiteDomains = [
     '3rdvn.io.vn',

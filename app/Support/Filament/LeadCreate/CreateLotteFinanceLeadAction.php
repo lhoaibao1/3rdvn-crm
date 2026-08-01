@@ -3,11 +3,11 @@
 namespace App\Support\Filament\LeadCreate;
 
 use App\Forms\Components\SearchableSelect as Select;
+use App\Support\AdminWorkflowOverride;
 use App\Support\LotteFinanceSchemeCatalog;
 use App\Support\VietnamAddressCatalog;
 use App\Support\VietnamBankCatalog;
 use Filament\Actions\Action;
-use Illuminate\Support\Arr;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -21,6 +21,8 @@ use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
 use Filament\Support\RawJs;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
 
 class CreateLotteFinanceLeadAction
@@ -59,7 +61,7 @@ class CreateLotteFinanceLeadAction
                                     ->placeholder('Chọn mã scheme')
                                     ->searchable()
                                     ->live()
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
                                         self::syncSchemePayload($set, $state);
                                         self::syncLoanEstimate($set, $get);
@@ -110,7 +112,7 @@ class CreateLotteFinanceLeadAction
                                     ->searchable()
                                     ->preload()
                                     ->live()
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->afterStateUpdated(fn (Set $set, ?string $state): mixed => $set('loan_purpose_name', LotteFinanceSchemeCatalog::loanPurposeLabel($state)))
                                     ->native(false),
                                 TextInput::make('loan_amount')
@@ -119,7 +121,7 @@ class CreateLotteFinanceLeadAction
                                     ->stripCharacters('.')
                                     ->suffix('VNĐ')
                                     ->live(onBlur: true)
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->afterStateUpdated(fn (Set $set, Get $get): mixed => self::syncLoanEstimate($set, $get)),
                                 TextInput::make('combo_loan_amount')
                                     ->label('Tổng số tiền vay (Combo 2 Loan)')
@@ -131,7 +133,7 @@ class CreateLotteFinanceLeadAction
                                     ->numeric()
                                     ->suffix('tháng')
                                     ->live(onBlur: true)
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->rule('integer')
                                     ->rule('min:1')
                                     ->rule('max:120')
@@ -195,7 +197,7 @@ class CreateLotteFinanceLeadAction
                                     ->openable()
                                     ->downloadable()
                                     ->deletable()
-                                    ->required(),
+                                    ->required(AdminWorkflowOverride::required()),
                                 FileUpload::make('ocr_back_image')
                                     ->label('CCCD mặt sau')
                                     ->disk('public')
@@ -209,7 +211,7 @@ class CreateLotteFinanceLeadAction
                                     ->openable()
                                     ->downloadable()
                                     ->deletable()
-                                    ->required(),
+                                    ->required(AdminWorkflowOverride::required()),
                             ]),
                     ]),
                 Step::make('Nhập thông tin')
@@ -223,23 +225,23 @@ class CreateLotteFinanceLeadAction
                             ->schema([
                                 TextInput::make('customer_name')
                                     ->label('Họ tên khách hàng')
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->maxLength(255)
                                     ->columnSpan(2),
                                 TextInput::make('phone')
                                     ->label('Số điện thoại')
                                     ->tel()
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->maxLength(30),
                                 TextInput::make('identity_number')
                                     ->label('CCCD/CMND')
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->maxLength(30),
                                 TextInput::make('birthday')
                                     ->label('Ngày sinh')
                                     ->mask('99/99/9999')
                                     ->placeholder('dd/mm/yyyy')
-                                    ->required()
+                                    ->required(AdminWorkflowOverride::required())
                                     ->rule('date_format:d/m/Y')
                                     ->maxLength(10),
                                 Select::make('gender')
@@ -500,7 +502,7 @@ class CreateLotteFinanceLeadAction
                 ->previousAction(fn (Action $action): Action => $action
                     ->label('Quay lại')
                     ->icon(Heroicon::OutlinedArrowLeft))
-                ->submitAction(new \Illuminate\Support\HtmlString('<button type="submit" class="fi-btn fi-btn-size-md fi-btn-color-primary">Gửi Lead</button>'))
+                ->submitAction(new HtmlString('<button type="submit" class="fi-btn fi-btn-size-md fi-btn-color-primary">Gửi Lead</button>'))
                 ->contained(false),
             Hidden::make('loan_purpose_name')->dehydrated(),
             Hidden::make('insurance_label')->default(LotteFinanceSchemeCatalog::insuranceLabel('INSUR69'))->dehydrated(),
@@ -516,7 +518,7 @@ class CreateLotteFinanceLeadAction
 
     public static function defaultBankFields(mixed $user): array
     {
-        $userData = $user instanceof \Illuminate\Database\Eloquent\Model ? $user->toArray() : [];
+        $userData = $user instanceof Model ? $user->toArray() : [];
         $bankName = Arr::get($userData, 'bank_name')
             ?? Arr::get($userData, 'bankName')
             ?? $user?->bank_name
@@ -535,7 +537,7 @@ class CreateLotteFinanceLeadAction
 
         return [
             'disbursement_method' => 'bank',
-            'bank_name' => $bankName,
+            'bank_name' => VietnamBankCatalog::codeFor($bankName),
             'bank_account_number' => $bankAccountNumber,
             'bank_account_name' => $bankAccountName,
         ];

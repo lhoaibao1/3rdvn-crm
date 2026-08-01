@@ -77,7 +77,7 @@ class UserResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return RoleHierarchy::applyVisibilityScope(parent::getEloquentQuery()->with('roles'));
+        return RoleHierarchy::applyVisibilityScope(parent::getEloquentQuery()->with(['roles', 'team', 'managedTeam']));
     }
 
     public static function resolveRecordRouteBinding(int | string $key, ?Closure $modifyQuery = null): ?Model

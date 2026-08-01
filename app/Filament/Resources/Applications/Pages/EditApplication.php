@@ -76,4 +76,16 @@ class EditApplication extends EditRecord
             default => ApplicationForm::normalizeDataForSave($this->record, $data),
         };
     }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        if (! $this->record instanceof Application) {
+            return $data;
+        }
+
+        return match ($this->record->salesProject?->slug) {
+            'lotte-finance' => LotteFinanceApplicationForm::prepareDataForFill($data),
+            default => $data,
+        };
+    }
 }
