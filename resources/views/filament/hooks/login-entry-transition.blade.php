@@ -47,8 +47,13 @@
         overflow: hidden;
         color: #fff;
         background: transparent;
-        pointer-events: all;
+        pointer-events: none;
         animation: crm-entry-failsafe .01s linear 5s forwards;
+    }
+
+    .crm-entry-transition.is-originating,
+    .crm-entry-transition.is-resuming {
+        pointer-events: auto;
     }
 
     .crm-entry-panel {

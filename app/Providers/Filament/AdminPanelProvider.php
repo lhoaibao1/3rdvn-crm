@@ -990,6 +990,8 @@ class AdminPanelProvider extends PanelProvider
         line-height: 1.15;
         min-width: max-content;
         white-space: nowrap;
+        pointer-events: none;
+        user-select: none;
     }
 
     .fi-topbar-user-meta strong {
