@@ -21,6 +21,7 @@ class SaleProfileInfolist
     {
         return [
             Tabs::make('Sale profile detail')
+                ->extraAttributes(['class' => 'crm-record-view-frame'])
                 ->columnSpanFull()
                 ->persistTabInQueryString('profile_tab')
                 ->tabs([

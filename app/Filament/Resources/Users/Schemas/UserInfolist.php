@@ -21,6 +21,7 @@ class UserInfolist
             ->columns(1)
             ->components([
                 Tabs::make('Chi tiết người dùng')
+                    ->extraAttributes(['class' => 'crm-record-view-frame'])
                     ->columnSpanFull()
                     ->persistTabInQueryString('user_tab')
                     ->tabs([

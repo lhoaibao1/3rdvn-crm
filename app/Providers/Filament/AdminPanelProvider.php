@@ -496,6 +496,149 @@ class AdminPanelProvider extends PanelProvider
         border-radius: var(--crm-radius) !important;
     }
 
+    /* Record view: keep the chrome stable and scroll only the active data panel. */
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame {
+        min-width: 0 !important;
+        border: 1px solid #dbe4ef !important;
+        border-radius: 16px !important;
+        background: #fff !important;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, .07) !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-tabs {
+        flex: 0 0 auto !important;
+        gap: 6px !important;
+        margin: 0 !important;
+        padding: 9px 10px !important;
+        border: 0 !important;
+        border-bottom: 1px solid #dbe4ef !important;
+        border-radius: 0 !important;
+        background: linear-gradient(180deg, #ffffff 0%, #f3f8fd 100%) !important;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .035) !important;
+        overflow-x: auto !important;
+        overscroll-behavior-x: contain !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-tabs .fi-tabs-item,
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-tabs .fi-tabs-tab {
+        min-height: 40px !important;
+        padding-inline: 14px !important;
+        border-radius: 10px !important;
+        color: #475569 !important;
+        font-size: .84rem !important;
+        font-weight: 760 !important;
+        white-space: nowrap !important;
+        transition: color .16s ease, background-color .16s ease, box-shadow .16s ease !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-tabs .fi-tabs-item[aria-selected="true"],
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-tabs .fi-tabs-item.fi-active,
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-tabs .fi-tabs-tab[aria-selected="true"],
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-tabs .fi-tabs-tab.fi-active {
+        background: linear-gradient(135deg, #0878d1, #1597ed) !important;
+        color: #fff !important;
+        box-shadow: 0 8px 18px rgba(8, 120, 209, .22) !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-sc-tabs-tab.fi-active {
+        min-width: 0 !important;
+        padding: 14px !important;
+        background: #f7fafe !important;
+        scrollbar-color: #b6c8dc transparent;
+        scrollbar-width: thin;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-sc-tabs-tab.fi-active::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-sc-tabs-tab.fi-active::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+        border-radius: 999px;
+        background: #b6c8dc;
+        background-clip: padding-box;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-section {
+        overflow: hidden !important;
+        border: 1px solid #dbe5f0 !important;
+        border-radius: 13px !important;
+        background: #fff !important;
+        box-shadow: 0 5px 16px rgba(15, 23, 42, .035) !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-section-header {
+        min-height: 48px !important;
+        padding: 12px 16px !important;
+        border-bottom: 1px solid #dce9f5 !important;
+        background: linear-gradient(100deg, #e9f5ff 0%, #f6fbff 58%, #ffffff 100%) !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-section-header-heading {
+        display: flex !important;
+        align-items: center !important;
+        gap: 9px !important;
+        color: #086fb9 !important;
+        font-size: .94rem !important;
+        font-weight: 820 !important;
+        letter-spacing: .01em !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-section-header-heading::before {
+        content: "";
+        width: 4px;
+        height: 19px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #13a0f2, #0869bd);
+        box-shadow: 0 0 0 4px rgba(19, 160, 242, .09);
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-section-content {
+        padding: 15px 16px !important;
+    }
+
+    @media (min-width: 1024px) and (min-height: 680px) {
+        .fi-main:has(.crm-record-view-frame) .crm-record-view-frame {
+            display: flex !important;
+            height: calc(100dvh - var(--crm-topbar-height) - 112px) !important;
+            min-height: 500px !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+            overscroll-behavior: contain !important;
+        }
+
+        .fi-main:has(.crm-record-view-shell) .crm-record-view-frame {
+            height: calc(100dvh - var(--crm-topbar-height) - 250px) !important;
+            min-height: 380px !important;
+        }
+
+        .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-sc-tabs-tab.fi-active {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain !important;
+            touch-action: pan-y !important;
+            -webkit-overflow-scrolling: touch;
+        }
+    }
+
+    @media (max-width: 1023px), (max-height: 679px) {
+        .fi-main:has(.crm-record-view-frame) .crm-record-view-frame {
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+        }
+
+        .fi-main:has(.crm-record-view-frame) .crm-record-view-frame > .fi-sc-tabs-tab.fi-active {
+            max-height: none !important;
+            overflow: visible !important;
+            padding: 10px !important;
+        }
+    }
+
     .fi-ta-ctn {
         display: flex !important;
         flex-direction: column !important;

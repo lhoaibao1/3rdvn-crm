@@ -28,6 +28,7 @@ class ProjectReportInfolist
                 ->html()
                 ->columnSpanFull(),
             Tabs::make('Chi tiết báo cáo')
+                ->extraAttributes(['class' => 'crm-record-view-frame'])
                 ->columnSpanFull()
                 ->persistTabInQueryString('project_report_tab')
                 ->tabs([

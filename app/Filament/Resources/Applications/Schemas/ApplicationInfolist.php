@@ -28,6 +28,7 @@ class ApplicationInfolist
     {
         return [
             Tabs::make('Application detail')
+                ->extraAttributes(['class' => 'crm-record-view-frame'])
                 ->columnSpanFull()
                 ->persistTabInQueryString('application_tab')
                 ->tabs([

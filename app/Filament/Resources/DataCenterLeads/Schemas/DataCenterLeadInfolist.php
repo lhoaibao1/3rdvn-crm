@@ -27,6 +27,7 @@ class DataCenterLeadInfolist
                 ->html()
                 ->columnSpanFull(),
             Tabs::make('Lead Referral detail')
+                ->extraAttributes(['class' => 'crm-record-view-frame'])
                 ->columnSpanFull()
                 ->persistTabInQueryString('data_center_tab')
                 ->tabs([
