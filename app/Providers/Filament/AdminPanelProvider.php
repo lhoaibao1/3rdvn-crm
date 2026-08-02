@@ -599,6 +599,56 @@ class AdminPanelProvider extends PanelProvider
         padding: 15px 16px !important;
     }
 
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp {
+        min-height: 64px !important;
+        padding: 10px 12px !important;
+        border: 1px solid #e0e9f3 !important;
+        border-radius: 10px !important;
+        background: linear-gradient(145deg, #ffffff 0%, #f8fbfe 100%) !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, .025) !important;
+        transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp:hover {
+        border-color: #a8cfee !important;
+        box-shadow: 0 6px 16px rgba(8, 120, 209, .075) !important;
+        transform: translateY(-1px);
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp-label span {
+        color: #60738a !important;
+        font-size: .69rem !important;
+        font-weight: 820 !important;
+        letter-spacing: .035em !important;
+        text-transform: uppercase !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp-content {
+        color: #0f172a !important;
+        font-weight: 680 !important;
+    }
+
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp:has(.crm-history),
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp:has(.crm-document-library),
+    .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp:has(.crm-audit-log) {
+        min-height: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .dark .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp {
+        border-color: #334155 !important;
+        background: linear-gradient(145deg, #111827 0%, #0f172a 100%) !important;
+    }
+
+    .dark .fi-main:has(.crm-record-view-frame) .crm-record-view-frame .fi-in-entry-wrp-content {
+        color: #f8fafc !important;
+    }
+
     @media (min-width: 1024px) and (min-height: 680px) {
         .fi-main:has(.crm-record-view-frame) .crm-record-view-frame {
             display: flex !important;

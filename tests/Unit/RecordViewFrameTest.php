@@ -37,6 +37,10 @@ class RecordViewFrameTest extends TestCase
         self::assertStringContainsString('.crm-record-view-frame .fi-section-header-heading', $styles);
         self::assertStringContainsString('color: #086fb9 !important', $styles);
         self::assertStringContainsString('background: linear-gradient(100deg, #e9f5ff', $styles);
+        self::assertStringContainsString('.crm-record-view-frame .fi-in-entry-wrp {', $styles);
+        self::assertStringContainsString('border: 1px solid #e0e9f3 !important', $styles);
+        self::assertStringContainsString('.fi-in-entry-wrp:has(.crm-document-library)', $styles);
+        self::assertStringContainsString('.fi-in-entry-wrp:has(.crm-audit-log)', $styles);
         self::assertStringContainsString('height: calc(100dvh - var(--crm-topbar-height) - 112px)', $styles);
         self::assertStringContainsString('overflow-y: auto !important', $styles);
         self::assertStringContainsString('overscroll-behavior: contain !important', $styles);
