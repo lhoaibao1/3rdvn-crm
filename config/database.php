@@ -99,6 +99,21 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        'production_team_publish' => [
+            'driver' => 'pgsql',
+            'url' => env('CRM_TEAM_PUBLISH_DB_URL'),
+            'host' => env('CRM_TEAM_PUBLISH_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('CRM_TEAM_PUBLISH_DB_PORT', env('DB_PORT', '5432')),
+            'database' => env('CRM_TEAM_PUBLISH_DB_DATABASE'),
+            'username' => env('CRM_TEAM_PUBLISH_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('CRM_TEAM_PUBLISH_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('CRM_TEAM_PUBLISH_DB_SSLMODE', env('DB_SSLMODE', 'prefer')),
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),
