@@ -23,7 +23,9 @@ class ProjectReportForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components(self::components());
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
+            ->components(self::components());
     }
 
     public static function components(bool $projectLocked = false): array

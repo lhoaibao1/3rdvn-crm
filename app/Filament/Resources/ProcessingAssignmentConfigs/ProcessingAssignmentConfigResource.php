@@ -59,51 +59,52 @@ class ProcessingAssignmentConfigResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Phân bổ người xử lý')
-                ->columns(2)
-                ->schema([
-                    Select::make('sales_project_id')
-                        ->label('Dự án / Module')
-                        ->relationship('salesProject', 'name', fn ($query) => $query->where('is_active', true)->orderBy('sort_order')->orderBy('name'))
-                        ->unique(ignoreRecord: true)
-                        ->searchable()
-                        ->preload()
-                        ->native(false)
-                        ->live()
-                        ->required()
-                        ->columnSpanFull(),
-                    Toggle::make('is_enabled')
-                        ->label('Bật cấu hình phân bổ')
-                        ->helperText('Tắt để ngừng áp dụng danh sách phân bổ này.'),
-                    Toggle::make('auto_assign')
-                        ->label('Tự động phân bổ ngẫu nhiên')
-                        ->helperText('Khi bật, hệ thống random một người trong danh sách đã chọn.'),
-                    CheckboxList::make('user_ids')
-                        ->label('Nhân viên được phép nhận xử lý')
-                        ->options(fn (Get $get): array => ProcessingAssignmentConfig::selectableUserOptions((int) $get('sales_project_id')))
-                        ->searchable()
-                        ->bulkToggleable()
-                        ->columns(2)
-                        ->columnSpanFull(),
-                ]),
-            Section::make('Trạng thái Hot Lead')
-                ->description('Thêm các trạng thái nghiệp vụ cần dùng tại module Hot Lead.')
-                ->visible(fn (Get $get): bool => SalesProject::query()->whereKey((int) $get('sales_project_id'))->value('slug') === HotLeadAccess::PROJECT_SLUG)
-                ->schema([
-                    Repeater::make('statuses')
-                        ->label('Danh sách trạng thái')
-                        ->simple(
-                            TextInput::make('status')
-                                ->label('Tên trạng thái')
-                                ->required()
-                                ->maxLength(120),
-                        )
-                        ->addActionLabel('Thêm trạng thái')
-                        ->reorderable()
-                        ->columnSpanFull(),
-                ]),
-        ]);
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])->components([
+                Section::make('Phân bổ người xử lý')
+                    ->columns(2)
+                    ->schema([
+                        Select::make('sales_project_id')
+                            ->label('Dự án / Module')
+                            ->relationship('salesProject', 'name', fn ($query) => $query->where('is_active', true)->orderBy('sort_order')->orderBy('name'))
+                            ->unique(ignoreRecord: true)
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->live()
+                            ->required()
+                            ->columnSpanFull(),
+                        Toggle::make('is_enabled')
+                            ->label('Bật cấu hình phân bổ')
+                            ->helperText('Tắt để ngừng áp dụng danh sách phân bổ này.'),
+                        Toggle::make('auto_assign')
+                            ->label('Tự động phân bổ ngẫu nhiên')
+                            ->helperText('Khi bật, hệ thống random một người trong danh sách đã chọn.'),
+                        CheckboxList::make('user_ids')
+                            ->label('Nhân viên được phép nhận xử lý')
+                            ->options(fn (Get $get): array => ProcessingAssignmentConfig::selectableUserOptions((int) $get('sales_project_id')))
+                            ->searchable()
+                            ->bulkToggleable()
+                            ->columns(2)
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Trạng thái Hot Lead')
+                    ->description('Thêm các trạng thái nghiệp vụ cần dùng tại module Hot Lead.')
+                    ->visible(fn (Get $get): bool => SalesProject::query()->whereKey((int) $get('sales_project_id'))->value('slug') === HotLeadAccess::PROJECT_SLUG)
+                    ->schema([
+                        Repeater::make('statuses')
+                            ->label('Danh sách trạng thái')
+                            ->simple(
+                                TextInput::make('status')
+                                    ->label('Tên trạng thái')
+                                    ->required()
+                                    ->maxLength(120),
+                            )
+                            ->addActionLabel('Thêm trạng thái')
+                            ->reorderable()
+                            ->columnSpanFull(),
+                    ]),
+            ]);
     }
 
     public static function table(Table $table): Table

@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Filament\AclMixDecisionAction;
+use App\Support\Filament\AclMixOtpAction;
 use App\Support\Filament\LotteFinanceDecisionAction;
 use App\Support\Filament\RecordAssignAction;
 use Filament\Actions\DeleteAction;
@@ -31,6 +32,7 @@ class ViewApplication extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            AclMixOtpAction::make(),
             AclMixDecisionAction::make(),
             LotteFinanceDecisionAction::make(),
             RecordAssignAction::make('assignApplicationProcessor'),

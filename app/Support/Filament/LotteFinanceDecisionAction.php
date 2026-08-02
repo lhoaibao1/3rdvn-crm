@@ -2,12 +2,12 @@
 
 namespace App\Support\Filament;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\LotteFinanceWorkflow;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -95,6 +95,7 @@ class LotteFinanceDecisionAction
                     ->suffix('VNĐ')
                     ->mask(RawJs::make('$money($input, ",", ".", 0)'))
                     ->stripCharacters('.')
+                    ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric'])
                     ->visible(fn (Get $get): bool => $get('decision') === 'pass')
                     ->required(fn (Get $get): bool => $get('decision') === 'pass' && AdminWorkflowOverride::required()),
                 TextInput::make('estimated_interest_rate')
@@ -119,6 +120,7 @@ class LotteFinanceDecisionAction
                 ->suffix('VNĐ')
                 ->mask(RawJs::make('$money($input, ",", ".", 0)'))
                 ->stripCharacters('.')
+                ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric'])
                 ->visible(fn (Get $get): bool => $get('next_status') === LotteFinanceWorkflow::UW_APPROVAL)
                 ->required(fn (Get $get): bool => $get('next_status') === LotteFinanceWorkflow::UW_APPROVAL
                     && AdminWorkflowOverride::required()),

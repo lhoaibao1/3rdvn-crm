@@ -26,6 +26,7 @@ class LeadInfolist
     {
         return [
             Tabs::make('Lead detail')
+                ->extraAttributes(['class' => 'crm-record-view-frame'])
                 ->columnSpanFull()
                 ->persistTabInQueryString('lead_tab')
                 ->tabs([
@@ -156,7 +157,6 @@ class LeadInfolist
                 ]),
         ];
     }
-
 
     private static function renderHistoryTimeline(Lead $record): HtmlString
     {

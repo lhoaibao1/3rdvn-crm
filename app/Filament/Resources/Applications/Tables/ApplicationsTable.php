@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\Applications\Tables;
 
 use App\Filament\Resources\Applications\ApplicationResource;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Filament\AclMixDecisionAction;
+use App\Support\Filament\AclMixOtpAction;
 use App\Support\Filament\LotteFinanceDecisionAction;
 use App\Support\Filament\RecordAssignAction;
 use App\Support\Filament\TableColumnPreferences;
@@ -25,7 +27,6 @@ use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -37,7 +38,6 @@ class ApplicationsTable
             ->extraAttributes(['class' => 'crm-users-table crm-applications-table', 'data-crm-column-table' => $columnTable], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record]))
-            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')
@@ -175,6 +175,7 @@ class ApplicationsTable
                     ViewAction::make()
                         ->label('Xem')
                         ->url(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record])),
+                    AclMixOtpAction::make(),
                     AclMixDecisionAction::make(),
                     LotteFinanceDecisionAction::make(),
                     RecordAssignAction::make('assignApplicationProcessor'),

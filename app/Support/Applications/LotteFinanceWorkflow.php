@@ -7,6 +7,7 @@ use App\Models\SalesProject;
 use App\Models\User;
 use App\Support\AdminWorkflowOverride;
 use App\Support\Assignments\RecordAssignment;
+use App\Support\CustomerName;
 use App\Support\LotteFinanceDocuments;
 use App\Support\Permissions\RecordVisibility;
 use App\Support\Permissions\SalesProjectAccess;
@@ -120,6 +121,10 @@ class LotteFinanceWorkflow
                 ->filter(fn (string $key): bool => array_key_exists($key, $data))
                 ->mapWithKeys(fn (string $key): array => [$key => $data[$key]])
                 ->all();
+            if (array_key_exists('customer_name', $fields)) {
+                $fields['customer_name'] = CustomerName::normalize($fields['customer_name']);
+            }
+
             $moduleFields = array_filter([
                 'customer_name' => $fields['customer_name'] ?? null,
                 'phone' => $fields['phone'] ?? null,
@@ -167,7 +172,7 @@ class LotteFinanceWorkflow
                 'sales_project_id' => $project->getKey(),
                 'lead_id' => null,
                 'application_code' => null,
-                'applicant_name' => trim((string) ($fields['customer_name'] ?? '')),
+                'applicant_name' => CustomerName::normalize($fields['customer_name'] ?? null),
                 'phone' => trim((string) ($fields['phone'] ?? '')),
                 'identity_number' => trim((string) ($fields['identity_number'] ?? '')),
                 'status' => self::PRE_CHECK,

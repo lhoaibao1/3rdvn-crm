@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\ApiMappings\Schemas;
 
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
@@ -12,6 +12,7 @@ class ApiMappingForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
             ->components([
                 TextInput::make('mapping_name')
                     ->required(),

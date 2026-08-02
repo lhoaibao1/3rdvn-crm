@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Leads\Pages;
 
 use App\Filament\Resources\Leads\LeadResource;
+use App\Filament\Resources\Leads\Schemas\LeadForm;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -18,7 +19,7 @@ class EditLead extends EditRecord
 
     public function getTitle(): string
     {
-        return 'Sửa Lead';
+        return $this->record->lead_name ?: $this->record->lead_code;
     }
 
     public function getBreadcrumb(): string
@@ -28,7 +29,7 @@ class EditLead extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        return \App\Filament\Resources\Leads\Schemas\LeadForm::normalizeDataForSave($this->record, $data);
+        return LeadForm::normalizeDataForSave($this->record, $data);
     }
 
     protected function getHeaderActions(): array
@@ -68,10 +69,8 @@ class EditLead extends EditRecord
         return [];
     }
 
-
     protected function getRedirectUrl(): string
     {
         return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
     }
-
 }

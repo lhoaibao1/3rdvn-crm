@@ -15,8 +15,8 @@ class ProjectWorkflowConfigurationTest extends TestCase
         $project = new SalesProject(['slug' => 'acl-mix']);
 
         $this->assertSame([
-            AclMixWorkflow::SALE_COMPLETION => 'Chờ Sale hoàn thiện thông tin',
-            AclMixWorkflow::REJECTED => 'Từ chối',
+            AclMixWorkflow::INELIGIBLE => 'Không thoả điều kiện',
+            AclMixWorkflow::OTP_REQUIRED => 'Đang kiểm tra',
         ], ProjectWorkflowConfiguration::nextStatusOptions(
             $project,
             AclMixWorkflow::PENDING_INITIAL_REVIEW,

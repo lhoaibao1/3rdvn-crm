@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\RecordChangeLog;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Applications\LotteFinanceWorkflow;
+use App\Support\Filament\ApplicationAuditLog;
 use App\Support\Filament\DocumentPreview;
 use App\Support\Filament\LeadFormFieldFactory;
 use App\Support\Filament\ProcessTimeline;
@@ -28,6 +29,7 @@ class ApplicationInfolist
     {
         return [
             Tabs::make('Application detail')
+                ->extraAttributes(['class' => 'crm-record-view-frame'])
                 ->columnSpanFull()
                 ->persistTabInQueryString('application_tab')
                 ->tabs([
@@ -47,9 +49,17 @@ class ApplicationInfolist
                                             'lotte-finance' => LotteFinanceWorkflow::statusColor($state),
                                             default => 'gray',
                                         })
-                                        ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))->placeholder('-'),
+                                        ->formatStateUsing(fn (?string $state, Application $record): string => self::statusLabel($state, $record))->placeholder('-'),
                                     TextEntry::make('salesProject.name')->label('Dự án')->placeholder('-'),
                                     TextEntry::make('applicant_name')->label('Khách hàng')->placeholder('-'),
+                                    TextEntry::make('payload.review.otp')
+                                        ->label('OTP')
+                                        ->badge()
+                                        ->color('warning')
+                                        ->copyable()
+                                        ->placeholder('Chưa nhập')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix'
+                                            && $record->status === AclMixWorkflow::OTP_REQUIRED),
                                     TextEntry::make('payload.review.product')
                                         ->label('Sản phẩm')
                                         ->placeholder('-')
@@ -271,6 +281,11 @@ class ApplicationInfolist
                                             TextEntry::make('payload.fields.scheme_name')->label('Tên Scheme')->placeholder('-')->columnSpan(2),
                                             TextEntry::make('payload.fields.scheme_product_line')->label('Dòng sản phẩm')->placeholder('-'),
                                             TextEntry::make('payload.fields.scheme_loan_period')->label('Thời hạn tối đa')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_dti_label')->label('DTI')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_ltv_label')->label('LTV')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_loan_amount_range')->label('Khoản vay áp dụng')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_age_range')->label('Độ tuổi áp dụng')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_insurance_fee')->label('Phí bảo hiểm Scheme')->placeholder('-'),
                                             TextEntry::make('payload.fields.scheme_description')->label('Mô tả Scheme')->placeholder('-')->columnSpanFull(),
                                         ]),
                                     Section::make('Thông tin khoản vay')
@@ -302,8 +317,9 @@ class ApplicationInfolist
 
                     Tab::make('Chứng từ')
                         ->icon(Heroicon::DocumentText)
+                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance')
                         ->schema([
-                            Section::make('CCCD/OCR')
+                            Section::make('Thư mục chứng từ')
                                 ->columnSpanFull()
                                 ->schema([
                                     TextEntry::make('lotte_documents')
@@ -340,15 +356,28 @@ class ApplicationInfolist
                                 ->columns(2)
                                 ->schema(fn (Application $record): array => LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'module', 'payload.module_fields')),
                         ]),
-                    Tab::make('Lịch sử thao tác')
+                    Tab::make('Lịch sử xử lý')
                         ->icon(Heroicon::Clock)
                         ->schema([
-                            Section::make('Nhật ký hồ sơ')
+                            Section::make('Nội dung xử lý hồ sơ')
                                 ->columnSpanFull()
                                 ->schema([
                                     TextEntry::make('application_history_timeline')
                                         ->hiddenLabel()
                                         ->state(fn (Application $record): HtmlString => self::renderHistoryTimeline($record))
+                                        ->html()
+                                        ->columnSpanFull(),
+                                ]),
+                        ]),
+                    Tab::make('Audit Log')
+                        ->icon(Heroicon::OutlinedListBullet)
+                        ->schema([
+                            Section::make('Nhật ký thay đổi dữ liệu')
+                                ->columnSpanFull()
+                                ->schema([
+                                    TextEntry::make('application_audit_log')
+                                        ->hiddenLabel()
+                                        ->state(fn (Application $record): HtmlString => self::renderAuditLog($record))
                                         ->html()
                                         ->columnSpanFull(),
                                 ]),
@@ -391,8 +420,22 @@ class ApplicationInfolist
         return ProcessTimeline::render(
             $logs,
             fn (RecordChangeLog $log): string => self::historyTitle($log),
-            fn (RecordChangeLog $log): string => self::historyBody($log),
+            fn (RecordChangeLog $log): string => self::historyBody($log, $record),
             fn (RecordChangeLog $log): array => self::historyTone($log),
+        );
+    }
+
+    private static function renderAuditLog(Application $record): HtmlString
+    {
+        $logs = $record->changeLogs()
+            ->with('actor:id,name,uid,employee_code,email')
+            ->latest()
+            ->limit(100)
+            ->get();
+
+        return ApplicationAuditLog::render(
+            $logs,
+            fn (?string $status): string => self::statusLabel($status, $record),
         );
     }
 
@@ -416,34 +459,12 @@ class ApplicationInfolist
         };
     }
 
-    private static function historyBody(RecordChangeLog $log): string
+    private static function historyBody(RecordChangeLog $log, Application $record): string
     {
-        $changes = is_array($log->changes) ? $log->changes : [];
-
-        if ($log->action === 'created') {
-            return 'Tạo hồ sơ Application.';
-        }
-
-        if (array_key_exists('status', $changes)) {
-            $old = self::statusLabel($changes['status']['old'] ?? null);
-            $new = self::statusLabel($changes['status']['new'] ?? null);
-
-            return 'Trạng thái: '.$old.' → '.$new;
-        }
-
-        foreach (['note', 'processing_note', 'review_note'] as $field) {
-            if (array_key_exists($field, $changes)) {
-                $note = self::historyValue($changes[$field]['new'] ?? null);
-
-                return 'Ghi chú: '.$note;
-            }
-        }
-
-        return match ($log->action) {
-            'deleted' => 'Đóng hồ sơ.',
-            'restored' => 'Khôi phục hồ sơ.',
-            default => 'Cập nhật hồ sơ.',
-        };
+        return ApplicationAuditLog::businessSummary(
+            $log,
+            fn (?string $status): string => self::statusLabel($status, $record),
+        );
     }
 
     private static function historyTone(RecordChangeLog $log): array
@@ -466,36 +487,16 @@ class ApplicationInfolist
         return ['label' => 'Xử lý', 'color' => '#475569', 'bg' => '#f8fafc', 'soft' => '#e2e8f0', 'border' => '#cbd5e1'];
     }
 
-    private static function fieldLabel(string $field): string
+    private static function statusLabel(?string $state, ?Application $record = null): string
     {
-        return match ($field) {
-            'application_code' => 'Mã hồ sơ',
-            'applicant_name' => 'Khách hàng',
-            'phone' => 'Số điện thoại',
-            'identity_number' => 'CCCD/CMND',
-            'status' => 'Trạng thái',
-            'assigned_sale_id' => 'Sale phụ trách',
-            'payload' => 'Dữ liệu hồ sơ',
-            'note' => 'Ghi chú',
-            default => str($field)->replace('_', ' ')->headline()->toString(),
-        };
-    }
-
-    private static function historyValue(mixed $value): string
-    {
-        if ($value === null || $value === '') {
-            return '-';
+        if ($record?->salesProject?->slug === 'lotte-finance') {
+            return LotteFinanceWorkflow::statusLabel($state);
         }
 
-        if (is_array($value)) {
-            return 'Đã cập nhật';
+        if ($record?->salesProject?->slug === 'acl-mix') {
+            return AclMixWorkflow::statusLabel($state);
         }
 
-        return (string) $value;
-    }
-
-    private static function statusLabel(?string $state): string
-    {
         if (array_key_exists((string) $state, LotteFinanceWorkflow::statusOptions())) {
             return LotteFinanceWorkflow::statusLabel($state);
         }

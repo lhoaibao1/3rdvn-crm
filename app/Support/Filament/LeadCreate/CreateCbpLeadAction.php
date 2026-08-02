@@ -3,6 +3,7 @@
 namespace App\Support\Filament\LeadCreate;
 
 use App\Support\AdminWorkflowOverride;
+use App\Support\CustomerName;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
@@ -36,7 +37,9 @@ class CreateCbpLeadAction
                     TextInput::make('customer_name')
                         ->label('Họ tên')
                         ->required(AdminWorkflowOverride::required())
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->extraInputAttributes(['class' => 'crm-uppercase-input'])
+                        ->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state)),
                     TextInput::make('identity_number')
                         ->label('CCCD')
                         ->required(AdminWorkflowOverride::required())

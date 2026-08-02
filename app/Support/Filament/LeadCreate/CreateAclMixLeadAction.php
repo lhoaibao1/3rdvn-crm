@@ -4,6 +4,7 @@ namespace App\Support\Filament\LeadCreate;
 
 use App\Forms\Components\SearchableSelect as Select;
 use App\Support\AdminWorkflowOverride;
+use App\Support\CustomerName;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
@@ -32,12 +33,14 @@ class CreateAclMixLeadAction
     private static function schema(): array
     {
         return [
-            Grid::make(2)
+            Grid::make(['default' => 1, 'md' => 3])
                 ->schema([
                     TextInput::make('customer_name')
                         ->label('Họ tên khách hàng')
                         ->required(AdminWorkflowOverride::required())
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->extraInputAttributes(['class' => 'crm-uppercase-input'])
+                        ->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state)),
                     TextInput::make('phone')
                         ->label('Số điện thoại')
                         ->tel()

@@ -283,3 +283,40 @@
     }
 }
 
+
+.crm-uppercase-input {
+    text-transform: uppercase;
+}
+
+.crm-money-input {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+}
+
+.crm-searchable-select-dropdown {
+    max-width: calc(100vw - 20px);
+}
+
+.crm-searchable-select-option {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.fi-modal-window .crm-lotte-create-form .fi-section {
+    border: 1px solid #dbe4f0;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, .05);
+}
+
+.fi-modal-window .crm-lotte-create-form .fi-section-header {
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(90deg, #eff6ff 0%, #f8fafc 100%);
+}
+
+.fi-modal-window .crm-lotte-create-form .fi-section-header-heading {
+    color: #1e40af;
+    font-weight: 800;
+}

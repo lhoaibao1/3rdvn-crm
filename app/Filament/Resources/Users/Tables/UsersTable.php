@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\Users\Tables;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\CrmTeam;
 use App\Models\SalesChannel;
 use App\Models\User;
 use App\Support\Filament\TableColumnPreferences;
+use App\Support\Filament\UserPasswordResetAction;
 use App\Support\RoleHierarchy;
 use App\Support\UserSpecOptions;
 use Filament\Actions\Action;
@@ -23,7 +25,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -194,6 +195,7 @@ class UsersTable
                 ActionGroup::make([
                     ViewAction::make()->label('Xem')->url(fn (User $record): string => UserResource::getUrl('view', ['record' => $record])),
                     EditAction::make()->label('Sửa'),
+                    UserPasswordResetAction::make(),
                 ])
                     ->iconButton()
                     ->label('Hành động')

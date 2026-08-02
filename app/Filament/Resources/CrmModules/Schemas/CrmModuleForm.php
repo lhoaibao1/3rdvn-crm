@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\CrmModules\Schemas;
 
-use Filament\Forms\Components\CheckboxList;
 use App\Forms\Components\SearchableSelect as Select;
-use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -17,6 +17,7 @@ class CrmModuleForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
             ->columns(12)
             ->components([
                 Section::make('Module')

@@ -6,9 +6,7 @@ use App\Filament\Resources\LotteFinanceApplications\LotteFinanceApplicationResou
 use App\Models\Application;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Filament\LeadCreate\CreateLotteFinanceLeadAction;
-use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 
 class CreateLotteFinanceApplication extends CreateRecord
@@ -31,11 +29,9 @@ class CreateLotteFinanceApplication extends CreateRecord
         );
     }
 
-    protected function getCreateFormAction(): Action
+    protected function getFormActions(): array
     {
-        return parent::getCreateFormAction()
-            ->label('Gửi kiểm tra')
-            ->icon(Heroicon::OutlinedPaperAirplane);
+        return [];
     }
 
     protected function getRedirectUrl(): string

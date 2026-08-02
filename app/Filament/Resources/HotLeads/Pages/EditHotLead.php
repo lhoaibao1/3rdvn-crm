@@ -12,7 +12,7 @@ class EditHotLead extends EditRecord
 
     public function getTitle(): string
     {
-        return 'Sửa Lead nóng';
+        return $this->record->lead_name ?: $this->record->lead_code;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -24,5 +24,4 @@ class EditHotLead extends EditRecord
     {
         return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
     }
-
 }

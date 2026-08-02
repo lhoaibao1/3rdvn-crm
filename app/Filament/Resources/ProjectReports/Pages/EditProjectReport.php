@@ -4,8 +4,8 @@ namespace App\Filament\Resources\ProjectReports\Pages;
 
 use App\Filament\Resources\ProjectReports\ProjectReportResource;
 use App\Filament\Resources\ProjectReports\Tables\ProjectReportsTable;
-use Illuminate\Database\Eloquent\Model;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Model;
 
 class EditProjectReport extends EditRecord
 {
@@ -13,7 +13,7 @@ class EditProjectReport extends EditRecord
 
     public function getTitle(): string
     {
-        return 'Sửa báo cáo';
+        return $this->record->customer_name ?: ($this->record->application_id ?: 'Báo cáo');
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
@@ -25,5 +25,4 @@ class EditProjectReport extends EditRecord
     {
         return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
     }
-
 }

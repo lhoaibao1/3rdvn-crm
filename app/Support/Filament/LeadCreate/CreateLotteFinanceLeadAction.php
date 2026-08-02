@@ -4,6 +4,7 @@ namespace App\Support\Filament\LeadCreate;
 
 use App\Forms\Components\SearchableSelect as Select;
 use App\Support\AdminWorkflowOverride;
+use App\Support\CustomerName;
 use App\Support\LotteFinanceSchemeCatalog;
 use App\Support\VietnamAddressCatalog;
 use App\Support\VietnamBankCatalog;
@@ -51,7 +52,7 @@ class CreateLotteFinanceLeadAction
                 Step::make('Chọn Scheme')
                     ->schema([
                         Section::make('Thông tin sản phẩm')
-                            ->columns(2)
+                            ->columns(['default' => 1, 'md' => 3])
                             ->schema([
                                 Select::make('scheme_code')
                                     ->label('Mã Scheme')
@@ -60,6 +61,8 @@ class CreateLotteFinanceLeadAction
                                     ->getOptionLabelUsing(fn (?string $value): ?string => LotteFinanceSchemeCatalog::optionLabel($value))
                                     ->placeholder('Chọn mã scheme')
                                     ->searchable()
+                                    ->optionsLimit(1000)
+                                    ->searchDebounce(250)
                                     ->live()
                                     ->required(AdminWorkflowOverride::required())
                                     ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
@@ -87,6 +90,22 @@ class CreateLotteFinanceLeadAction
                                     ->label('DTI')
                                     ->disabled()
                                     ->dehydrated(),
+                                TextInput::make('scheme_ltv_label')
+                                    ->label('LTV')
+                                    ->disabled()
+                                    ->dehydrated(),
+                                TextInput::make('scheme_loan_amount_range')
+                                    ->label('Khoản vay áp dụng')
+                                    ->disabled()
+                                    ->dehydrated(),
+                                TextInput::make('scheme_age_range')
+                                    ->label('Độ tuổi áp dụng')
+                                    ->disabled()
+                                    ->dehydrated(),
+                                TextInput::make('scheme_insurance_fee')
+                                    ->label('Phí bảo hiểm Scheme')
+                                    ->disabled()
+                                    ->dehydrated(),
                                 TextInput::make('scheme_loan_period')
                                     ->label('Thời hạn tối đa')
                                     ->disabled()
@@ -103,7 +122,7 @@ class CreateLotteFinanceLeadAction
                                     ->columnSpanFull(),
                             ]),
                         Section::make('Thông tin khoản vay')
-                            ->columns(2)
+                            ->columns(['default' => 1, 'md' => 3])
                             ->schema([
                                 Select::make('loan_purpose_code')
                                     ->label('Mục đích vay')
@@ -119,6 +138,7 @@ class CreateLotteFinanceLeadAction
                                     ->label('Số tiền vay')
                                     ->mask(RawJs::make('$money($input, ",", ".", 0)'))
                                     ->stripCharacters('.')
+                                    ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric'])
                                     ->suffix('VNĐ')
                                     ->live(onBlur: true)
                                     ->required(AdminWorkflowOverride::required())
@@ -127,6 +147,7 @@ class CreateLotteFinanceLeadAction
                                     ->label('Tổng số tiền vay (Combo 2 Loan)')
                                     ->mask(RawJs::make('$money($input, ",", ".", 0)'))
                                     ->stripCharacters('.')
+                                    ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric'])
                                     ->suffix('VNĐ'),
                                 TextInput::make('loan_term_months')
                                     ->label('Thời gian vay')
@@ -227,6 +248,9 @@ class CreateLotteFinanceLeadAction
                                     ->label('Họ tên khách hàng')
                                     ->required(AdminWorkflowOverride::required())
                                     ->maxLength(255)
+                                    ->live(onBlur: true)
+                                    ->extraInputAttributes(['class' => 'crm-uppercase-input'])
+                                    ->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state))
                                     ->columnSpan(2),
                                 TextInput::make('phone')
                                     ->label('Số điện thoại')
@@ -502,7 +526,8 @@ class CreateLotteFinanceLeadAction
                 ->previousAction(fn (Action $action): Action => $action
                     ->label('Quay lại')
                     ->icon(Heroicon::OutlinedArrowLeft))
-                ->submitAction(new HtmlString('<button type="submit" class="fi-btn fi-btn-size-md fi-btn-color-primary">Gửi Lead</button>'))
+                ->submitAction(new HtmlString('<button type="submit" class="fi-btn fi-btn-size-md fi-btn-color-primary">Gửi kiểm tra</button>'))
+                ->extraAttributes(['class' => 'crm-record-form-frame crm-lotte-create-form'])
                 ->contained(false),
             Hidden::make('loan_purpose_name')->dehydrated(),
             Hidden::make('insurance_label')->default(LotteFinanceSchemeCatalog::insuranceLabel('INSUR69'))->dehydrated(),
@@ -511,6 +536,11 @@ class CreateLotteFinanceLeadAction
             Hidden::make('scheme_interest_code')->dehydrated(),
             Hidden::make('scheme_interest_period')->dehydrated(),
             Hidden::make('scheme_dti')->dehydrated(),
+            Hidden::make('scheme_ltv')->dehydrated(),
+            Hidden::make('scheme_loan_amount_min')->dehydrated(),
+            Hidden::make('scheme_loan_amount_max')->dehydrated(),
+            Hidden::make('scheme_age_min')->dehydrated(),
+            Hidden::make('scheme_age_max')->dehydrated(),
             Hidden::make('scheme_loan_period_min')->dehydrated(),
             Hidden::make('scheme_loan_period_max')->dehydrated(),
         ];
@@ -562,6 +592,15 @@ class CreateLotteFinanceLeadAction
         $set('scheme_interest_period', $scheme['interest_period'] ?? null);
         $set('scheme_dti', $scheme['dti'] ?? null);
         $set('scheme_dti_label', $scheme['dti_label'] ?? null);
+        $set('scheme_ltv', $scheme['ltv'] ?? null);
+        $set('scheme_ltv_label', filled($scheme['ltv'] ?? null) ? '<= '.$scheme['ltv'].'%' : null);
+        $set('scheme_loan_amount_min', $scheme['loan_amount_min'] ?? null);
+        $set('scheme_loan_amount_max', $scheme['loan_amount_max'] ?? null);
+        $set('scheme_loan_amount_range', self::moneyRange($scheme['loan_amount_min'] ?? null, $scheme['loan_amount_max'] ?? null));
+        $set('scheme_age_min', $scheme['age_min'] ?? null);
+        $set('scheme_age_max', $scheme['age_max'] ?? null);
+        $set('scheme_age_range', self::numberRange($scheme['age_min'] ?? null, $scheme['age_max'] ?? null, ' tuổi'));
+        $set('scheme_insurance_fee', $scheme['insurance_fee'] ?? null);
         $set('interest_option', $scheme['interest_label'] ?? null);
     }
 
@@ -657,6 +696,31 @@ class CreateLotteFinanceLeadAction
         return number_format((float) $value, 0, ',', '.');
     }
 
+    private static function moneyRange(mixed $min, mixed $max): ?string
+    {
+        if (blank($min) && blank($max)) {
+            return null;
+        }
+
+        $from = filled($min) ? self::formatMoney((float) $min) : '0';
+        $to = filled($max) ? self::formatMoney((float) $max) : 'không giới hạn';
+
+        return $from.' - '.$to.' VNĐ';
+    }
+
+    private static function numberRange(mixed $min, mixed $max, string $suffix = ''): ?string
+    {
+        if (blank($min) && blank($max)) {
+            return null;
+        }
+
+        if (filled($min) && filled($max)) {
+            return $min.' - '.$max.$suffix;
+        }
+
+        return (filled($min) ? 'Từ '.$min : 'Đến '.$max).$suffix;
+    }
+
     public static function fieldKeys(): array
     {
         return [
@@ -674,6 +738,8 @@ class CreateLotteFinanceLeadAction
             'scheme_product_type', 'scheme_product', 'scheme_product_line', 'scheme_description', 'scheme_sid',
             'scheme_start_date', 'scheme_loan_period', 'scheme_loan_period_min', 'scheme_loan_period_max',
             'scheme_interest_rate', 'scheme_interest_code', 'scheme_interest_period', 'scheme_dti', 'scheme_dti_label',
+            'scheme_ltv', 'scheme_ltv_label', 'scheme_loan_amount_min', 'scheme_loan_amount_max',
+            'scheme_loan_amount_range', 'scheme_age_min', 'scheme_age_max', 'scheme_age_range', 'scheme_insurance_fee',
             'loan_purpose_code', 'loan_purpose_name', 'loan_amount', 'combo_loan_amount', 'loan_term_months',
             'insurance_code', 'insurance_label', 'interest_option', 'estimated_insurance_amount',
             'estimated_monthly_payment', 'estimated_total_payment', 'ocr_front_image', 'ocr_back_image',

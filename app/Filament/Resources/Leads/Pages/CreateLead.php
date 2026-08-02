@@ -8,6 +8,7 @@ use App\Models\SalesProject;
 use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\LeadPayload;
 use App\Support\Assignments\RecordAssignment;
+use App\Support\CustomerName;
 use App\Support\Filament\LeadCreate\CreateLotteFinanceLeadAction;
 use App\Support\Permissions\LeadAccess;
 use App\Support\SalesLineSnapshot;
@@ -73,9 +74,19 @@ class CreateLead extends CreateRecord
                 Hidden::make('lead_name'),
                 Hidden::make('email'),
                 Section::make('Thông tin Lead')
-                    ->columns(fn (Get $get): int => LeadAccess::selectedProjectSlug($get('sales_project_id') ?: $this->selectedProjectId) === 'lotte-finance' ? 1 : 2)
+                    ->extraAttributes(['class' => 'crm-record-form-frame crm-lead-create-form'])
+                    ->columns(fn (Get $get): int => LeadAccess::selectedProjectSlug($get('sales_project_id') ?: $this->selectedProjectId) === 'lotte-finance' ? 1 : 3)
                     ->schema(fn (Get $get): array => self::leadFieldsForProject($get('sales_project_id') ?: $this->selectedProjectId)),
             ]);
+    }
+
+    protected function getFormActions(): array
+    {
+        if (LeadAccess::selectedProjectSlug($this->selectedProjectId) === 'lotte-finance') {
+            return [];
+        }
+
+        return parent::getFormActions();
     }
 
     protected function getCreateFormAction(): Action
@@ -148,7 +159,9 @@ class CreateLead extends CreateRecord
             TextInput::make('customer_name')
                 ->label('Họ tên')
                 ->required(AdminWorkflowOverride::required())
-                ->maxLength(255),
+                ->maxLength(255)
+                ->extraInputAttributes(['class' => 'crm-uppercase-input'])
+                ->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state)),
             TextInput::make('identity_number')
                 ->label('CCCD')
                 ->required(AdminWorkflowOverride::required())
@@ -167,7 +180,9 @@ class CreateLead extends CreateRecord
             TextInput::make('customer_name')
                 ->label('Họ tên khách hàng')
                 ->required(AdminWorkflowOverride::required())
-                ->maxLength(255),
+                ->maxLength(255)
+                ->extraInputAttributes(['class' => 'crm-uppercase-input'])
+                ->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state)),
             TextInput::make('phone')
                 ->label('Số điện thoại')
                 ->tel()
@@ -266,6 +281,10 @@ class CreateLead extends CreateRecord
                 $fields[$key] = $data[$key];
                 unset($data[$key]);
             }
+        }
+
+        if (array_key_exists('customer_name', $fields)) {
+            $fields['customer_name'] = CustomerName::normalize($fields['customer_name']);
         }
 
         if ($fields !== []) {

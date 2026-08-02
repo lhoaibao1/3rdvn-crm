@@ -138,6 +138,7 @@ class LeadDecisionAction
                 ->label('Số tiền phê duyệt sơ bộ')
                 ->mask(RawJs::make('$money($input, ",", ".", 0)'))
                 ->stripCharacters('.')
+                ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric'])
                 ->suffix('VNĐ')
                 ->required(fn (Get $get): bool => AdminWorkflowOverride::required() && $get('status') === 'Khách hàng thoả mãn điều kiện')
                 ->visible(fn (Get $get): bool => $get('status') === 'Khách hàng thoả mãn điều kiện'),

@@ -29,7 +29,7 @@ class ViewCandidateApplication extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Hồ sơ ứng viên';
+        return $this->record->full_name ?: $this->record->application_code;
     }
 
     protected function getHeaderActions(): array

@@ -2,9 +2,10 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
-use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Users\Pages\Concerns\InteractsWithUserMailbox;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
+use App\Support\Filament\UserPasswordResetAction;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -20,23 +21,12 @@ class ViewUser extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Người dùng';
+        return $this->record->name ?: ($this->record->uid ?: 'Người dùng');
     }
 
     public function getBreadcrumb(): string
     {
         return 'Xem';
-    }
-
-
-    public function getHeading(): string | \Illuminate\Contracts\Support\Htmlable | null
-    {
-        return null;
-    }
-
-    public function getBreadcrumbs(): array
-    {
-        return [];
     }
 
     protected function getHeaderActions(): array
@@ -47,6 +37,7 @@ class ViewUser extends ViewRecord
                 EditAction::make()
                     ->icon(Heroicon::OutlinedPencilSquare)
                     ->label('Cập nhật người dùng'),
+                UserPasswordResetAction::make(),
                 Action::make('markDeleted')
                     ->icon(Heroicon::OutlinedTrash)
                     ->label('Xóa người dùng')

@@ -41,7 +41,9 @@ const crmSearchableSelectComponent = (config) => ({
     requestSequence: 0,
     destroyed: false,
     syncingFromLivewire: false,
-    removeGestureGuard: null,
+    removeViewportListeners: null,
+    removeControlClickListener: null,
+    dynamicOptionsSignature: null,
 
     init() {
         const input = this.$refs.input
@@ -90,7 +92,7 @@ const crmSearchableSelectComponent = (config) => ({
             lockOptgroupOrder: true,
             maxItems: config.isMultiple ? (config.maxItems || null) : 1,
             maxOptions: Number(config.optionsLimit) || 50,
-            openOnFocus: true,
+            openOnFocus: false,
             optgroupField: 'optgroup',
             optgroupLabelField: 'label',
             optgroupValueField: 'value',
@@ -175,7 +177,9 @@ const crmSearchableSelectComponent = (config) => ({
 
         this.select.wrapper.classList.add('crm-searchable-select-control')
         this.select.dropdown.classList.add('crm-searchable-select-dropdown')
-        this.installGestureGuard()
+        this.dynamicOptionsSignature = this.optionsSignature(prepared.options)
+        this.installViewportListeners()
+        this.installControlClickListener()
 
         this.syncFromState(this.state)
         this.setDisabled(config.isDisabled)
@@ -322,6 +326,7 @@ const crmSearchableSelectComponent = (config) => ({
 
     async refreshDynamicOptions() {
         const requestId = ++this.requestSequence
+        const stateBeforeRequest = this.select?.getValue()
 
         try {
             const results = await config.getOptionsUsing()
@@ -330,20 +335,37 @@ const crmSearchableSelectComponent = (config) => ({
                 this.destroyed
                 || requestId !== this.requestSequence
                 || !this.select
+                || !sameState(stateBeforeRequest, this.select.getValue(), config.isMultiple)
             ) {
                 return
             }
 
             const prepared = this.prepareOptions(results)
+            const signature = this.optionsSignature(prepared.options)
+
+            if (signature === this.dynamicOptionsSignature) {
+                return
+            }
+
             this.select.clearOptionGroups()
             this.registerGroups(prepared.groups)
             this.select.clearOptions()
             this.select.addOptions(prepared.options)
+            this.dynamicOptionsSignature = signature
             this.select.refreshOptions(false)
-            this.syncFromState(this.state)
+            await this.syncFromState(this.state)
         } catch {
             // Keep the last valid option set when the server cannot refresh.
         }
+    },
+
+    optionsSignature(options) {
+        return JSON.stringify((options || []).map((option) => [
+            option.value,
+            option.label,
+            Boolean(option.isDisabled),
+            option.optgroup || null,
+        ]))
     },
 
     updateLivewireState(value) {
@@ -446,145 +468,41 @@ const crmSearchableSelectComponent = (config) => ({
         config.isDisabled ? this.select.disable() : this.select.enable()
     },
 
-    installGestureGuard() {
-        const dropdown = this.select?.dropdown_content
-
-        if (!dropdown) {
-            return
-        }
-
-        const hasPointerEvents = Boolean(window.PointerEvent)
-
-        const swipeThreshold = 8
-        let gesture = null
-        let suppressOptionClickUntil = 0
-
-        const onPointerDown = (event) => {
-            if (event.isPrimary === false || event.button > 0) {
-                return
-            }
-
-            gesture = {
-                pointerId: event.pointerId,
-                x: event.clientX,
-                y: event.clientY,
-                scrollTop: dropdown.scrollTop,
-                moved: false,
-            }
-        }
-
-        const onPointerMove = (event) => {
-            if (!gesture || event.pointerId !== gesture.pointerId) {
-                return
-            }
-
-            const moved = Math.hypot(
-                event.clientX - gesture.x,
-                event.clientY - gesture.y,
-            ) >= swipeThreshold
-
-            if (moved || Math.abs(dropdown.scrollTop - gesture.scrollTop) > 1) {
-                gesture.moved = true
-            }
-        }
-
-        const onPointerUp = (event) => {
-            if (!gesture || event.pointerId !== gesture.pointerId) {
-                return
-            }
-
-            if (gesture.moved) {
-                suppressOptionClickUntil = performance.now() + 250
-            }
-
-            gesture = null
-        }
-
-        const onPointerCancel = () => {
-            gesture = null
-        }
-
-        const touchAsPointer = (touch) => ({
-            pointerId: touch.identifier,
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            isPrimary: true,
-            button: 0,
-        })
-
-        const onTouchStart = (event) => {
-            const touch = event.touches[0]
-
-            if (touch) {
-                onPointerDown(touchAsPointer(touch))
-            }
-        }
-
-        const onTouchMove = (event) => {
-            const touch = Array.from(event.touches).find((item) => (
-                item.identifier === gesture?.pointerId
-            ))
-
-            if (touch) {
-                onPointerMove(touchAsPointer(touch))
-            }
-        }
-
-        const onTouchEnd = (event) => {
-            const touch = Array.from(event.changedTouches).find((item) => (
-                item.identifier === gesture?.pointerId
-            ))
-
-            if (touch) {
-                onPointerUp(touchAsPointer(touch))
-            }
-        }
-
-        const onClickCapture = (event) => {
+    installControlClickListener() {
+        const openFromUserClick = (event) => {
             if (
-                performance.now() > suppressOptionClickUntil
-                || !event.target.closest('[data-selectable]')
+                config.isDisabled
+                || this.select?.isOpen
+                || event.target.closest('.remove, .clear-button')
             ) {
                 return
             }
 
-            suppressOptionClickUntil = 0
-            event.preventDefault()
-            event.stopImmediatePropagation()
+            this.select?.open()
         }
 
-        if (hasPointerEvents) {
-            dropdown.addEventListener('pointerdown', onPointerDown, { passive: true })
-            dropdown.addEventListener('pointermove', onPointerMove, { passive: true })
-            dropdown.addEventListener('pointerup', onPointerUp, { passive: true })
-            dropdown.addEventListener('pointercancel', onPointerCancel, { passive: true })
-        } else {
-            dropdown.addEventListener('touchstart', onTouchStart, { passive: true })
-            dropdown.addEventListener('touchmove', onTouchMove, { passive: true })
-            dropdown.addEventListener('touchend', onTouchEnd, { passive: true })
-            dropdown.addEventListener('touchcancel', onPointerCancel, { passive: true })
-            dropdown.addEventListener('mousedown', onPointerDown, { passive: true })
-            dropdown.addEventListener('mousemove', onPointerMove, { passive: true })
-            dropdown.addEventListener('mouseup', onPointerUp, { passive: true })
+        this.select?.control.addEventListener('click', openFromUserClick)
+        this.removeControlClickListener = () => {
+            this.select?.control.removeEventListener('click', openFromUserClick)
         }
-        dropdown.addEventListener('click', onClickCapture, true)
+    },
 
-        this.removeGestureGuard = () => {
-            if (hasPointerEvents) {
-                dropdown.removeEventListener('pointerdown', onPointerDown)
-                dropdown.removeEventListener('pointermove', onPointerMove)
-                dropdown.removeEventListener('pointerup', onPointerUp)
-                dropdown.removeEventListener('pointercancel', onPointerCancel)
-            } else {
-                dropdown.removeEventListener('touchstart', onTouchStart)
-                dropdown.removeEventListener('touchmove', onTouchMove)
-                dropdown.removeEventListener('touchend', onTouchEnd)
-                dropdown.removeEventListener('touchcancel', onPointerCancel)
-                dropdown.removeEventListener('mousedown', onPointerDown)
-                dropdown.removeEventListener('mousemove', onPointerMove)
-                dropdown.removeEventListener('mouseup', onPointerUp)
+    installViewportListeners() {
+        const closeOnViewportChange = (event) => {
+            if (!this.select?.isOpen || this.select.dropdown.contains(event.target)) {
+                return
             }
-            dropdown.removeEventListener('click', onClickCapture, true)
+
+            this.select.close()
+        }
+        const closeOnResize = () => this.select?.isOpen && this.select.close()
+
+        document.addEventListener('scroll', closeOnViewportChange, true)
+        window.addEventListener('resize', closeOnResize, { passive: true })
+
+        this.removeViewportListeners = () => {
+            document.removeEventListener('scroll', closeOnViewportChange, true)
+            window.removeEventListener('resize', closeOnResize)
         }
     },
 
@@ -602,9 +520,14 @@ const crmSearchableSelectComponent = (config) => ({
         this.requestSequence += 1
         document.body.classList.remove('crm-searchable-select-open')
 
-        if (this.removeGestureGuard) {
-            this.removeGestureGuard()
-            this.removeGestureGuard = null
+        if (this.removeViewportListeners) {
+            this.removeViewportListeners()
+            this.removeViewportListeners = null
+        }
+
+        if (this.removeControlClickListener) {
+            this.removeControlClickListener()
+            this.removeControlClickListener = null
         }
 
         if (this.select) {

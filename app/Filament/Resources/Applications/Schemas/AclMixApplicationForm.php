@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Assignments\RecordAssignment;
+use App\Support\CustomerName;
 use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\DateTimePicker;
@@ -23,7 +24,10 @@ class AclMixApplicationForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components(self::components());
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
+            ->columns(1)
+            ->components(self::components());
     }
 
     public static function components(): array
@@ -34,9 +38,9 @@ class AclMixApplicationForm
         return [
             Section::make('Thông tin kiểm tra ban đầu')
                 ->visible(fn (?Application $record): bool => ! $record instanceof Application)
-                ->columns(2)
+                ->columns(3)
                 ->schema([
-                    TextInput::make('applicant_name')->label('Họ tên khách hàng')->required(AdminWorkflowOverride::required())->maxLength(255),
+                    TextInput::make('applicant_name')->label('Họ tên khách hàng')->required(AdminWorkflowOverride::required())->maxLength(255)->extraInputAttributes(['class' => 'crm-uppercase-input'])->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state)),
                     TextInput::make('phone')->label('Số điện thoại')->tel()->required(AdminWorkflowOverride::required())->maxLength(30),
                     TextInput::make('identity_number')->label('CCCD/CMND')->required(AdminWorkflowOverride::required())->maxLength(30),
                     TextInput::make('birthday')->label('Ngày sinh')->mask('99/99/9999')->placeholder('dd/mm/yyyy')->required(AdminWorkflowOverride::required())->rule('date_format:d/m/Y')->maxLength(10),
@@ -84,7 +88,7 @@ class AclMixApplicationForm
                         ->label('Người tạo')->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()->preload()->required(AdminWorkflowOverride::required()),
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
-                    TextInput::make('status')->label('Trạng thái')->disabled()->dehydrated(false),
+                    TextInput::make('status')->label('Trạng thái')->formatStateUsing(fn (?string $state): string => AclMixWorkflow::statusLabel($state))->disabled()->dehydrated(false),
                 ]),
             ...array_map(
                 fn ($component) => $component->visible(fn (?Application $record): bool => $record instanceof Application),

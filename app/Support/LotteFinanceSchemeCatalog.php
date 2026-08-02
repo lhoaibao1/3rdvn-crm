@@ -16,18 +16,14 @@ class LotteFinanceSchemeCatalog
             ->all();
     }
 
-    public static function topOptions(int $limit = 150): array
+    public static function topOptions(int $limit = 1000): array
     {
-        $live = self::fetchSchemeList('', 0, $limit);
+        $details = self::mergeCatalogs(self::staticDetails(), self::cachedApiDetails());
 
-        if ($live !== []) {
-            return self::optionMap($live);
-        }
-
-        return array_slice(self::options(), 0, $limit, true);
+        return array_slice(self::optionMap($details), 0, $limit, true);
     }
 
-    public static function searchOptions(string $search, int $limit = 150): array
+    public static function searchOptions(string $search, int $limit = 1000): array
     {
         $search = trim($search);
         $live = self::fetchSchemeList($search, 0, $limit);
@@ -66,11 +62,14 @@ class LotteFinanceSchemeCatalog
         }
 
         $code = strtoupper(trim((string) $code));
-        $fallback = self::staticDetails()[$code] ?? (self::apiDetails()[$code] ?? []);
+        $fallback = self::mergeScheme(
+            self::staticDetails()[$code] ?? [],
+            self::cachedApiDetails()[$code] ?? [],
+        );
         $liveDetail = self::fetchSchemeDetail($code, $fallback['sid'] ?? null);
 
         if ($liveDetail !== []) {
-            return array_replace($fallback, $liveDetail);
+            return self::mergeScheme($fallback, $liveDetail);
         }
 
         return $fallback;
@@ -171,12 +170,23 @@ class LotteFinanceSchemeCatalog
 
     public static function details(): array
     {
-        return array_replace(self::staticDetails(), self::apiDetails());
+        return self::mergeCatalogs(self::staticDetails(), self::apiDetails());
     }
 
     private static function staticDetails(): array
     {
         return array_replace(self::mappedDetails(), self::schemeDetails());
+    }
+
+    private static function cachedApiDetails(): array
+    {
+        try {
+            $cached = Cache::get('lotte_finance.scheme_catalog.v5');
+
+            return is_array($cached) ? $cached : [];
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     private static function apiDetails(): array
@@ -185,7 +195,7 @@ class LotteFinanceSchemeCatalog
             return [];
         }
 
-        $cacheKey = 'lotte_finance.scheme_catalog.v4';
+        $cacheKey = 'lotte_finance.scheme_catalog.v5';
 
         try {
             $cached = Cache::get($cacheKey);
@@ -221,15 +231,18 @@ class LotteFinanceSchemeCatalog
                 break;
             }
 
+            $beforeCount = count($all);
             $all = array_replace($all, $schemes);
             $total ??= $pageData['total'];
-            $skip += $limit;
+            $received = count($schemes);
+            $added = count($all) - $beforeCount;
+            $skip += $received;
 
             if ($total !== null && $skip >= $total) {
                 break;
             }
 
-            if ($total === null && count($schemes) < $limit) {
+            if ($received === 0 || $added === 0) {
                 break;
             }
         }
@@ -245,7 +258,7 @@ class LotteFinanceSchemeCatalog
             return [];
         }
 
-        $cacheKey = 'lotte_finance.scheme_search.v4.'.md5($search.'|'.$skip.'|'.$limit);
+        $cacheKey = 'lotte_finance.scheme_search.v5.'.md5($search.'|'.$skip.'|'.$limit);
         $loader = fn (): array => self::fetchSchemeListPage($search, $skip, $limit)['schemes'];
 
         if (! $useCache) {
@@ -285,7 +298,7 @@ class LotteFinanceSchemeCatalog
             'LIMIT' => $limit,
         ]);
 
-        $items = data_get($json, 'data.schemeList.data', []);
+        $items = self::schemeItems($json);
 
         if (! is_array($items)) {
             return ['schemes' => [], 'total' => self::extractTotal($json)];
@@ -317,6 +330,29 @@ class LotteFinanceSchemeCatalog
         return null;
     }
 
+    private static function schemeItems(array $json): array
+    {
+        foreach ([
+            'data.schemeList.data',
+            'data.schemeList.items',
+            'data.schemeList.docs',
+            'data.schemeList',
+            'data.data',
+            'data.items',
+            'data.docs',
+            'data.result',
+            'result.items',
+        ] as $path) {
+            $items = data_get($json, $path);
+
+            if (is_array($items) && array_is_list($items)) {
+                return $items;
+            }
+        }
+
+        return [];
+    }
+
     private static function fetchSchemeDetail(string $code, ?string $sid = null): array
     {
         if (! self::liveApiEnabled()) {
@@ -324,7 +360,7 @@ class LotteFinanceSchemeCatalog
         }
 
         $code = strtoupper(trim($code));
-        $cacheKey = 'lotte_finance.scheme_detail.v4.'.md5($code.'|'.$sid);
+        $cacheKey = 'lotte_finance.scheme_detail.v5.'.md5($code.'|'.$sid);
 
         try {
             $cached = Cache::get($cacheKey);
@@ -395,15 +431,19 @@ class LotteFinanceSchemeCatalog
 
     private static function normalizeScheme(array $scheme, string $source): array
     {
-        $code = strtoupper(trim((string) data_get($scheme, 'code', '')));
+        $code = strtoupper(trim((string) (
+            data_get($scheme, 'code')
+            ?: data_get($scheme, 'schemeCode')
+            ?: data_get($scheme, 'scheme_code')
+        )));
 
         if ($code === '') {
             return [];
         }
 
-        $subProductName = trim((string) data_get($scheme, 'subProductInfo.name', ''));
-        $subProductCode = trim((string) data_get($scheme, 'subProductInfo.code', ''));
-        $categoryCode = trim((string) data_get($scheme, 'subProductInfo.categoryCode', ''));
+        $subProductName = trim((string) (data_get($scheme, 'subProductInfo.name') ?: data_get($scheme, 'product.name', '')));
+        $subProductCode = trim((string) (data_get($scheme, 'subProductInfo.code') ?: data_get($scheme, 'product.code', '')));
+        $categoryCode = trim((string) (data_get($scheme, 'subProductInfo.categoryCode') ?: data_get($scheme, 'product.categoryCode', '')));
         $productLine = implode(' / ', array_values(array_unique(array_filter([$subProductName, $subProductCode, $categoryCode]))));
         $interestOptions = self::normalizeInterests([
             data_get($scheme, 'interest'),
@@ -416,21 +456,34 @@ class LotteFinanceSchemeCatalog
             data_get($scheme, 'rateInfo'),
         ]);
         $primaryInterest = $interestOptions[0] ?? [];
-        $loanMin = data_get($scheme, 'loanPeriod.min');
-        $loanMax = data_get($scheme, 'loanPeriod.max');
-        $startDate = self::formatApiDate(data_get($scheme, 'campaignInfo.startDate') ?: data_get($scheme, 'activatedAt'));
-        $businessName = data_get($scheme, 'businessECM.name') ?: data_get($scheme, 'businessInfo.name') ?: 'Consumer Loan';
-        $description = data_get($scheme, 'desc') ?: ($productLine ? 'Dòng sản phẩm: '.$productLine : null);
+        $loanMin = data_get($scheme, 'loanPeriod.min')
+            ?: data_get($scheme, 'loanPeriodMin')
+            ?: data_get($scheme, 'minLoanPeriod');
+        $loanMax = data_get($scheme, 'loanPeriod.max')
+            ?: data_get($scheme, 'loanPeriodMax')
+            ?: data_get($scheme, 'maxLoanPeriod');
+        $startDate = self::formatApiDate(
+            data_get($scheme, 'campaignInfo.startDate')
+            ?: data_get($scheme, 'startDate')
+            ?: data_get($scheme, 'activatedAt'),
+        );
+        $businessName = data_get($scheme, 'businessECM.name')
+            ?: data_get($scheme, 'businessInfo.name')
+            ?: data_get($scheme, 'businessName')
+            ?: 'Consumer Loan';
+        $description = data_get($scheme, 'desc')
+            ?: data_get($scheme, 'description')
+            ?: ($productLine ? 'Dòng sản phẩm: '.$productLine : null);
 
         return [
             'scheme_code' => $code,
-            'label' => self::buildLabel($code, (string) data_get($scheme, 'name', $code)),
-            'name' => (string) data_get($scheme, 'name', $code),
+            'label' => self::buildLabel($code, (string) (data_get($scheme, 'name') ?: data_get($scheme, 'schemeName') ?: $code)),
+            'name' => (string) (data_get($scheme, 'name') ?: data_get($scheme, 'schemeName') ?: $code),
             'product_type' => $businessName,
             'product' => self::productName($subProductName, (string) data_get($scheme, 'name', '')),
             'product_line' => $productLine,
             'description' => $description,
-            'sid' => (string) data_get($scheme, 'sid', ''),
+            'sid' => (string) (data_get($scheme, 'sid') ?: data_get($scheme, '_id') ?: data_get($scheme, 'id', '')),
             'loan_period' => filled($loanMin) && filled($loanMax) ? $loanMin.'-'.$loanMax.' tháng' : '',
             'loan_period_min' => filled($loanMin) ? (string) $loanMin : '',
             'loan_period_max' => filled($loanMax) ? (string) $loanMax : '',
@@ -439,12 +492,12 @@ class LotteFinanceSchemeCatalog
             'interest_period' => (string) ($primaryInterest['period'] ?? ''),
             'interest_label' => (string) ($primaryInterest['label'] ?? ''),
             'interest_options' => $interestOptions,
-            'dti' => filled(data_get($scheme, 'dti')) ? (string) data_get($scheme, 'dti') : '',
-            'dti_label' => filled(data_get($scheme, 'dti')) ? '<= '.data_get($scheme, 'dti').'%' : '',
-            'ltv' => filled(data_get($scheme, 'ltv')) ? (string) data_get($scheme, 'ltv') : '',
+            'dti' => filled(data_get($scheme, 'dti') ?: data_get($scheme, 'debtToIncome')) ? (string) (data_get($scheme, 'dti') ?: data_get($scheme, 'debtToIncome')) : '',
+            'dti_label' => filled(data_get($scheme, 'dti') ?: data_get($scheme, 'debtToIncome')) ? '<= '.(data_get($scheme, 'dti') ?: data_get($scheme, 'debtToIncome')).'%' : '',
+            'ltv' => filled(data_get($scheme, 'ltv') ?: data_get($scheme, 'loanToValue')) ? (string) (data_get($scheme, 'ltv') ?: data_get($scheme, 'loanToValue')) : '',
             'start_date' => $startDate,
-            'loan_amount_min' => filled(data_get($scheme, 'loanAmount.min')) ? (string) data_get($scheme, 'loanAmount.min') : '',
-            'loan_amount_max' => filled(data_get($scheme, 'loanAmount.max')) ? (string) data_get($scheme, 'loanAmount.max') : '',
+            'loan_amount_min' => filled(data_get($scheme, 'loanAmount.min') ?: data_get($scheme, 'minLoanAmount')) ? (string) (data_get($scheme, 'loanAmount.min') ?: data_get($scheme, 'minLoanAmount')) : '',
+            'loan_amount_max' => filled(data_get($scheme, 'loanAmount.max') ?: data_get($scheme, 'maxLoanAmount')) ? (string) (data_get($scheme, 'loanAmount.max') ?: data_get($scheme, 'maxLoanAmount')) : '',
             'age_min' => filled(data_get($scheme, 'age.min')) ? (string) data_get($scheme, 'age.min') : '',
             'age_max' => filled(data_get($scheme, 'age.max')) ? (string) data_get($scheme, 'age.max') : '',
             'insurance_fee' => filled(data_get($scheme, 'insuranceFee')) ? (string) data_get($scheme, 'insuranceFee') : '',
@@ -500,11 +553,13 @@ class LotteFinanceSchemeCatalog
 
             if (! is_array($node)) {
                 $add($node, $key);
+
                 return;
             }
 
             if (data_get($node, 'value') !== null || data_get($node, 'rate') !== null || data_get($node, 'interestRate') !== null || data_get($node, 'percent') !== null || data_get($node, 'percentage') !== null) {
                 $add($node, $key);
+
                 return;
             }
 
@@ -523,6 +578,34 @@ class LotteFinanceSchemeCatalog
         return collect($schemes)
             ->mapWithKeys(fn (array $scheme, string $code): array => [$code => self::label($scheme, $code)])
             ->all();
+    }
+
+    private static function mergeCatalogs(array $fallback, array $live): array
+    {
+        foreach ($live as $code => $scheme) {
+            if (! is_array($scheme)) {
+                continue;
+            }
+
+            $fallback[$code] = self::mergeScheme($fallback[$code] ?? [], $scheme);
+        }
+
+        ksort($fallback);
+
+        return $fallback;
+    }
+
+    private static function mergeScheme(array $fallback, array $live): array
+    {
+        foreach ($live as $key => $value) {
+            if ($value === null || $value === '' || $value === []) {
+                continue;
+            }
+
+            $fallback[$key] = $value;
+        }
+
+        return $fallback;
     }
 
     private static function buildLabel(string $code, string $name): string
@@ -12921,4 +13004,3 @@ class LotteFinanceSchemeCatalog
         ];
     }
 }
-

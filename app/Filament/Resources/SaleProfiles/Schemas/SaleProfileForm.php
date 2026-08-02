@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\SaleProfiles\Schemas;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\User;
 use Filament\Forms\Components\DateTimePicker;
-use App\Forms\Components\SearchableSelect as Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class SaleProfileForm
@@ -14,6 +14,7 @@ class SaleProfileForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
             ->components([
                 TextInput::make('customer_name')->label('Khách hàng')->required(),
                 TextInput::make('phone')->label('Số điện thoại')->tel(),

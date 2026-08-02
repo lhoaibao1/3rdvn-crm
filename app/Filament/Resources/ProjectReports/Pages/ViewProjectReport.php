@@ -13,7 +13,7 @@ class ViewProjectReport extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Báo cáo';
+        return $this->record->customer_name ?: ($this->record->application_id ?: 'Báo cáo');
     }
 
     public function getBreadcrumb(): string

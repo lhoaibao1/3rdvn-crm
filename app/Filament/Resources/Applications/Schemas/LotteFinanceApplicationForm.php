@@ -21,7 +21,10 @@ class LotteFinanceApplicationForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components(self::components());
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
+            ->columns(1)
+            ->components(self::components());
     }
 
     public static function components(): array
@@ -67,6 +70,11 @@ class LotteFinanceApplicationForm
                     self::readOnly('payload.fields.scheme_product', 'Sản phẩm'),
                     self::readOnly('payload.fields.scheme_name', 'Tên Scheme')->columnSpan(2),
                     self::readOnly('payload.fields.scheme_loan_period', 'Thời hạn tối đa'),
+                    self::readOnly('payload.fields.scheme_dti_label', 'DTI'),
+                    self::readOnly('payload.fields.scheme_ltv_label', 'LTV'),
+                    self::readOnly('payload.fields.scheme_loan_amount_range', 'Khoản vay áp dụng'),
+                    self::readOnly('payload.fields.scheme_age_range', 'Độ tuổi áp dụng'),
+                    self::readOnly('payload.fields.scheme_insurance_fee', 'Phí bảo hiểm Scheme'),
                     self::readOnly('payload.fields.loan_purpose_name', 'Mục đích vay'),
                     self::readOnly('payload.fields.loan_amount', 'Số tiền vay')->suffix('VNĐ'),
                     self::readOnly('payload.fields.loan_term_months', 'Thời gian vay')->suffix('tháng'),

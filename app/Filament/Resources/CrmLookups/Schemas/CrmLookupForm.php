@@ -15,6 +15,7 @@ class CrmLookupForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
             ->columns(12)
             ->components([
                 Section::make('Danh mục')

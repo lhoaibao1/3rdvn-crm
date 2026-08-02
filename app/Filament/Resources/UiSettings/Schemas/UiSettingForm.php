@@ -24,6 +24,7 @@ class UiSettingForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
             ->columns(12)
             ->components([
                 Tabs::make('Cài đặt giao diện')

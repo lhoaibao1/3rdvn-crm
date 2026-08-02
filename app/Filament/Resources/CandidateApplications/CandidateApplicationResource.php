@@ -6,6 +6,7 @@ use App\Filament\Resources\CandidateApplications\Pages\EditCandidateApplication;
 use App\Filament\Resources\CandidateApplications\Pages\ListCandidateApplications;
 use App\Filament\Resources\CandidateApplications\Pages\ViewCandidateApplication;
 use App\Forms\Components\SearchableSelect as Select;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\CandidateApplication;
 use App\Support\Candidates\CandidateWorkflow;
 use BackedEnum;
@@ -24,7 +25,6 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -107,44 +107,45 @@ class CandidateApplicationResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Tiếp nhận & xử lý')->columns(3)->schema([
-                TextInput::make('application_code')->label('Mã ứng tuyển')->disabled()->dehydrated(false),
-                Select::make('status')
-                    ->label('Trạng thái')
-                    ->options(CandidateApplication::statusOptions())
-                    ->native(false)
-                    ->disabled()
-                    ->dehydrated(false),
-                TextInput::make('source')->label('Nguồn')->disabled()->dehydrated(false),
-                Textarea::make('internal_note')->label('Ghi chú nội bộ')->rows(3)->columnSpanFull(),
-            ]),
-            Section::make('Thông tin ứng viên')->columns(2)->schema([
-                TextInput::make('full_name')->label('Họ và tên')->required()->maxLength(150),
-                TextInput::make('applied_position')->label('Vị trí ứng tuyển')->required()->maxLength(150),
-                TextInput::make('email')->label('Email')->email()->required()->maxLength(190),
-                TextInput::make('phone')->label('Số điện thoại')->tel()->required()->maxLength(24),
-                DatePicker::make('date_of_birth')->label('Ngày sinh')->displayFormat('d/m/Y')->native(false),
-                Select::make('gender')->label('Giới tính')->options([
-                    'male' => 'Nam',
-                    'female' => 'Nữ',
-                    'other' => 'Khác',
-                ])->native(false),
-                TextInput::make('current_position')->label('Vị trí hiện tại/gần nhất'),
-                TextInput::make('latest_company')->label('Công ty gần nhất'),
-                TextInput::make('experience_years')->label('Số năm kinh nghiệm')->numeric()->minValue(0)->maxValue(60),
-                TextInput::make('education_level')->label('Trình độ học vấn'),
-                TextInput::make('expected_salary')->label('Mức lương mong muốn')->numeric()->suffix('VNĐ'),
-                DatePicker::make('available_from')->label('Có thể bắt đầu từ ngày')->displayFormat('d/m/Y')->native(false),
-                Textarea::make('cover_letter')->label('Giới thiệu ngắn')->rows(4)->columnSpanFull(),
-            ]),
-            Section::make('Địa chỉ')->columns(2)->schema([
-                TextInput::make('province_name')->label('Tỉnh/Thành phố'),
-                TextInput::make('district_name')->label('Quận/Huyện'),
-                TextInput::make('ward_name')->label('Phường/Xã'),
-                TextInput::make('address_line')->label('Địa chỉ chi tiết'),
-            ]),
-        ]);
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])->components([
+                Section::make('Tiếp nhận & xử lý')->columns(3)->schema([
+                    TextInput::make('application_code')->label('Mã ứng tuyển')->disabled()->dehydrated(false),
+                    Select::make('status')
+                        ->label('Trạng thái')
+                        ->options(CandidateApplication::statusOptions())
+                        ->native(false)
+                        ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('source')->label('Nguồn')->disabled()->dehydrated(false),
+                    Textarea::make('internal_note')->label('Ghi chú nội bộ')->rows(3)->columnSpanFull(),
+                ]),
+                Section::make('Thông tin ứng viên')->columns(2)->schema([
+                    TextInput::make('full_name')->label('Họ và tên')->required()->maxLength(150),
+                    TextInput::make('applied_position')->label('Vị trí ứng tuyển')->required()->maxLength(150),
+                    TextInput::make('email')->label('Email')->email()->required()->maxLength(190),
+                    TextInput::make('phone')->label('Số điện thoại')->tel()->required()->maxLength(24),
+                    DatePicker::make('date_of_birth')->label('Ngày sinh')->displayFormat('d/m/Y')->native(false),
+                    Select::make('gender')->label('Giới tính')->options([
+                        'male' => 'Nam',
+                        'female' => 'Nữ',
+                        'other' => 'Khác',
+                    ])->native(false),
+                    TextInput::make('current_position')->label('Vị trí hiện tại/gần nhất'),
+                    TextInput::make('latest_company')->label('Công ty gần nhất'),
+                    TextInput::make('experience_years')->label('Số năm kinh nghiệm')->numeric()->minValue(0)->maxValue(60),
+                    TextInput::make('education_level')->label('Trình độ học vấn'),
+                    TextInput::make('expected_salary')->label('Mức lương mong muốn')->numeric()->suffix('VNĐ'),
+                    DatePicker::make('available_from')->label('Có thể bắt đầu từ ngày')->displayFormat('d/m/Y')->native(false),
+                    Textarea::make('cover_letter')->label('Giới thiệu ngắn')->rows(4)->columnSpanFull(),
+                ]),
+                Section::make('Địa chỉ')->columns(2)->schema([
+                    TextInput::make('province_name')->label('Tỉnh/Thành phố'),
+                    TextInput::make('district_name')->label('Quận/Huyện'),
+                    TextInput::make('ward_name')->label('Phường/Xã'),
+                    TextInput::make('address_line')->label('Địa chỉ chi tiết'),
+                ]),
+            ]);
     }
 
     public static function infolist(Schema $schema): Schema

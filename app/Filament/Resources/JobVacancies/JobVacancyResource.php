@@ -6,6 +6,7 @@ use App\Filament\Resources\JobVacancies\Pages\CreateJobVacancy;
 use App\Filament\Resources\JobVacancies\Pages\EditJobVacancy;
 use App\Filament\Resources\JobVacancies\Pages\ListJobVacancies;
 use App\Forms\Components\SearchableSelect as Select;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\JobVacancy;
 use App\Models\SalesProject;
 use App\Support\Candidates\CandidateWorkflow;
@@ -26,7 +27,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -100,57 +100,58 @@ class JobVacancyResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Thông tin vị trí')->columns(2)->schema([
-                TextInput::make('code')->label('Mã tin')->disabled()->dehydrated(false),
-                Select::make('title')
-                    ->label('Chức vụ tuyển dụng')
-                    ->options(fn (): array => Role::query()->orderBy('name')->pluck('name', 'name')->all())
-                    ->searchable()->preload()->native(false)->required(),
-                Select::make('sales_project_id')
-                    ->label('Dự án tuyển dụng')
-                    ->options(fn (): array => SalesProject::query()->where('is_active', true)
-                        ->orderBy('sort_order')->orderBy('name')->pluck('name', 'id')->all())
-                    ->searchable()->preload()->native(false)->required(),
-                Select::make('department')->label('Phòng ban/Bộ phận')
-                    ->options(fn (): array => UserSpecOptions::departments())
-                    ->searchable()->native(false),
-                TextInput::make('work_location')->label('Địa điểm làm việc')->maxLength(190),
-                Select::make('employment_type')->label('Hình thức làm việc')
-                    ->options(JobVacancy::employmentTypeOptions())->default('full_time')->required()->native(false),
-                TextInput::make('quantity')->label('Số lượng tuyển')->numeric()->minValue(1)->maxValue(999)->default(1)->required(),
-                TextInput::make('experience_level')->label('Kinh nghiệm yêu cầu')->placeholder('Ví dụ: 1-2 năm')->maxLength(150),
-                DatePicker::make('application_deadline')->label('Hạn nhận hồ sơ')->displayFormat('d/m/Y')->native(false)->minDate(today()),
-                TextInput::make('salary_min')->label('Lương tối thiểu')->numeric()->minValue(0)->suffix('VNĐ'),
-                TextInput::make('salary_max')->label('Lương tối đa')->numeric()->minValue(0)->gte('salary_min')->suffix('VNĐ'),
-                Toggle::make('salary_negotiable')->label('Lương thỏa thuận')->default(true)->inline(false),
-                TextInput::make('contact_email')->label('Email tuyển dụng')->email()->maxLength(190),
-                Select::make('auto_assignee_id')
-                    ->label('Người tự động nhận CV')
-                    ->options(fn (): array => CandidateWorkflow::assigneeOptions())
-                    ->searchable()->preload()->native(false)
-                    ->helperText('Chỉ chọn được ZD, AM hoặc Team Leader đang hoạt động.'),
-                FileUpload::make('banner_path')
-                    ->label('Banner tuyển dụng')
-                    ->disk('public')->directory('recruitment/banners')->image()
-                    ->imagePreviewHeight('180')->openable()->downloadable()
-                    ->maxSize(5120)->columnSpanFull()
-                    ->helperText('Ảnh ngang JPG, PNG hoặc WebP; tối đa 5 MB.'),
-            ]),
-            Section::make('Nội dung tuyển dụng')->schema([
-                Textarea::make('short_description')->label('Giới thiệu ngắn')->rows(2)->maxLength(500),
-                Textarea::make('description')->label('Mô tả công việc')->rows(6),
-                Textarea::make('requirements')->label('Yêu cầu ứng viên')->rows(6),
-                Textarea::make('benefits')->label('Quyền lợi')->rows(6),
-            ]),
-            Section::make('Hiển thị trên website')->columns(2)->schema([
-                Select::make('status')->label('Trạng thái tuyển dụng')
-                    ->options(JobVacancy::statusOptions())->default(JobVacancy::STATUS_OPEN)->required()->native(false),
-                Toggle::make('is_published')->label('Hiển thị công khai')->helperText('Tắt để ẩn tin khỏi trang ứng tuyển.')->default(false)->inline(false),
-                Toggle::make('is_featured')->label('Đánh dấu nổi bật')->default(false)->inline(false),
-                TextInput::make('sort_order')->label('Thứ tự hiển thị')->numeric()->minValue(0)->default(0),
-            ]),
-        ]);
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])->components([
+                Section::make('Thông tin vị trí')->columns(2)->schema([
+                    TextInput::make('code')->label('Mã tin')->disabled()->dehydrated(false),
+                    Select::make('title')
+                        ->label('Chức vụ tuyển dụng')
+                        ->options(fn (): array => Role::query()->orderBy('name')->pluck('name', 'name')->all())
+                        ->searchable()->preload()->native(false)->required(),
+                    Select::make('sales_project_id')
+                        ->label('Dự án tuyển dụng')
+                        ->options(fn (): array => SalesProject::query()->where('is_active', true)
+                            ->orderBy('sort_order')->orderBy('name')->pluck('name', 'id')->all())
+                        ->searchable()->preload()->native(false)->required(),
+                    Select::make('department')->label('Phòng ban/Bộ phận')
+                        ->options(fn (): array => UserSpecOptions::departments())
+                        ->searchable()->native(false),
+                    TextInput::make('work_location')->label('Địa điểm làm việc')->maxLength(190),
+                    Select::make('employment_type')->label('Hình thức làm việc')
+                        ->options(JobVacancy::employmentTypeOptions())->default('full_time')->required()->native(false),
+                    TextInput::make('quantity')->label('Số lượng tuyển')->numeric()->minValue(1)->maxValue(999)->default(1)->required(),
+                    TextInput::make('experience_level')->label('Kinh nghiệm yêu cầu')->placeholder('Ví dụ: 1-2 năm')->maxLength(150),
+                    DatePicker::make('application_deadline')->label('Hạn nhận hồ sơ')->displayFormat('d/m/Y')->native(false)->minDate(today()),
+                    TextInput::make('salary_min')->label('Lương tối thiểu')->numeric()->minValue(0)->suffix('VNĐ'),
+                    TextInput::make('salary_max')->label('Lương tối đa')->numeric()->minValue(0)->gte('salary_min')->suffix('VNĐ'),
+                    Toggle::make('salary_negotiable')->label('Lương thỏa thuận')->default(true)->inline(false),
+                    TextInput::make('contact_email')->label('Email tuyển dụng')->email()->maxLength(190),
+                    Select::make('auto_assignee_id')
+                        ->label('Người tự động nhận CV')
+                        ->options(fn (): array => CandidateWorkflow::assigneeOptions())
+                        ->searchable()->preload()->native(false)
+                        ->helperText('Chỉ chọn được ZD, AM hoặc Team Leader đang hoạt động.'),
+                    FileUpload::make('banner_path')
+                        ->label('Banner tuyển dụng')
+                        ->disk('public')->directory('recruitment/banners')->image()
+                        ->imagePreviewHeight('180')->openable()->downloadable()
+                        ->maxSize(5120)->columnSpanFull()
+                        ->helperText('Ảnh ngang JPG, PNG hoặc WebP; tối đa 5 MB.'),
+                ]),
+                Section::make('Nội dung tuyển dụng')->schema([
+                    Textarea::make('short_description')->label('Giới thiệu ngắn')->rows(2)->maxLength(500),
+                    Textarea::make('description')->label('Mô tả công việc')->rows(6),
+                    Textarea::make('requirements')->label('Yêu cầu ứng viên')->rows(6),
+                    Textarea::make('benefits')->label('Quyền lợi')->rows(6),
+                ]),
+                Section::make('Hiển thị trên website')->columns(2)->schema([
+                    Select::make('status')->label('Trạng thái tuyển dụng')
+                        ->options(JobVacancy::statusOptions())->default(JobVacancy::STATUS_OPEN)->required()->native(false),
+                    Toggle::make('is_published')->label('Hiển thị công khai')->helperText('Tắt để ẩn tin khỏi trang ứng tuyển.')->default(false)->inline(false),
+                    Toggle::make('is_featured')->label('Đánh dấu nổi bật')->default(false)->inline(false),
+                    TextInput::make('sort_order')->label('Thứ tự hiển thị')->numeric()->minValue(0)->default(0),
+                ]),
+            ]);
     }
 
     public static function table(Table $table): Table

@@ -38,6 +38,10 @@ class CreateLotteFinanceLeadActionTest extends TestCase
         $this->assertContains('permanent_province_code', $keys);
         $this->assertContains('permanent_district_code', $keys);
         $this->assertContains('permanent_ward_code', $keys);
+        $this->assertContains('scheme_ltv', $keys);
+        $this->assertContains('scheme_loan_amount_range', $keys);
+        $this->assertContains('scheme_age_range', $keys);
+        $this->assertContains('scheme_insurance_fee', $keys);
     }
 
     public function test_it_returns_bank_defaults_from_user_profile(): void

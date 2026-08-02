@@ -30,6 +30,7 @@ class HotLeadInfolist
                 ->html()
                 ->columnSpanFull(),
             Tabs::make('Lead nóng detail')
+                ->extraAttributes(['class' => 'crm-record-view-frame'])
                 ->columnSpanFull()
                 ->persistTabInQueryString('hot_lead_tab')
                 ->tabs([
@@ -129,7 +130,6 @@ class HotLeadInfolist
         ];
     }
 
-
     private static function renderHistoryTimeline(Lead $record): HtmlString
     {
         $logs = $record->changeLogs()
@@ -217,5 +217,4 @@ class HotLeadInfolist
 
         return is_array($value) ? 'Đã cập nhật' : (string) $value;
     }
-
 }
