@@ -496,6 +496,163 @@ class AdminPanelProvider extends PanelProvider
         border-radius: var(--crm-radius) !important;
     }
 
+    /* Record forms: clear sections, stronger fields and an always-visible save bar. */
+    .fi-main:has(.crm-record-form-frame) {
+        background: #f5f8fc !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame {
+        display: grid !important;
+        gap: 14px !important;
+        min-width: 0 !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-section {
+        overflow: hidden !important;
+        border: 1px solid #dbe5f0 !important;
+        border-radius: 14px !important;
+        background: #fff !important;
+        box-shadow: 0 7px 20px rgba(15, 23, 42, .045) !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-section-header {
+        min-height: 50px !important;
+        padding: 12px 16px !important;
+        border-bottom: 1px solid #dce9f5 !important;
+        background: linear-gradient(100deg, #e8f5ff 0%, #f6fbff 60%, #fff 100%) !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-section-header-heading {
+        display: flex !important;
+        align-items: center !important;
+        gap: 9px !important;
+        color: #086fb9 !important;
+        font-size: .94rem !important;
+        font-weight: 830 !important;
+        letter-spacing: .01em !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-section-header-heading::before {
+        content: "";
+        width: 4px;
+        height: 19px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #13a0f2, #0869bd);
+        box-shadow: 0 0 0 4px rgba(19, 160, 242, .09);
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-section-content {
+        padding: 16px !important;
+        background: linear-gradient(180deg, #fff 0%, #fbfdff 100%) !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-fo-field-wrp-label label {
+        color: #42556d !important;
+        font-size: .76rem !important;
+        font-weight: 790 !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-input-wrp,
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-select-input,
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-ta-textarea {
+        border: 1px solid #d8e3ef !important;
+        border-radius: 10px !important;
+        background: #fff !important;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, .025) !important;
+        transition: border-color .16s ease, box-shadow .16s ease !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-input-wrp:focus-within,
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-select-input:focus-within,
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-ta-textarea:focus-within {
+        border-color: #1597ed !important;
+        box-shadow: 0 0 0 3px rgba(21, 151, 237, .12) !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .fi-form-actions {
+        position: sticky !important;
+        z-index: 28 !important;
+        bottom: 10px !important;
+        justify-content: flex-end !important;
+        gap: 9px !important;
+        margin-top: 4px !important;
+        padding: 10px 12px !important;
+        border: 1px solid rgba(203, 216, 230, .92) !important;
+        border-radius: 13px !important;
+        background: rgba(255, 255, 255, .92) !important;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, .13) !important;
+        backdrop-filter: blur(12px);
+    }
+
+    .fi-main:has(.crm-record-form-frame) .fi-form-actions .fi-btn {
+        min-height: 40px !important;
+        padding-inline: 16px !important;
+        border-radius: 10px !important;
+        font-weight: 790 !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-tabs,
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-sc-wizard-header {
+        gap: 6px !important;
+        padding: 9px 10px !important;
+        border: 1px solid #dbe5f0 !important;
+        border-radius: 12px !important;
+        background: linear-gradient(180deg, #fff 0%, #f1f7fc 100%) !important;
+        box-shadow: 0 5px 15px rgba(15, 23, 42, .04) !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-tabs-tab {
+        min-height: 39px !important;
+        padding-inline: 13px !important;
+        border-radius: 9px !important;
+        color: #52667d !important;
+        font-size: .82rem !important;
+        font-weight: 760 !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-tabs-tab[aria-selected="true"],
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-tabs-tab.fi-active {
+        background: #0878d1 !important;
+        color: #fff !important;
+        box-shadow: 0 6px 14px rgba(8, 120, 209, .2) !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-sc-wizard {
+        overflow: hidden !important;
+        border: 1px solid #dbe5f0 !important;
+        border-radius: 14px !important;
+        background: #f8fbfe !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-sc-wizard-header {
+        border-width: 0 0 1px !important;
+        border-radius: 0 !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-sc-wizard-header-step-label {
+        color: #334155 !important;
+        font-size: .78rem !important;
+        font-weight: 790 !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-sc-wizard-step {
+        padding: 15px !important;
+    }
+
+    .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-sc-wizard-footer {
+        padding: 11px 14px !important;
+        border-top: 1px solid #dbe5f0 !important;
+        background: rgba(255, 255, 255, .94) !important;
+    }
+
+    .dark .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-section,
+    .dark .fi-main:has(.crm-record-form-frame) .crm-record-form-frame .fi-section-content,
+    .dark .fi-main:has(.crm-record-form-frame) .fi-form-actions {
+        border-color: #334155 !important;
+        background: #0f172a !important;
+    }
+
     /* Record view: keep the chrome stable and scroll only the active data panel. */
     .fi-main:has(.crm-record-view-frame) .crm-record-view-frame {
         min-width: 0 !important;

@@ -6,17 +6,14 @@ use App\Filament\Resources\Users\Pages\Concerns\InteractsWithUserMailbox;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
-use App\Services\StalwartMailService;
+use App\Support\Filament\UserPasswordResetAction;
 use App\Support\RoleHierarchy;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class EditUser extends EditRecord
@@ -40,37 +37,7 @@ class EditUser extends EditRecord
         return [
             ActionGroup::make([
                 ...$this->mailboxActions(),
-                Action::make('regenerateLoginPassword')
-                    ->icon(Heroicon::OutlinedKey)
-                    ->label('Tạo lại mật khẩu mới')
-                    ->visible(fn (): bool => auth()->user()?->hasRole('Admin') ?? false)
-                    ->modalHeading('Tạo lại mật khẩu đăng nhập')
-                    ->modalDescription(fn (): string => $this->getRecord()->name.' - '.($this->getRecord()->uid ?: $this->getRecord()->username))
-                    ->modalSubmitActionLabel('Tạo lại mật khẩu')
-                    ->modalCancelActionLabel('Hủy')
-                    ->schema([
-                        TextInput::make('new_password')
-                            ->label('Mật khẩu mới')
-                            ->password()
-                            ->revealable()
-                            ->required()
-                            ->rules([Password::min(8)->mixedCase()->numbers()])
-                            ->same('new_password_confirmation')
-                            ->validationMessages(['same' => 'Xác nhận mật khẩu mới không khớp.']),
-                        TextInput::make('new_password_confirmation')
-                            ->label('Xác nhận mật khẩu mới')
-                            ->password()
-                            ->revealable()
-                            ->required(),
-                    ])
-                    ->action(function (array $data): void {
-                        $this->getRecord()->forceFill([
-                            'password' => Hash::make($data['new_password']),
-                        ])->save();
-                        app(StalwartMailService::class)
-                            ->scheduleCredentialSync($this->getRecord(), $data['new_password']);
-                        Notification::make()->title('Đã tạo lại mật khẩu đăng nhập')->success()->send();
-                    }),
+                UserPasswordResetAction::make(),
                 ViewAction::make()
                     ->icon(Heroicon::OutlinedEye)
                     ->label('Xem người dùng'),

@@ -21,7 +21,10 @@ class LotteFinanceApplicationForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components(self::components());
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
+            ->columns(1)
+            ->components(self::components());
     }
 
     public static function components(): array

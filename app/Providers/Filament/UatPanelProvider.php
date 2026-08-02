@@ -25,6 +25,7 @@ use App\Filament\Resources\SalesChannels\SalesChannelResource;
 use App\Filament\Resources\SalesProjects\SalesProjectResource;
 use App\Filament\Resources\UiSettings\UiSettingResource;
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Resources\WorkflowConfigurations\WorkflowConfigurationResource;
 use App\Models\UiSetting;
 use Filament\Actions\Action;
 use Filament\Enums\DatabaseNotificationsPosition;
@@ -117,6 +118,7 @@ class UatPanelProvider extends AdminPanelProvider
                 CrmModuleResource::class,
                 CrmTeamResource::class,
                 SalesProjectResource::class,
+                WorkflowConfigurationResource::class,
                 CrmLookupResource::class,
                 SalesChannelResource::class,
                 ProcessingAssignmentConfigResource::class,

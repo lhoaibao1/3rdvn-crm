@@ -16,9 +16,15 @@ class ProjectWorkflowConfiguration
 
     public const LEGACY = 'legacy';
 
+    /** @return array<int, string> */
+    public static function supportedSlugs(): array
+    {
+        return ['acl-mix', 'lotte-finance'];
+    }
+
     public static function supports(?string $projectSlug): bool
     {
-        return in_array($projectSlug, ['acl-mix', 'lotte-finance'], true);
+        return in_array($projectSlug, self::supportedSlugs(), true);
     }
 
     /** @return array<int, array{status: string, label: string, next_statuses: array<int, string>, mode: string, note: string}> */

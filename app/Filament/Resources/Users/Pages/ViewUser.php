@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users\Pages;
 use App\Filament\Resources\Users\Pages\Concerns\InteractsWithUserMailbox;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
+use App\Support\Filament\UserPasswordResetAction;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -36,6 +37,7 @@ class ViewUser extends ViewRecord
                 EditAction::make()
                     ->icon(Heroicon::OutlinedPencilSquare)
                     ->label('Cập nhật người dùng'),
+                UserPasswordResetAction::make(),
                 Action::make('markDeleted')
                     ->icon(Heroicon::OutlinedTrash)
                     ->label('Xóa người dùng')

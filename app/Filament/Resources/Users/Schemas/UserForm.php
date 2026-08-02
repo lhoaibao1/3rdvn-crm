@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Actions\Users\ResetUserPassword;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\CrmTeam;
 use App\Models\SalesChannel;
@@ -30,6 +31,7 @@ class UserForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
             ->columns(1)
             ->components([
                 Section::make('Thông tin người dùng')
@@ -400,14 +402,10 @@ class UserForm
                 Section::make('Phân quyền hệ thống')
                     ->columns(4)
                     ->schema([
-                        TextInput::make('password')
-                            ->label('Mật khẩu')
-                            ->password()
-                            ->revealable()
-                            ->visible(fn (string $operation): bool => $operation === 'create')
-                            ->required(fn (string $operation): bool => $operation === 'create')
-                            ->dehydrated(fn (?string $state): bool => filled($state))
-                            ->maxLength(255),
+                        Placeholder::make('default_password_notice')
+                            ->label('Mật khẩu mặc định')
+                            ->content(fn (): string => ResetUserPassword::defaultPassword())
+                            ->visible(fn (string $operation): bool => $operation === 'create'),
                         DateTimePicker::make('email_verified_at')
                             ->label('Xác thực email lúc')
                             ->visible(fn (): bool => auth()->user()?->hasRole('Admin'))

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
+use App\Actions\Users\ResetUserPassword;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\UserResource;
 use App\Services\StalwartMailService;
@@ -38,7 +39,8 @@ class CreateUser extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $this->plainPassword = filled($data['password'] ?? null) ? (string) $data['password'] : null;
+        $this->plainPassword = ResetUserPassword::defaultPassword();
+        $data['password'] = $this->plainPassword;
         $data = UserForm::normalizeDateFields($data);
         $role = $this->form->getRawState()['roles'] ?? null;
         $data = UserForm::normalizeTeamAssignment($data, $role);

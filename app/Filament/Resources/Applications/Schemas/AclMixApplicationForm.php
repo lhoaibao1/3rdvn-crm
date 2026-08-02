@@ -23,7 +23,10 @@ class AclMixApplicationForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->columns(1)->components(self::components());
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
+            ->columns(1)
+            ->components(self::components());
     }
 
     public static function components(): array
@@ -84,7 +87,7 @@ class AclMixApplicationForm
                         ->label('Người tạo')->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()->preload()->required(AdminWorkflowOverride::required()),
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
-                    TextInput::make('status')->label('Trạng thái')->disabled()->dehydrated(false),
+                    TextInput::make('status')->label('Trạng thái')->formatStateUsing(fn (?string $state): string => AclMixWorkflow::statusLabel($state))->disabled()->dehydrated(false),
                 ]),
             ...array_map(
                 fn ($component) => $component->visible(fn (?Application $record): bool => $record instanceof Application),

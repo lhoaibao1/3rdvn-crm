@@ -7,6 +7,7 @@ use App\Models\CrmTeam;
 use App\Models\SalesChannel;
 use App\Models\User;
 use App\Support\Filament\TableColumnPreferences;
+use App\Support\Filament\UserPasswordResetAction;
 use App\Support\RoleHierarchy;
 use App\Support\UserSpecOptions;
 use Filament\Actions\Action;
@@ -194,6 +195,7 @@ class UsersTable
                 ActionGroup::make([
                     ViewAction::make()->label('Xem')->url(fn (User $record): string => UserResource::getUrl('view', ['record' => $record])),
                     EditAction::make()->label('Sửa'),
+                    UserPasswordResetAction::make(),
                 ])
                     ->iconButton()
                     ->label('Hành động')
