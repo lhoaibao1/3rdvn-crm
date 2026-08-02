@@ -488,14 +488,28 @@ const crmSearchableSelectComponent = (config) => ({
     },
 
     installViewportListeners() {
+        const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches
         const closeOnViewportChange = (event) => {
-            if (!this.select?.isOpen || this.select.dropdown.contains(event.target)) {
+            if (
+                isMobileViewport()
+                || !this.select?.isOpen
+                || this.select.dropdown.contains(event.target)
+            ) {
                 return
             }
 
             this.select.close()
         }
-        const closeOnResize = () => this.select?.isOpen && this.select.close()
+        const closeOnResize = () => {
+            // Opening the software keyboard resizes the visual viewport on mobile.
+            // The dropdown is a fixed bottom sheet there, so closing it would make
+            // every first tap appear to flash and immediately disappear.
+            if (isMobileViewport() || !this.select?.isOpen) {
+                return
+            }
+
+            this.select.close()
+        }
 
         document.addEventListener('scroll', closeOnViewportChange, true)
         window.addEventListener('resize', closeOnResize, { passive: true })
