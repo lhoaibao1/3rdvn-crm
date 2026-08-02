@@ -18,6 +18,16 @@ class EditApplication extends EditRecord
 {
     protected static string $resource = ApplicationResource::class;
 
+    public function getTitle(): string
+    {
+        return $this->record->applicant_name ?: ($this->record->application_code ?: 'Application');
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return 'Sửa';
+    }
+
     protected function getHeaderActions(): array
     {
         return [

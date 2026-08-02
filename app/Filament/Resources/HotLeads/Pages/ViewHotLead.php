@@ -11,7 +11,7 @@ class ViewHotLead extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Lead nóng';
+        return $this->record->lead_name ?: $this->record->lead_code;
     }
 
     public function getBreadcrumb(): string

@@ -54,6 +54,28 @@ class ApplicationAuditLogTest extends TestCase
         self::assertStringContainsString('&lt;script&gt;', $html);
     }
 
+    public function test_otp_audit_is_compact_and_hides_technical_metadata(): void
+    {
+        $changes = ApplicationAuditLog::changes((object) [
+            'action' => 'updated',
+            'changes' => [
+                'payload' => [
+                    'old' => ['review' => ['otp' => '111111']],
+                    'new' => ['review' => [
+                        'otp' => '222222',
+                        'otp_updated_by_id' => 7,
+                        'otp_updated_at' => '2026-08-02 14:00:00',
+                    ]],
+                ],
+            ],
+        ], $this->statusResolver());
+
+        self::assertSame(['payload.review.otp'], array_column($changes, 'path'));
+        self::assertSame('OTP', $changes[0]['label']);
+        self::assertSame('111111', $changes[0]['old']);
+        self::assertSame('222222', $changes[0]['new']);
+    }
+
     public function test_application_view_exposes_processing_history_documents_and_audit_log(): void
     {
         $source = file_get_contents(

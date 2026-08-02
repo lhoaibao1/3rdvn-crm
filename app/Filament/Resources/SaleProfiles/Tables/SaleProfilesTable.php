@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\SaleProfiles\Tables;
 
 use App\Filament\Resources\SaleProfiles\SaleProfileResource;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\SaleProfile;
 use App\Support\Filament\RecordAssignAction;
 use App\Support\Filament\SaleProfileProcessAction;
+use App\Support\Filament\StableTablePolling;
 use App\Support\Filament\TableColumnPreferences;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -23,7 +25,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,7 +37,7 @@ class SaleProfilesTable
             ->extraAttributes(['class' => 'crm-users-table crm-leads-table crm-sale-profiles-table', 'data-crm-column-table' => 'sale-profiles'], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (SaleProfile $record): string => SaleProfileResource::getUrl('view', ['record' => $record]))
-            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
+            ->poll(fn (mixed $livewire): ?string => StableTablePolling::interval($livewire))
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')

@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\SalesProject;
 use App\Support\Applications\LeadPayload;
 use App\Support\Assignments\RecordAssignment;
+use App\Support\CustomerName;
 use App\Support\Permissions\LeadAccess;
 use App\Support\SalesLineSnapshot;
 use Filament\Notifications\Notification;
@@ -70,6 +71,10 @@ trait CreatesLeadRecords
             if (array_key_exists($key, $data)) {
                 $fields[$key] = $data[$key];
             }
+        }
+
+        if (array_key_exists('customer_name', $fields)) {
+            $fields['customer_name'] = CustomerName::normalize($fields['customer_name']);
         }
 
         $payload = ['fields' => $fields];

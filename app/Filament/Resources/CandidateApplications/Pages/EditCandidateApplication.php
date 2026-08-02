@@ -15,7 +15,7 @@ class EditCandidateApplication extends EditRecord
 
     public function getTitle(): string
     {
-        return 'Cập nhật ứng viên';
+        return $this->record->full_name ?: $this->record->application_code;
     }
 
     protected function getHeaderActions(): array

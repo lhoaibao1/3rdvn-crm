@@ -4,11 +4,13 @@ namespace App\Filament\Resources\DataCenterLeads\Tables;
 
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
 use App\Forms\Components\SearchableSelect as Select;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\DataCenterLead;
 use App\Models\User;
 use App\Support\DataCenter\DataCenterCsvImporter;
 use App\Support\DataCenter\DataCenterLeadService;
 use App\Support\DataCenter\DataCenterStatus;
+use App\Support\Filament\StableTablePolling;
 use App\Support\Permissions\DataCenterAccess;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -28,7 +30,6 @@ use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -45,7 +46,7 @@ class DataCenterLeadsTable
                 'data-crm-column-table' => 'data-center',
             ], merge: true)
             ->recordUrl(fn (DataCenterLead $record): string => DataCenterLeadResource::getUrl('view', ['record' => $record]))
-            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
+            ->poll(fn (mixed $livewire): ?string => StableTablePolling::interval($livewire))
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')

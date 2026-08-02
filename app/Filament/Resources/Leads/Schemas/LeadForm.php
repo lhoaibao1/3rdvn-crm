@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Leads\Schemas;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Lead;
 use App\Models\SalesProject;
 use App\Models\User;
@@ -12,7 +13,6 @@ use App\Support\Permissions\HotLeadAccess;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -32,7 +32,9 @@ class LeadForm
 
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components(self::components());
+        return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
+            ->components(self::components());
     }
 
     public static function components(): array

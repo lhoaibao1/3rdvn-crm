@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Assignments\RecordAssignment;
+use App\Support\CustomerName;
 use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\DateTimePicker;
@@ -39,7 +40,7 @@ class AclMixApplicationForm
                 ->visible(fn (?Application $record): bool => ! $record instanceof Application)
                 ->columns(2)
                 ->schema([
-                    TextInput::make('applicant_name')->label('Họ tên khách hàng')->required(AdminWorkflowOverride::required())->maxLength(255),
+                    TextInput::make('applicant_name')->label('Họ tên khách hàng')->required(AdminWorkflowOverride::required())->maxLength(255)->extraInputAttributes(['class' => 'crm-uppercase-input'])->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state)),
                     TextInput::make('phone')->label('Số điện thoại')->tel()->required(AdminWorkflowOverride::required())->maxLength(30),
                     TextInput::make('identity_number')->label('CCCD/CMND')->required(AdminWorkflowOverride::required())->maxLength(30),
                     TextInput::make('birthday')->label('Ngày sinh')->mask('99/99/9999')->placeholder('dd/mm/yyyy')->required(AdminWorkflowOverride::required())->rule('date_format:d/m/Y')->maxLength(10),

@@ -123,7 +123,7 @@
                 x-on:keydown.esc="handleEscape($event)"
                 x-on:set-select-property="setDisabled($event.detail.isDisabled)"
                 wire:ignore
-                wire:key="{{ $livewireKey }}.crm-searchable-select.{{
+                wire:key="{{ $livewireKey }}.crm-searchable-select.v2.{{
                     substr(md5(serialize([
                         $isDisabled,
                         $isReorderable,
@@ -145,7 +145,7 @@
                                 'id' => $id,
                                 'multiple' => $isMultiple,
                             ], escape: false)
-                            ->class(['crm-searchable-select-source'])
+                            ->class(['crm-searchable-select-source', 'crm-searchable-select-source-v2'])
                     }}
                 ></select>
             </div>

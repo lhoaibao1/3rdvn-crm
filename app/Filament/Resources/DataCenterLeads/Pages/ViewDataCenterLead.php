@@ -11,7 +11,7 @@ class ViewDataCenterLead extends ViewRecord
 
     public function getTitle(): string
     {
-        return 'Lead Referral';
+        return $this->record->customer_name ?: $this->record->referral_code;
     }
 
     public function getBreadcrumb(): string

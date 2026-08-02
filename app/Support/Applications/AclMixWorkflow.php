@@ -7,6 +7,7 @@ use App\Models\ProcessingAssignmentConfig;
 use App\Models\SalesProject;
 use App\Models\User;
 use App\Support\AdminWorkflowOverride;
+use App\Support\CustomerName;
 use App\Support\Permissions\RecordVisibility;
 use App\Support\Permissions\SalesProjectAccess;
 use App\Support\SalesLineSnapshot;
@@ -101,7 +102,7 @@ class AclMixWorkflow
 
         return DB::transaction(function () use ($data, $creator, $project): Application {
             $moduleFields = [
-                'customer_name' => trim((string) ($data['applicant_name'] ?? '')),
+                'customer_name' => CustomerName::normalize($data['applicant_name'] ?? null),
                 'phone' => trim((string) ($data['phone'] ?? '')),
                 'cccd' => trim((string) ($data['identity_number'] ?? '')),
                 'date_of_birth' => $data['birthday'] ?? null,
@@ -205,6 +206,54 @@ class AclMixWorkflow
                 && (int) $application->assignedSale?->courier_manager_id === (int) $user->getKey());
     }
 
+    public static function canUpdateOtp(?User $user, ?Application $application): bool
+    {
+        return $application instanceof Application
+            && $application->status === self::PENDING_INITIAL_REVIEW
+            && self::canProcess($user, $application);
+    }
+
+    public static function updateOtp(Application $application, User $actor, string $otp): Application
+    {
+        return DB::transaction(function () use ($application, $actor, $otp): Application {
+            $application = Application::query()
+                ->lockForUpdate()
+                ->with(['salesProject', 'assignedSale'])
+                ->findOrFail($application->getKey());
+
+            if (! self::canUpdateOtp($actor, $application)) {
+                throw ValidationException::withMessages([
+                    'otp' => 'Bạn không được phép cập nhật OTP ở bước hiện tại.',
+                ]);
+            }
+
+            $otp = trim($otp);
+
+            if ($otp === '' || mb_strlen($otp) > 20) {
+                throw ValidationException::withMessages([
+                    'otp' => 'OTP phải có từ 1 đến 20 ký tự.',
+                ]);
+            }
+
+            $payload = is_array($application->payload) ? $application->payload : [];
+            $review = is_array($payload['review'] ?? null) ? $payload['review'] : [];
+            $workflow = is_array($payload['workflow'] ?? null) ? $payload['workflow'] : [];
+            $review['otp'] = $otp;
+            $review['otp_updated_by_id'] = $actor->getKey();
+            $review['otp_updated_at'] = now()->toDateTimeString();
+            $workflow['last_otp_update'] = [
+                'actor_id' => $actor->getKey(),
+                'at' => now()->toDateTimeString(),
+            ];
+            $payload['review'] = $review;
+            $payload['workflow'] = $workflow;
+
+            $application->forceFill(['payload' => $payload])->save();
+
+            return $application->refresh();
+        });
+    }
+
     public static function process(Application $application, User $actor, array $data): Application
     {
         return DB::transaction(function () use ($application, $actor, $data): Application {
@@ -231,6 +280,12 @@ class AclMixWorkflow
             $payload = is_array($application->payload) ? $application->payload : [];
             $review = is_array($payload['review'] ?? null) ? $payload['review'] : [];
             $workflow = is_array($payload['workflow'] ?? null) ? $payload['workflow'] : [];
+
+            if ($application->status === self::PENDING_INITIAL_REVIEW && filled($data['otp'] ?? null)) {
+                $review['otp'] = trim((string) $data['otp']);
+                $review['otp_updated_by_id'] = $actor->getKey();
+                $review['otp_updated_at'] = now()->toDateTimeString();
+            }
 
             if ($application->status === self::PENDING_INITIAL_REVIEW && $nextStatus === self::SALE_COMPLETION) {
                 $review = array_replace($review, [
@@ -318,7 +373,9 @@ class AclMixWorkflow
             return false;
         }
 
-        $application->loadMissing('salesProject:id,slug');
+        if (! $application->relationLoaded('salesProject') && $application->exists) {
+            $application->loadMissing('salesProject:id,slug');
+        }
 
         return $application->salesProject?->slug === 'acl-mix';
     }

@@ -52,6 +52,14 @@ class ApplicationInfolist
                                         ->formatStateUsing(fn (?string $state, Application $record): string => self::statusLabel($state, $record))->placeholder('-'),
                                     TextEntry::make('salesProject.name')->label('Dự án')->placeholder('-'),
                                     TextEntry::make('applicant_name')->label('Khách hàng')->placeholder('-'),
+                                    TextEntry::make('payload.review.otp')
+                                        ->label('OTP')
+                                        ->badge()
+                                        ->color('warning')
+                                        ->copyable()
+                                        ->placeholder('Chưa nhập')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix'
+                                            && $record->status === AclMixWorkflow::PENDING_INITIAL_REVIEW),
                                     TextEntry::make('payload.review.product')
                                         ->label('Sản phẩm')
                                         ->placeholder('-')
@@ -273,6 +281,11 @@ class ApplicationInfolist
                                             TextEntry::make('payload.fields.scheme_name')->label('Tên Scheme')->placeholder('-')->columnSpan(2),
                                             TextEntry::make('payload.fields.scheme_product_line')->label('Dòng sản phẩm')->placeholder('-'),
                                             TextEntry::make('payload.fields.scheme_loan_period')->label('Thời hạn tối đa')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_dti_label')->label('DTI')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_ltv_label')->label('LTV')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_loan_amount_range')->label('Khoản vay áp dụng')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_age_range')->label('Độ tuổi áp dụng')->placeholder('-'),
+                                            TextEntry::make('payload.fields.scheme_insurance_fee')->label('Phí bảo hiểm Scheme')->placeholder('-'),
                                             TextEntry::make('payload.fields.scheme_description')->label('Mô tả Scheme')->placeholder('-')->columnSpanFull(),
                                         ]),
                                     Section::make('Thông tin khoản vay')

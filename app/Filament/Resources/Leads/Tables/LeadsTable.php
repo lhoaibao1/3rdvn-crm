@@ -4,9 +4,11 @@ namespace App\Filament\Resources\Leads\Tables;
 
 use App\Filament\Resources\Leads\LeadResource;
 use App\Filament\Resources\Leads\Schemas\LeadForm;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\Lead;
 use App\Support\Filament\ProjectSchemaColumns;
 use App\Support\Filament\RecordAssignAction;
+use App\Support\Filament\StableTablePolling;
 use App\Support\Filament\TableColumnPreferences;
 use App\Support\Permissions\LeadAccess;
 use Filament\Actions\Action;
@@ -26,7 +28,6 @@ use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,7 +40,7 @@ class LeadsTable
             ->extraAttributes(['class' => 'crm-users-table crm-leads-table', 'data-crm-column-table' => 'leads'], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Lead $record): string => LeadResource::getUrl('view', ['record' => $record]))
-            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
+            ->poll(fn (mixed $livewire): ?string => StableTablePolling::interval($livewire))
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')

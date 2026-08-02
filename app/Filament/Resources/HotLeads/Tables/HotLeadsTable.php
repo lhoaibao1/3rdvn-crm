@@ -4,11 +4,13 @@ namespace App\Filament\Resources\HotLeads\Tables;
 
 use App\Filament\Resources\HotLeads\HotLeadResource;
 use App\Forms\Components\SearchableSelect as Select;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\Lead;
 use App\Models\User;
 use App\Support\Assignments\RecordAssignment;
 use App\Support\Filament\LeadCreate\LeadAddressFields;
 use App\Support\Filament\RecordAssignAction;
+use App\Support\Filament\StableTablePolling;
 use App\Support\Filament\TableColumnPreferences;
 use App\Support\HotLeads\HotLeadConverter;
 use App\Support\HotLeads\HotLeadStatus;
@@ -29,7 +31,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
@@ -42,7 +43,7 @@ class HotLeadsTable
             ->extraAttributes(['class' => 'crm-users-table crm-leads-table crm-hot-leads-table', 'data-crm-column-table' => 'hot-leads'], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Lead $record): string => HotLeadResource::getUrl('view', ['record' => $record]))
-            ->poll(fn (mixed $livewire): ?string => empty($livewire->mountedActions ?? []) ? '5s' : null)
+            ->poll(fn (mixed $livewire): ?string => StableTablePolling::interval($livewire))
             ->searchable(false)
             ->striped()
             ->defaultSort('created_at', 'desc')

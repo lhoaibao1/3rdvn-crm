@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CrmLookups\Tables;
 
 use App\Filament\Resources\CrmLookups\CrmLookupResource;
 use App\Filament\Resources\CrmLookups\Schemas\CrmLookupForm;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -13,7 +14,6 @@ use Filament\Actions\ViewAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class CrmLookupsTable

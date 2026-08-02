@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ProjectReports\Tables;
 
 use App\Filament\Resources\ProjectReports\ProjectReportResource;
 use App\Forms\Components\SearchableSelect as Select;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\ProjectReport;
 use App\Models\User;
 use App\Support\Filament\ProjectSchemaColumns;
@@ -22,7 +23,6 @@ use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Validation\ValidationException;
 

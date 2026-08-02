@@ -147,7 +147,11 @@ class ApplicationAuditLog
 
     private static function pushChange(array &$changes, string $path, mixed $old, mixed $new, callable $statusResolver): void
     {
-        if ($old === $new || in_array($path, ['updated_at', 'payload.updated_at'], true)) {
+        if ($old === $new
+            || in_array($path, ['updated_at', 'payload.updated_at'], true)
+            || str_contains($path, 'otp_updated_by_id')
+            || str_contains($path, 'otp_updated_at')
+            || str_contains($path, 'last_otp_update')) {
             return;
         }
 
@@ -236,6 +240,7 @@ class ApplicationAuditLog
             'review_note' => 'Ghi chú Pre-Check',
             'approval_note' => 'Ghi chú Approval',
             'decision' => 'Kết quả Pre-Check',
+            'otp' => 'OTP',
             'product', 'scheme_product' => 'Sản phẩm',
             'scheme_code' => 'Scheme',
             'loan_amount' => 'Số tiền vay',

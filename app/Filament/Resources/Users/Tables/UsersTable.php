@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Tables;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\CrmTeam;
 use App\Models\SalesChannel;
 use App\Models\User;
@@ -24,7 +25,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;

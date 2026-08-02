@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\CrmTeams\Schemas;
 
+use App\Forms\Components\SearchableSelect as Select;
 use App\Models\CrmTeam;
 use App\Models\User;
 use App\Support\RoleHierarchy;
-use App\Forms\Components\SearchableSelect as Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -18,6 +18,7 @@ class CrmTeamForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->extraAttributes(['class' => 'crm-record-form-frame'])
             ->columns(12)
             ->components([
                 Section::make('Thông tin Team')

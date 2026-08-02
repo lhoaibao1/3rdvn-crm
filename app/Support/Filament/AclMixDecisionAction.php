@@ -53,6 +53,11 @@ class AclMixDecisionAction
                     ->label('Quyết định')
                     ->options(AclMixWorkflow::nextStatusOptions($record))
                     ->required()->live(),
+                TextInput::make('otp')
+                    ->label('OTP')
+                    ->default(data_get($record->payload, 'review.otp'))
+                    ->helperText('Có thể cập nhật lại nhiều lần khi hồ sơ đang ở bước Đang kiểm tra.')
+                    ->maxLength(20),
                 TextInput::make('application_code')
                     ->label('Mã hồ sơ')
                     ->default($record->application_code)
@@ -66,6 +71,7 @@ class AclMixDecisionAction
                 TextInput::make('pre_approved_amount')
                     ->label('Số tiền phê duyệt sơ bộ')->suffix('VNĐ')
                     ->mask(RawJs::make('$money($input, ",", ".", 0)'))->stripCharacters('.')
+                    ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric'])
                     ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
                     ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
                 TextInput::make('pre_approved_months')
