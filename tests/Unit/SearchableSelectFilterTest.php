@@ -59,7 +59,9 @@ class SearchableSelectFilterTest extends TestCase
         );
         self::assertStringContainsString('body.crm-searchable-select-open {', $styles);
         self::assertStringContainsString('overflow: hidden;', $styles);
-        self::assertStringContainsString('max-height: min(70svh, 560px);', $styles);
+        self::assertStringContainsString('max-height: min(56svh, 480px);', $styles);
+        self::assertStringContainsString('max-height: min(44svh, 360px);', $styles);
+        self::assertStringContainsString('min-height: 44px;', $styles);
         self::assertStringContainsString('touch-action: manipulation;', $styles);
     }
 }
