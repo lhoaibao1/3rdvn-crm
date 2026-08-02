@@ -18,6 +18,12 @@ class AclMixWorkflow
 {
     public const PENDING_INITIAL_REVIEW = 'pending_initial_review';
 
+    public const OTP_REQUIRED = 'otp_required';
+
+    public const CUSTOMER_CAPP = 'customer_capp';
+
+    public const INELIGIBLE = 'ineligible';
+
     public const SALE_COMPLETION = 'sale_completion';
 
     public const CALL_RECORDING = 'call_recording';
@@ -35,7 +41,10 @@ class AclMixWorkflow
     public static function statusOptions(): array
     {
         return [
-            self::PENDING_INITIAL_REVIEW => 'Đang kiểm tra',
+            self::PENDING_INITIAL_REVIEW => 'Chờ kiểm tra',
+            self::OTP_REQUIRED => 'Đang kiểm tra',
+            self::CUSTOMER_CAPP => 'Khách hàng thao tác CAPP',
+            self::INELIGIBLE => 'Không thoả điều kiện',
             self::SALE_COMPLETION => 'Chờ Sale hoàn thiện thông tin',
             self::CALL_RECORDING => 'Đang thực hiện cuộc gọi ghi âm với Khách hàng',
             self::UNDERWRITING => 'Đang thẩm định',
@@ -55,10 +64,11 @@ class AclMixWorkflow
     {
         return match ($status) {
             self::PENDING_INITIAL_REVIEW => 'warning',
+            self::OTP_REQUIRED, self::CUSTOMER_CAPP => 'primary',
             self::SALE_COMPLETION, self::RETURNED_TO_SALE => 'info',
             self::CALL_RECORDING, self::UNDERWRITING, self::AWAITING_CONTRACT => 'primary',
             self::COMPLETED => 'success',
-            self::REJECTED => 'danger',
+            self::INELIGIBLE, self::REJECTED => 'danger',
             default => 'gray',
         };
     }
@@ -77,7 +87,19 @@ class AclMixWorkflow
             ? $project
             : new SalesProject(['slug' => 'acl-mix']);
 
-        return ProjectWorkflowConfiguration::nextStatusOptions($project, (string) $application->status);
+        $options = ProjectWorkflowConfiguration::nextStatusOptions($project, (string) $application->status);
+
+        return match ($application->status) {
+            self::PENDING_INITIAL_REVIEW => array_intersect_key([
+                self::INELIGIBLE => 'Không thoả điều kiện',
+                self::OTP_REQUIRED => 'Yêu cầu OTP',
+            ], $options),
+            self::CUSTOMER_CAPP => array_intersect_key([
+                self::SALE_COMPLETION => 'Khách hàng thoả mãn điều kiện',
+                self::REJECTED => 'Từ chối',
+            ], $options),
+            default => $options,
+        };
     }
 
     public static function canCreate(?User $user): bool
@@ -175,6 +197,8 @@ class AclMixWorkflow
         if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return in_array($application->status, [
                 self::PENDING_INITIAL_REVIEW,
+                self::OTP_REQUIRED,
+                self::CUSTOMER_CAPP,
                 self::CALL_RECORDING,
                 self::UNDERWRITING,
                 self::AWAITING_CONTRACT,
@@ -191,6 +215,8 @@ class AclMixWorkflow
 
         if (! in_array($application->status, [
             self::PENDING_INITIAL_REVIEW,
+            self::OTP_REQUIRED,
+            self::CUSTOMER_CAPP,
             self::CALL_RECORDING,
             self::UNDERWRITING,
             self::AWAITING_CONTRACT,
@@ -209,7 +235,7 @@ class AclMixWorkflow
     public static function canUpdateOtp(?User $user, ?Application $application): bool
     {
         return $application instanceof Application
-            && $application->status === self::PENDING_INITIAL_REVIEW
+            && $application->status === self::OTP_REQUIRED
             && self::canProcess($user, $application);
     }
 
@@ -271,7 +297,7 @@ class AclMixWorkflow
             $nextStatus = (string) ($data['next_status'] ?? '');
             self::validateTransition($application, $nextStatus, $data, $actor);
 
-            if ($application->status === self::PENDING_INITIAL_REVIEW) {
+            if ($application->status === self::CUSTOMER_CAPP && $nextStatus === self::SALE_COMPLETION) {
                 $applicationCode = trim((string) ($data['application_code'] ?? ''));
                 self::validateApplicationCode($application, $applicationCode, $actor);
                 $application->application_code = $applicationCode !== '' ? $applicationCode : null;
@@ -281,13 +307,13 @@ class AclMixWorkflow
             $review = is_array($payload['review'] ?? null) ? $payload['review'] : [];
             $workflow = is_array($payload['workflow'] ?? null) ? $payload['workflow'] : [];
 
-            if ($application->status === self::PENDING_INITIAL_REVIEW && filled($data['otp'] ?? null)) {
+            if ($application->status === self::OTP_REQUIRED && filled($data['otp'] ?? null)) {
                 $review['otp'] = trim((string) $data['otp']);
                 $review['otp_updated_by_id'] = $actor->getKey();
                 $review['otp_updated_at'] = now()->toDateTimeString();
             }
 
-            if ($application->status === self::PENDING_INITIAL_REVIEW && $nextStatus === self::SALE_COMPLETION) {
+            if ($application->status === self::CUSTOMER_CAPP && $nextStatus === self::SALE_COMPLETION) {
                 $review = array_replace($review, [
                     'decision' => 'Khách hàng thoả mãn điều kiện',
                     'product' => $data['product'] ?? null,
@@ -298,6 +324,11 @@ class AclMixWorkflow
                     'reviewed_by_id' => $actor->getKey(),
                     'reviewed_at' => now()->toDateTimeString(),
                 ]);
+            } elseif ($nextStatus === self::INELIGIBLE) {
+                $review['decision'] = 'Không thoả điều kiện';
+                $review['review_note'] = $data['processing_note'] ?? null;
+                $review['reviewed_by_id'] = $actor->getKey();
+                $review['reviewed_at'] = now()->toDateTimeString();
             } elseif ($nextStatus === self::REJECTED) {
                 $review['decision'] = 'Từ chối';
                 $review['review_note'] = $data['processing_note'] ?? null;
@@ -394,7 +425,15 @@ class AclMixWorkflow
             throw ValidationException::withMessages(['next_status' => 'Bước xử lý không hợp lệ.']);
         }
 
-        if ($application->status === self::PENDING_INITIAL_REVIEW && $nextStatus === self::SALE_COMPLETION) {
+        if ($application->status === self::OTP_REQUIRED
+            && $nextStatus === self::CUSTOMER_CAPP
+            && blank(data_get($application->payload, 'review.otp'))) {
+            throw ValidationException::withMessages([
+                'next_status' => 'Vui lòng cập nhật OTP trước khi chuyển sang Khách hàng thao tác CAPP.',
+            ]);
+        }
+
+        if ($application->status === self::CUSTOMER_CAPP && $nextStatus === self::SALE_COMPLETION) {
             foreach (['product', 'pre_approved_amount', 'pre_approved_months', 'pre_approved_interest_rate'] as $field) {
                 if (! AdminWorkflowOverride::active($actor)
                     && blank($data[$field] ?? null)) {

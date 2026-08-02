@@ -23,6 +23,12 @@ class ApplicationFormExperienceTest extends TestCase
 
         $acl = file_get_contents($root.'Applications/Schemas/AclMixApplicationForm.php');
         self::assertStringContainsString('AclMixWorkflow::statusLabel($state)', $acl);
+        self::assertStringContainsString('->columns(3)', $acl);
+
+        $decision = file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/AclMixDecisionAction.php');
+        self::assertStringContainsString("Grid::make(['default' => 1, 'md' => 2])", $decision);
+        self::assertStringContainsString('AclMixWorkflow::OTP_REQUIRED', $decision);
+        self::assertStringContainsString('AclMixWorkflow::CUSTOMER_CAPP', $decision);
     }
 
     public function test_form_frame_has_highlighted_sections_fields_and_sticky_actions(): void

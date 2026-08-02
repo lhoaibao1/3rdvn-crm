@@ -33,7 +33,7 @@ class CreateAclMixLeadAction
     private static function schema(): array
     {
         return [
-            Grid::make(2)
+            Grid::make(['default' => 1, 'md' => 3])
                 ->schema([
                     TextInput::make('customer_name')
                         ->label('Họ tên khách hàng')

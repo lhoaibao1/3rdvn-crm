@@ -38,7 +38,7 @@ class AclMixApplicationForm
         return [
             Section::make('Thông tin kiểm tra ban đầu')
                 ->visible(fn (?Application $record): bool => ! $record instanceof Application)
-                ->columns(2)
+                ->columns(3)
                 ->schema([
                     TextInput::make('applicant_name')->label('Họ tên khách hàng')->required(AdminWorkflowOverride::required())->maxLength(255)->extraInputAttributes(['class' => 'crm-uppercase-input'])->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state)),
                     TextInput::make('phone')->label('Số điện thoại')->tel()->required(AdminWorkflowOverride::required())->maxLength(30),

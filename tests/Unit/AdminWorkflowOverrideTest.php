@@ -57,7 +57,7 @@ class AdminWorkflowOverrideTest extends TestCase
     public function test_admin_can_skip_business_fields_only_on_valid_workflow_transitions(): void
     {
         $admin = $this->user(true);
-        $acl = new Application(['status' => AclMixWorkflow::PENDING_INITIAL_REVIEW]);
+        $acl = new Application(['status' => AclMixWorkflow::CUSTOMER_CAPP]);
         $acl->setRelation('salesProject', new SalesProject(['slug' => 'acl-mix']));
         $lotte = new Application(['status' => LotteFinanceWorkflow::POST_APPROVAL]);
         $lotte->setRelation('salesProject', new SalesProject(['slug' => 'lotte-finance']));

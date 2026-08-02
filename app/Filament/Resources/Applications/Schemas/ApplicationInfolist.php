@@ -59,7 +59,7 @@ class ApplicationInfolist
                                         ->copyable()
                                         ->placeholder('Chưa nhập')
                                         ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'acl-mix'
-                                            && $record->status === AclMixWorkflow::PENDING_INITIAL_REVIEW),
+                                            && $record->status === AclMixWorkflow::OTP_REQUIRED),
                                     TextEntry::make('payload.review.product')
                                         ->label('Sản phẩm')
                                         ->placeholder('-')

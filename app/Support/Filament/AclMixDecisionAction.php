@@ -7,9 +7,11 @@ use App\Models\Application;
 use App\Support\AdminWorkflowOverride;
 use App\Support\Applications\AclMixWorkflow;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Filament\Support\RawJs;
@@ -25,7 +27,7 @@ class AclMixDecisionAction
             ->visible(fn (Application $record): bool => AclMixWorkflow::canProcess(auth()->user(), $record))
             ->modalHeading(fn (Application $record): string => 'Xử lý '.($record->application_code ?: $record->applicant_name))
             ->extraModalWindowAttributes(['class' => 'crm-lead-modal crm-lead-process-modal'])
-            ->modalWidth('2xl')
+            ->modalWidth('4xl')
             ->modalAutofocus(false)
             ->modalSubmitActionLabel('Chuyển bước')
             ->modalCancelActionLabel('Hủy')
@@ -47,69 +49,85 @@ class AclMixDecisionAction
     {
         $note = Textarea::make('processing_note')->label('Ghi chú xử lý')->rows(3)->columnSpanFull();
 
-        return match ($record->status) {
-            AclMixWorkflow::PENDING_INITIAL_REVIEW => [
-                Select::make('next_status')
-                    ->label('Quyết định')
-                    ->options(AclMixWorkflow::nextStatusOptions($record))
-                    ->required()->live(),
-                TextInput::make('otp')
-                    ->label('OTP')
-                    ->default(data_get($record->payload, 'review.otp'))
-                    ->helperText('Có thể cập nhật lại nhiều lần khi hồ sơ đang ở bước Đang kiểm tra.')
-                    ->maxLength(20),
-                TextInput::make('application_code')
-                    ->label('Mã hồ sơ')
-                    ->default($record->application_code)
-                    ->required(AdminWorkflowOverride::required())
-                    ->maxLength(120),
-                Select::make('product')
-                    ->label('Mã sản phẩm')
-                    ->options(['ACL01' => 'ACL01', 'ACL02' => 'ACL02', 'ACL03' => 'ACL03', 'ACL04' => 'ACL04'])
-                    ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
-                    ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
-                TextInput::make('pre_approved_amount')
-                    ->label('Số tiền phê duyệt sơ bộ')->suffix('VNĐ')
-                    ->mask(RawJs::make('$money($input, ",", ".", 0)'))->stripCharacters('.')
-                    ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric'])
-                    ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
-                    ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
-                TextInput::make('pre_approved_months')
-                    ->label('Số tháng phê duyệt')->numeric()->suffix('tháng')
-                    ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
-                    ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
-                TextInput::make('pre_approved_interest_rate')
-                    ->label('Lãi suất phê duyệt')->numeric()->suffix('%')
-                    ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
-                    ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
-                $note,
-            ],
-            AclMixWorkflow::CALL_RECORDING => [
-                Select::make('next_status')
-                    ->label('Trạng thái tiếp theo')
-                    ->options(AclMixWorkflow::nextStatusOptions($record))
-                    ->required(),
-                $note,
-            ],
-            AclMixWorkflow::UNDERWRITING => [
-                Select::make('next_status')
-                    ->label('Trạng thái tiếp theo')
-                    ->options(AclMixWorkflow::nextStatusOptions($record))->required(),
-                $note,
-            ],
-            AclMixWorkflow::AWAITING_CONTRACT => [
-                Select::make('next_status')
-                    ->label('Trạng thái tiếp theo')
-                    ->options(AclMixWorkflow::nextStatusOptions($record))->required()->live(),
-                TextInput::make('contract_number')
-                    ->label('Số hợp đồng')
-                    ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::COMPLETED)
-                    ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::COMPLETED && AdminWorkflowOverride::required())
-                    ->maxLength(120),
-                $note,
-            ],
-            default => [],
-        };
+        return [
+            Grid::make(['default' => 1, 'md' => 2])
+                ->schema(match ($record->status) {
+                    AclMixWorkflow::PENDING_INITIAL_REVIEW => [
+                        Select::make('next_status')
+                            ->label('Quyết định kiểm tra')
+                            ->options(AclMixWorkflow::nextStatusOptions($record))
+                            ->required(),
+                        $note,
+                    ],
+                    AclMixWorkflow::OTP_REQUIRED => [
+                        Select::make('next_status')
+                            ->label('Trạng thái tiếp theo')
+                            ->options(AclMixWorkflow::nextStatusOptions($record))
+                            ->required(),
+                        Placeholder::make('current_otp')
+                            ->label('OTP đã nhập')
+                            ->content(fn (): string => (string) (data_get($record->payload, 'review.otp') ?: 'Chưa nhập OTP')),
+                        $note,
+                    ],
+                    AclMixWorkflow::CUSTOMER_CAPP => [
+                        Select::make('next_status')
+                            ->label('Quyết định')
+                            ->options(AclMixWorkflow::nextStatusOptions($record))
+                            ->required()->live(),
+                        TextInput::make('application_code')
+                            ->label('Mã hồ sơ')
+                            ->default($record->application_code)
+                            ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
+                            ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required())
+                            ->maxLength(120),
+                        Select::make('product')
+                            ->label('Mã sản phẩm')
+                            ->options(['ACL01' => 'ACL01', 'ACL02' => 'ACL02', 'ACL03' => 'ACL03', 'ACL04' => 'ACL04'])
+                            ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
+                            ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
+                        TextInput::make('pre_approved_amount')
+                            ->label('Số tiền phê duyệt sơ bộ')->suffix('VNĐ')
+                            ->mask(RawJs::make('$money($input, ",", ".", 0)'))->stripCharacters('.')
+                            ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric'])
+                            ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
+                            ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
+                        TextInput::make('pre_approved_months')
+                            ->label('Số tháng phê duyệt')->numeric()->suffix('tháng')
+                            ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
+                            ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
+                        TextInput::make('pre_approved_interest_rate')
+                            ->label('Lãi suất phê duyệt')->numeric()->suffix('%')
+                            ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION)
+                            ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::SALE_COMPLETION && AdminWorkflowOverride::required()),
+                        $note,
+                    ],
+                    AclMixWorkflow::CALL_RECORDING => [
+                        Select::make('next_status')
+                            ->label('Trạng thái tiếp theo')
+                            ->options(AclMixWorkflow::nextStatusOptions($record))
+                            ->required(),
+                        $note,
+                    ],
+                    AclMixWorkflow::UNDERWRITING => [
+                        Select::make('next_status')
+                            ->label('Trạng thái tiếp theo')
+                            ->options(AclMixWorkflow::nextStatusOptions($record))->required(),
+                        $note,
+                    ],
+                    AclMixWorkflow::AWAITING_CONTRACT => [
+                        Select::make('next_status')
+                            ->label('Trạng thái tiếp theo')
+                            ->options(AclMixWorkflow::nextStatusOptions($record))->required()->live(),
+                        TextInput::make('contract_number')
+                            ->label('Số hợp đồng')
+                            ->visible(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::COMPLETED)
+                            ->required(fn (Get $get): bool => $get('next_status') === AclMixWorkflow::COMPLETED && AdminWorkflowOverride::required())
+                            ->maxLength(120),
+                        $note,
+                    ],
+                    default => [],
+                }),
+        ];
     }
 
     private static function refreshLivewireRecord(mixed $livewire, Application $application): void

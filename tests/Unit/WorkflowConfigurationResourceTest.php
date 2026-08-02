@@ -60,9 +60,12 @@ class WorkflowConfigurationResourceTest extends TestCase
 
         $html = WorkflowOverview::render($project)->toHtml();
 
-        self::assertStringContainsString('8 trạng thái', $html);
+        self::assertStringContainsString('11 trạng thái', $html);
         self::assertStringContainsString('Đang kiểm tra', $html);
         self::assertStringContainsString('pending_initial_review', $html);
+        self::assertStringContainsString('otp_required', $html);
+        self::assertStringContainsString('Khách hàng thao tác CAPP', $html);
+        self::assertStringContainsString('Không thoả điều kiện', $html);
         self::assertStringContainsString('Chờ Sale hoàn thiện thông tin', $html);
         self::assertStringContainsString('Tự động sau khi Sale lưu', $html);
         self::assertStringContainsString('Kết thúc quy trình', $html);
