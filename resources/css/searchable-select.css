@@ -241,7 +241,10 @@
     }
 
     body.crm-searchable-select-open {
+        overflow: hidden;
         overscroll-behavior: none;
+        touch-action: none;
+        -webkit-overflow-scrolling: auto;
     }
 
     body.crm-searchable-select-open::before {
@@ -258,10 +261,13 @@
         z-index: 100000 !important;
         inset: auto 10px max(10px, env(safe-area-inset-bottom)) 10px !important;
         width: auto !important;
-        max-height: min(70dvh, 560px);
+        max-height: min(70vh, 560px);
+        max-height: min(70svh, 560px);
         margin: 0 !important;
         border-radius: 14px;
         box-shadow: 0 24px 70px rgba(15, 23, 42, .34);
+        pointer-events: auto !important;
+        transform: none !important;
     }
 
     .crm-searchable-select-dropdown .dropdown-input {
@@ -270,7 +276,8 @@
     }
 
     .crm-searchable-select-dropdown .ts-dropdown-content {
-        max-height: min(58dvh, 460px);
+        max-height: min(58vh, 460px);
+        max-height: min(58svh, 460px);
         padding-block: 5px;
     }
 
@@ -279,7 +286,9 @@
         min-height: 48px;
         padding: 12px 14px;
         font-size: 16px;
-        touch-action: pan-y;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
     }
 }
 
