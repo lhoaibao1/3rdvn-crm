@@ -37,7 +37,7 @@ class AclMixConsentDocumentTest extends TestCase
         $this->assertStringContainsString('https://uat.example.test/storage/consent-6088.png', $html);
     }
 
-    public function test_acl_application_create_form_exposes_consent_upload_in_initial_section(): void
+    public function test_acl_application_create_form_places_compact_consent_upload_at_the_bottom(): void
     {
         $source = file_get_contents(
             dirname(__DIR__, 2).'/app/Filament/Resources/Applications/Schemas/AclMixApplicationForm.php',
@@ -47,8 +47,10 @@ class AclMixConsentDocumentTest extends TestCase
         $this->assertStringContainsString("FileUpload::make('consent_6088')", $source);
         $this->assertStringContainsString("->label('Chứng từ Consent gửi đến 6088')", $source);
         $this->assertStringContainsString("->directory('applications/acl-mix/consent-6088')", $source);
-        $this->assertLessThan(
-            strpos($source, "TextInput::make('birthday')"),
+        $this->assertStringContainsString("->panelLayout('compact')", $source);
+        $this->assertStringContainsString('->columnSpan(1)', $source);
+        $this->assertGreaterThan(
+            strpos($source, "Select::make('ward_code')"),
             strpos($source, "FileUpload::make('consent_6088')"),
         );
     }
