@@ -17,6 +17,7 @@ class ProjectWorkflowConfigurationTest extends TestCase
         $this->assertSame([
             AclMixWorkflow::INELIGIBLE => 'Không thoả điều kiện',
             AclMixWorkflow::OTP_REQUIRED => 'Đang kiểm tra',
+            AclMixWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
         ], ProjectWorkflowConfiguration::nextStatusOptions(
             $project,
             AclMixWorkflow::PENDING_INITIAL_REVIEW,
@@ -34,16 +35,34 @@ class ProjectWorkflowConfigurationTest extends TestCase
             'slug' => 'acl-mix',
             'workflow_schema' => [[
                 'status' => AclMixWorkflow::UNDERWRITING,
-                'next_statuses' => [AclMixWorkflow::RETURNED_TO_SALE],
+                'next_statuses' => [AclMixWorkflow::AWAITING_CONTRACT],
             ]],
         ]);
 
         $this->assertSame([
+            AclMixWorkflow::AWAITING_CONTRACT => 'Chờ khách hàng ký hợp đồng',
             AclMixWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
         ], ProjectWorkflowConfiguration::nextStatusOptions(
             $project,
             AclMixWorkflow::UNDERWRITING,
         ));
+    }
+
+    public function test_every_processable_acl_step_can_return_to_sale(): void
+    {
+        $project = new SalesProject(['slug' => 'acl-mix']);
+
+        foreach (AclMixWorkflow::returnableStatuses() as $status) {
+            $this->assertArrayHasKey(
+                AclMixWorkflow::RETURNED_TO_SALE,
+                ProjectWorkflowConfiguration::nextStatusOptions($project, $status),
+                'Thiếu Trả về Sale ở trạng thái '.$status,
+            );
+        }
+
+        foreach ([AclMixWorkflow::INELIGIBLE, AclMixWorkflow::COMPLETED, AclMixWorkflow::REJECTED] as $status) {
+            $this->assertSame([], ProjectWorkflowConfiguration::nextStatusOptions($project, $status));
+        }
     }
 
     public function test_automatic_and_terminal_steps_cannot_be_overridden(): void

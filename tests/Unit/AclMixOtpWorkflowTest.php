@@ -37,12 +37,14 @@ class AclMixOtpWorkflowTest extends TestCase
         $this->assertSame([
             AclMixWorkflow::INELIGIBLE => 'Không thoả điều kiện',
             AclMixWorkflow::OTP_REQUIRED => 'Yêu cầu OTP',
+            AclMixWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
         ], AclMixWorkflow::nextStatusOptions($application));
 
         $application->status = AclMixWorkflow::OTP_REQUIRED;
 
         $this->assertSame([
             AclMixWorkflow::CUSTOMER_CAPP => 'Khách hàng thao tác CAPP',
+            AclMixWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
         ], AclMixWorkflow::nextStatusOptions($application));
 
         $application->status = AclMixWorkflow::CUSTOMER_CAPP;
@@ -50,6 +52,7 @@ class AclMixOtpWorkflowTest extends TestCase
         $this->assertSame([
             AclMixWorkflow::SALE_COMPLETION => 'Khách hàng thoả mãn điều kiện',
             AclMixWorkflow::REJECTED => 'Từ chối',
+            AclMixWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
         ], AclMixWorkflow::nextStatusOptions($application));
 
         $application->status = AclMixWorkflow::INELIGIBLE;

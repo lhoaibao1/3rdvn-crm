@@ -83,12 +83,12 @@ class LeadInfolist
                     Tab::make('Chứng từ')
                         ->icon(Heroicon::DocumentText)
                         ->schema([
-                            Section::make('CCCD/OCR')
+                            Section::make('Thư mục chứng từ')
                                 ->columnSpanFull()
                                 ->schema([
-                                    TextEntry::make('lotte_documents')
+                                    TextEntry::make('project_documents')
                                         ->hiddenLabel()
-                                        ->state(fn (Lead $record): HtmlString => DocumentPreview::lotteDocuments($record->payload ?? []))
+                                        ->state(fn (Lead $record): HtmlString => DocumentPreview::projectDocuments($record->payload ?? [], $record->salesProject?->slug))
                                         ->html()
                                         ->columnSpanFull(),
                                 ]),

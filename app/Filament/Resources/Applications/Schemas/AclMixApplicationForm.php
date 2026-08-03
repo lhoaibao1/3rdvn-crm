@@ -12,6 +12,7 @@ use App\Support\CustomerName;
 use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -71,6 +72,20 @@ class AclMixApplicationForm
                         ->disabled(fn (Get $get): bool => blank($get('district_code')))
                         ->searchable()->preload()->live()->required(AdminWorkflowOverride::required())
                         ->afterStateUpdated(fn (Get $get, Set $set, ?string $state): mixed => $set('ward_name', VietnamAddressCatalog::wardName($get('district_code'), $state))),
+                    FileUpload::make('consent_6088')
+                        ->label('Chứng từ Consent gửi đến 6088')
+                        ->disk('public')
+                        ->directory('applications/acl-mix/consent-6088')
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                        ->maxSize(10240)
+                        ->maxFiles(1)
+                        ->panelLayout('compact')
+                        ->previewable()
+                        ->openable()
+                        ->downloadable()
+                        ->deletable()
+                        ->required(AdminWorkflowOverride::required())
+                        ->columnSpan(1),
                     Hidden::make('province_name')->dehydrated(),
                     Hidden::make('district_name')->dehydrated(),
                     Hidden::make('ward_name')->dehydrated(),
