@@ -127,6 +127,28 @@ class AclMixWorkflow
             && SalesProjectAccess::canAccessProject($user, $project);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $moduleFields
+     * @return array<string, mixed>
+     */
+    public static function creationPayload(array $data, array $moduleFields): array
+    {
+        $payload = [
+            'module_fields' => array_filter($moduleFields, fn (mixed $value): bool => filled($value)),
+            'workflow' => [
+                'source' => 'acl_mix_direct',
+                'created_at' => now()->toDateTimeString(),
+            ],
+        ];
+
+        if (filled($data['consent_6088'] ?? null)) {
+            $payload['documents']['consent_6088'] = $data['consent_6088'];
+        }
+
+        return $payload;
+    }
+
     public static function create(array $data, User $creator): Application
     {
         $project = self::project();
@@ -154,6 +176,8 @@ class AclMixWorkflow
                 'current_ward_name' => $data['ward_name'] ?? null,
             ];
 
+            $payload = self::creationPayload($data, $moduleFields);
+
             $assignee = self::configuredAutoAssignee($project);
             $snapshot = SalesLineSnapshot::fromUser($creator);
             $snapshot['assigned_sale_id'] = $assignee?->getKey();
@@ -168,13 +192,7 @@ class AclMixWorkflow
                 'status' => self::PENDING_INITIAL_REVIEW,
                 ...$snapshot,
                 'created_by_id' => $creator->getKey(),
-                'payload' => [
-                    'module_fields' => array_filter($moduleFields, fn (mixed $value): bool => filled($value)),
-                    'workflow' => [
-                        'source' => 'acl_mix_direct',
-                        'created_at' => now()->toDateTimeString(),
-                    ],
-                ],
+                'payload' => $payload,
             ]);
         });
     }

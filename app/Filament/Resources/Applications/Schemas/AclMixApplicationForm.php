@@ -12,6 +12,7 @@ use App\Support\CustomerName;
 use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -43,6 +44,19 @@ class AclMixApplicationForm
                     TextInput::make('applicant_name')->label('Họ tên khách hàng')->required(AdminWorkflowOverride::required())->maxLength(255)->extraInputAttributes(['class' => 'crm-uppercase-input'])->dehydrateStateUsing(fn (?string $state): ?string => CustomerName::normalize($state)),
                     TextInput::make('phone')->label('Số điện thoại')->tel()->required(AdminWorkflowOverride::required())->maxLength(30),
                     TextInput::make('identity_number')->label('CCCD/CMND')->required(AdminWorkflowOverride::required())->maxLength(30),
+                    FileUpload::make('consent_6088')
+                        ->label('Chứng từ Consent gửi đến 6088')
+                        ->helperText('Tải chứng từ lên ngay khi tạo hồ sơ ACL trước khi bấm Tạo hồ sơ.')
+                        ->disk('public')
+                        ->directory('applications/acl-mix/consent-6088')
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                        ->maxSize(10240)
+                        ->previewable()
+                        ->openable()
+                        ->downloadable()
+                        ->deletable()
+                        ->required(AdminWorkflowOverride::required())
+                        ->columnSpanFull(),
                     TextInput::make('birthday')->label('Ngày sinh')->mask('99/99/9999')->placeholder('dd/mm/yyyy')->required(AdminWorkflowOverride::required())->rule('date_format:d/m/Y')->maxLength(10),
                     Select::make('identity_issued_place')->label('Nơi cấp')->options(['CCS' => 'CCS', 'Bộ Công An' => 'Bộ Công An'])->searchable()->preload()->required(AdminWorkflowOverride::required()),
                     TextInput::make('identity_issued_date')->label('Ngày cấp')->mask('99/99/9999')->placeholder('dd/mm/yyyy')->required(AdminWorkflowOverride::required())->rule('date_format:d/m/Y')->maxLength(10),
