@@ -317,14 +317,14 @@ class ApplicationInfolist
 
                     Tab::make('Chứng từ')
                         ->icon(Heroicon::DocumentText)
-                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'lotte-finance')
+                        ->visible(fn (Application $record): bool => in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
                         ->schema([
                             Section::make('Thư mục chứng từ')
                                 ->columnSpanFull()
                                 ->schema([
-                                    TextEntry::make('lotte_documents')
+                                    TextEntry::make('project_documents')
                                         ->hiddenLabel()
-                                        ->state(fn (Application $record): HtmlString => DocumentPreview::lotteDocuments($record->payload ?? []))
+                                        ->state(fn (Application $record): HtmlString => DocumentPreview::projectDocuments($record->payload ?? [], $record->salesProject?->slug))
                                         ->html()
                                         ->columnSpanFull(),
                                 ]),

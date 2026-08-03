@@ -55,6 +55,19 @@ class AclMixWorkflow
         ];
     }
 
+    /** @return array<int, string> */
+    public static function returnableStatuses(): array
+    {
+        return [
+            self::PENDING_INITIAL_REVIEW,
+            self::OTP_REQUIRED,
+            self::CUSTOMER_CAPP,
+            self::CALL_RECORDING,
+            self::UNDERWRITING,
+            self::AWAITING_CONTRACT,
+        ];
+    }
+
     public static function statusLabel(?string $status): string
     {
         return self::statusOptions()[$status] ?? ($status ?: '-');
@@ -93,10 +106,12 @@ class AclMixWorkflow
             self::PENDING_INITIAL_REVIEW => array_intersect_key([
                 self::INELIGIBLE => 'Không thoả điều kiện',
                 self::OTP_REQUIRED => 'Yêu cầu OTP',
+                self::RETURNED_TO_SALE => 'Trả về Sale',
             ], $options),
             self::CUSTOMER_CAPP => array_intersect_key([
                 self::SALE_COMPLETION => 'Khách hàng thoả mãn điều kiện',
                 self::REJECTED => 'Từ chối',
+                self::RETURNED_TO_SALE => 'Trả về Sale',
             ], $options),
             default => $options,
         };

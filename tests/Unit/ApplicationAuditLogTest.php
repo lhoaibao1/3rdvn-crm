@@ -84,10 +84,10 @@ class ApplicationAuditLogTest extends TestCase
 
         self::assertStringContainsString("Tab::make('Chứng từ')", $source);
         self::assertStringContainsString("Section::make('Thư mục chứng từ')", $source);
-        self::assertStringContainsString("->visible(fn (Application \$record): bool => \$record->salesProject?->slug === 'lotte-finance')", $source);
+        self::assertStringContainsString("->visible(fn (Application \$record): bool => in_array(\$record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))", $source);
         self::assertStringContainsString("Tab::make('Lịch sử xử lý')", $source);
         self::assertStringContainsString("Tab::make('Audit Log')", $source);
-        self::assertStringContainsString('DocumentPreview::lotteDocuments(', $source);
+        self::assertStringContainsString('DocumentPreview::projectDocuments(', $source);
         self::assertStringContainsString('ApplicationAuditLog::businessSummary(', $source);
         self::assertStringContainsString('self::historyBody($log, $record)', $source);
         self::assertStringContainsString('ApplicationAuditLog::render(', $source);

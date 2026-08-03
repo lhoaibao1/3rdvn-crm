@@ -32,12 +32,12 @@ class ProjectWorkflowConfiguration
     {
         return match ($projectSlug) {
             'acl-mix' => [
-                self::step(AclMixWorkflow::PENDING_INITIAL_REVIEW, 'Chờ kiểm tra', [AclMixWorkflow::INELIGIBLE, AclMixWorkflow::OTP_REQUIRED], self::SPECIAL, 'Người xử lý chọn Không thoả điều kiện hoặc Yêu cầu OTP.'),
-                self::step(AclMixWorkflow::OTP_REQUIRED, 'Đang kiểm tra', [AclMixWorkflow::CUSTOMER_CAPP], self::SPECIAL, 'Cập nhật OTP nhưng giữ nguyên trạng thái; chỉ chuyển bước sau khi đã có OTP.'),
-                self::step(AclMixWorkflow::CUSTOMER_CAPP, 'Khách hàng thao tác CAPP', [AclMixWorkflow::SALE_COMPLETION, AclMixWorkflow::REJECTED], self::MANUAL, 'Khách hàng thoả mãn điều kiện tiếp tục workflow cũ; Từ chối sẽ đóng hồ sơ.'),
+                self::step(AclMixWorkflow::PENDING_INITIAL_REVIEW, 'Chờ kiểm tra', [AclMixWorkflow::INELIGIBLE, AclMixWorkflow::OTP_REQUIRED, AclMixWorkflow::RETURNED_TO_SALE], self::SPECIAL, 'Người xử lý chọn Không thoả điều kiện, Yêu cầu OTP hoặc Trả về Sale.'),
+                self::step(AclMixWorkflow::OTP_REQUIRED, 'Đang kiểm tra', [AclMixWorkflow::CUSTOMER_CAPP, AclMixWorkflow::RETURNED_TO_SALE], self::SPECIAL, 'Cập nhật OTP nhưng giữ nguyên trạng thái; có thể chuyển CAPP hoặc Trả về Sale.'),
+                self::step(AclMixWorkflow::CUSTOMER_CAPP, 'Khách hàng thao tác CAPP', [AclMixWorkflow::SALE_COMPLETION, AclMixWorkflow::REJECTED, AclMixWorkflow::RETURNED_TO_SALE], self::MANUAL, 'Khách hàng thoả mãn điều kiện tiếp tục workflow cũ; có thể Từ chối hoặc Trả về Sale.'),
                 self::step(AclMixWorkflow::INELIGIBLE, 'Không thoả điều kiện', [], self::TERMINAL, 'Điểm kết thúc tại bước kiểm tra ban đầu.'),
                 self::step(AclMixWorkflow::SALE_COMPLETION, 'Chờ Sale hoàn thiện thông tin', [AclMixWorkflow::CALL_RECORDING], self::AUTOMATIC, 'Tự chuyển khi Sale lưu hoàn tất hồ sơ.'),
-                self::step(AclMixWorkflow::CALL_RECORDING, 'Cuộc gọi ghi âm', [AclMixWorkflow::UNDERWRITING], self::MANUAL, 'Người xử lý xác nhận đã hoàn tất cuộc gọi.'),
+                self::step(AclMixWorkflow::CALL_RECORDING, 'Cuộc gọi ghi âm', [AclMixWorkflow::UNDERWRITING, AclMixWorkflow::RETURNED_TO_SALE], self::MANUAL, 'Người xử lý xác nhận đã hoàn tất cuộc gọi hoặc Trả về Sale.'),
                 self::step(AclMixWorkflow::UNDERWRITING, 'Đang thẩm định', [AclMixWorkflow::RETURNED_TO_SALE, AclMixWorkflow::AWAITING_CONTRACT, AclMixWorkflow::REJECTED], self::MANUAL, 'Người xử lý chọn kết quả thẩm định.'),
                 self::step(AclMixWorkflow::RETURNED_TO_SALE, 'Trả về Sale', [AclMixWorkflow::CALL_RECORDING], self::AUTOMATIC, 'Tự chuyển khi Sale cập nhật và gửi lại hồ sơ.'),
                 self::step(AclMixWorkflow::AWAITING_CONTRACT, 'Chờ khách hàng ký hợp đồng', [AclMixWorkflow::COMPLETED, AclMixWorkflow::RETURNED_TO_SALE, AclMixWorkflow::REJECTED], self::MANUAL, 'Người xử lý cập nhật kết quả ký hợp đồng.'),
@@ -94,6 +94,17 @@ class ProjectWorkflowConfiguration
                     ->unique()
                     ->values()
                     ->all();
+
+                return $step;
+            })
+            ->map(function (array $step) use ($project): array {
+                if ($project->slug !== 'acl-mix'
+                    || ! in_array($step['status'], AclMixWorkflow::returnableStatuses(), true)
+                    || in_array(AclMixWorkflow::RETURNED_TO_SALE, $step['next_statuses'], true)) {
+                    return $step;
+                }
+
+                $step['next_statuses'][] = AclMixWorkflow::RETURNED_TO_SALE;
 
                 return $step;
             })

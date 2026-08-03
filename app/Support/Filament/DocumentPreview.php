@@ -8,6 +8,37 @@ use Illuminate\Support\HtmlString;
 
 class DocumentPreview
 {
+    public static function projectDocuments(array $payload, ?string $projectSlug): HtmlString
+    {
+        return $projectSlug === 'acl-mix'
+            ? self::aclMixDocuments($payload)
+            : self::lotteDocuments($payload);
+    }
+
+    public static function aclMixDocuments(array $payload): HtmlString
+    {
+        $paths = array_values(array_unique([
+            ...self::paths(data_get($payload, 'documents.consent_6088')),
+            ...self::paths(data_get($payload, 'fields.consent_6088')),
+        ]));
+
+        $groups = [[
+            'key' => 'consent_6088',
+            'label' => 'Consent gửi 6088',
+            'description' => 'Ảnh hoặc PDF xác nhận tin nhắn Consent đã gửi đến 6088',
+            'files' => collect($paths)
+                ->map(fn (string $path, int $index): ?array => self::file(
+                    count($paths) > 1 ? 'Consent '.($index + 1) : 'Consent',
+                    $path,
+                ))
+                ->filter()
+                ->values()
+                ->all(),
+        ]];
+
+        return self::renderLibrary($groups);
+    }
+
     public static function lotteDocuments(array $payload): HtmlString
     {
         $fields = data_get($payload, 'fields', []);
@@ -38,8 +69,12 @@ class DocumentPreview
             ];
         }
 
-        $documentCount = collect($groups)->sum(fn (array $group): int => count($group['files']));
+        return self::renderLibrary($groups);
+    }
 
+    private static function renderLibrary(array $groups): HtmlString
+    {
+        $documentCount = collect($groups)->sum(fn (array $group): int => count($group['files']));
         $folders = collect($groups)
             ->map(fn (array $group): string => self::folderHtml($group))
             ->join('');
