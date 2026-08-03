@@ -33,6 +33,19 @@ class UserFormLayoutTest extends TestCase
         }
     }
 
+    public function test_user_team_options_keep_the_current_team_without_unsupported_builder_methods(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 2).'/app/Filament/Resources/Users/Schemas/UserForm.php',
+        );
+
+        $this->assertStringNotContainsString('orWhereKey(', $source);
+        $this->assertStringContainsString(
+            '$query->orWhere($query->getModel()->getQualifiedKeyName(), $record->team_id)',
+            $source,
+        );
+    }
+
     public function test_user_view_separates_information_and_history_into_two_tabs(): void
     {
         $source = file_get_contents(

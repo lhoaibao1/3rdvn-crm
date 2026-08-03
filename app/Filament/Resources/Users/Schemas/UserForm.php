@@ -545,7 +545,7 @@ class UserForm
                 $query->where('is_active', true);
 
                 if ($record instanceof User && filled($record->team_id)) {
-                    $query->orWhereKey($record->team_id);
+                    $query->orWhere($query->getModel()->getQualifiedKeyName(), $record->team_id);
                 }
             })
             ->orderBy('name')
