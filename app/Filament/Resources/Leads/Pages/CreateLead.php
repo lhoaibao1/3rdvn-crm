@@ -14,6 +14,7 @@ use App\Support\Permissions\LeadAccess;
 use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -192,6 +193,19 @@ class CreateLead extends CreateRecord
                 ->label('CCCD/CMND')
                 ->required(AdminWorkflowOverride::required())
                 ->maxLength(30),
+            FileUpload::make('consent_6088')
+                ->label('Chứng từ Consent gửi đến 6088')
+                ->helperText('Tải chứng từ lên ngay khi tạo Lead ACL trước khi gửi kiểm tra.')
+                ->disk('public')
+                ->directory('leads/acl-mix/consent-6088')
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                ->maxSize(10240)
+                ->previewable()
+                ->openable()
+                ->downloadable()
+                ->deletable()
+                ->required(AdminWorkflowOverride::required())
+                ->columnSpanFull(),
             TextInput::make('birthday')
                 ->label('Ngày sinh')
                 ->mask('99/99/9999')
@@ -267,7 +281,8 @@ class CreateLead extends CreateRecord
 
     private function normalizeStaticLeadPayload(array $data): array
     {
-        $fieldKeys = LeadAccess::selectedProjectSlug($data['sales_project_id'] ?? null) === 'lotte-finance'
+        $projectSlug = LeadAccess::selectedProjectSlug($data['sales_project_id'] ?? null);
+        $fieldKeys = $projectSlug === 'lotte-finance'
             ? CreateLotteFinanceLeadAction::fieldKeys()
             : [
                 'customer_name', 'phone', 'identity_number', 'birthday', 'noi_cap', 'date_cap', 'address',
@@ -275,6 +290,7 @@ class CreateLead extends CreateRecord
             ];
 
         $fields = [];
+        $documents = [];
 
         foreach ($fieldKeys as $key) {
             if (array_key_exists($key, $data)) {
@@ -283,14 +299,32 @@ class CreateLead extends CreateRecord
             }
         }
 
+        if ($projectSlug === 'acl-mix' && array_key_exists('consent_6088', $data)) {
+            if (filled($data['consent_6088'])) {
+                $documents['consent_6088'] = $data['consent_6088'];
+            }
+
+            unset($data['consent_6088']);
+        }
+
         if (array_key_exists('customer_name', $fields)) {
             $fields['customer_name'] = CustomerName::normalize($fields['customer_name']);
         }
 
+        $payload = [];
+
         if ($fields !== []) {
+            $payload['fields'] = $fields;
+        }
+
+        if ($documents !== []) {
+            $payload['documents'] = $documents;
+        }
+
+        if ($payload !== []) {
             $data['payload'] = array_replace_recursive(
                 is_array($data['payload'] ?? null) ? $data['payload'] : [],
-                ['fields' => $fields],
+                $payload,
             );
         }
 

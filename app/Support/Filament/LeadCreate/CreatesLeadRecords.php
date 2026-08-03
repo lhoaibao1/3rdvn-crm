@@ -25,11 +25,8 @@ trait CreatesLeadRecords
             && LeadAccess::canUseProjectId(auth()->user(), $project->getKey());
     }
 
-    /**
-     * @param  array<int, string>  $fieldKeys
-     * @param  array<int, string>  $documentKeys
-     */
-    protected static function createLeadForProject(array $data, string $projectSlug, array $fieldKeys, mixed $livewire, bool $showNd13Consent = false, array $documentKeys = []): void
+    /** @param array<int, string> $fieldKeys */
+    protected static function createLeadForProject(array $data, string $projectSlug, array $fieldKeys, mixed $livewire, bool $showNd13Consent = false): void
     {
         $project = SalesProject::query()
             ->where('slug', $projectSlug)
@@ -42,7 +39,7 @@ trait CreatesLeadRecords
             ]);
         }
 
-        $leadData = self::normalizeLeadData($data, $project, $fieldKeys, $documentKeys);
+        $leadData = self::normalizeLeadData($data, $project, $fieldKeys);
         $leadData = array_replace($leadData, SalesLineSnapshot::fromUser(auth()->user()));
         $assignee = RecordAssignment::autoAssigneeForProject($project, auth()->user());
 
@@ -65,14 +62,10 @@ trait CreatesLeadRecords
             ->send();
     }
 
-    /**
-     * @param  array<int, string>  $fieldKeys
-     * @param  array<int, string>  $documentKeys
-     */
-    private static function normalizeLeadData(array $data, SalesProject $project, array $fieldKeys, array $documentKeys = []): array
+    /** @param array<int, string> $fieldKeys */
+    private static function normalizeLeadData(array $data, SalesProject $project, array $fieldKeys): array
     {
         $fields = [];
-        $documents = [];
 
         foreach ($fieldKeys as $key) {
             if (array_key_exists($key, $data)) {
@@ -85,17 +78,6 @@ trait CreatesLeadRecords
         }
 
         $payload = ['fields' => $fields];
-
-        foreach ($documentKeys as $key) {
-            if (array_key_exists($key, $data) && filled($data[$key])) {
-                $documents[$key] = $data[$key];
-            }
-        }
-
-        if ($documents !== []) {
-            $payload['documents'] = $documents;
-
-        }
 
         return self::syncPayloadToLeadColumns([
             'sales_project_id' => $project->getKey(),

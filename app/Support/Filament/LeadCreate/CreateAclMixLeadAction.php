@@ -6,7 +6,6 @@ use App\Forms\Components\SearchableSelect as Select;
 use App\Support\AdminWorkflowOverride;
 use App\Support\CustomerName;
 use Filament\Actions\Action;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Icons\Heroicon;
@@ -28,7 +27,7 @@ class CreateAclMixLeadAction
             ->modalSubmitAction(fn (Action $action): Action => $action->icon(Heroicon::OutlinedPaperAirplane))
             ->modalCancelActionLabel('Hủy')
             ->schema(self::schema())
-            ->action(fn (array $data, mixed $livewire): mixed => self::createLeadForProject($data, 'acl-mix', self::fieldKeys(), $livewire, true, ['consent_6088']));
+            ->action(fn (array $data, mixed $livewire): mixed => self::createLeadForProject($data, 'acl-mix', self::fieldKeys(), $livewire, true));
     }
 
     private static function schema(): array
@@ -77,19 +76,6 @@ class CreateAclMixLeadAction
                         ->rule('date_format:d/m/Y')
                         ->maxLength(10),
                     ...LeadAddressFields::make(),
-                    FileUpload::make('consent_6088')
-                        ->label('Chứng từ Consent gửi 6088')
-                        ->helperText('Tải ảnh chụp hoặc PDF xác nhận tin nhắn Consent đã gửi đến 6088.')
-                        ->disk('public')
-                        ->directory('leads/acl-mix/consent-6088')
-                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                        ->maxSize(10240)
-                        ->previewable()
-                        ->openable()
-                        ->downloadable()
-                        ->deletable()
-                        ->required(AdminWorkflowOverride::required())
-                        ->columnSpanFull(),
                 ]),
         ];
     }
