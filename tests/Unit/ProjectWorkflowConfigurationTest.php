@@ -48,6 +48,13 @@ class ProjectWorkflowConfigurationTest extends TestCase
         ));
     }
 
+    public function test_return_to_sale_steps_are_dynamic_resume_steps(): void
+    {
+        $this->assertTrue(ProjectWorkflowConfiguration::isDynamicReturnStep(AclMixWorkflow::RETURNED_TO_SALE));
+        $this->assertTrue(ProjectWorkflowConfiguration::isDynamicReturnStep(LotteFinanceWorkflow::RETURNED_TO_SALE));
+        $this->assertFalse(ProjectWorkflowConfiguration::isDynamicReturnStep(AclMixWorkflow::CUSTOMER_CAPP));
+    }
+
     public function test_acl_special_steps_can_be_configured_from_uat(): void
     {
         $project = new SalesProject([
