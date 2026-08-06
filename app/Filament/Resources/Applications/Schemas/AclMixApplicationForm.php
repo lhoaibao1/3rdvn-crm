@@ -20,6 +20,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 
 class AclMixApplicationForm
 {
@@ -91,7 +92,7 @@ class AclMixApplicationForm
                     Hidden::make('ward_name')->dehydrated(),
                 ]),
             Section::make('Quản trị hồ sơ')
-                ->visible(fn (?Application $record): bool => $record instanceof Application && (bool) auth()->user()?->hasRole('Admin'))
+                ->visible(fn (?Application $record): bool => $record instanceof Application && (bool) auth()->user()?->hasAnyRole(['Admin', 'Sales Admin']))
                 ->columns(3)
                 ->schema([
                     TextInput::make('application_code')->label('Mã hồ sơ')->required(AdminWorkflowOverride::required())->maxLength(120),
@@ -105,11 +106,48 @@ class AclMixApplicationForm
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
                     TextInput::make('status')->label('Trạng thái')->formatStateUsing(fn (?string $state): string => AclMixWorkflow::statusLabel($state))->disabled()->dehydrated(false),
                 ]),
+            self::approvalSection(),
             ...array_map(
                 fn ($component) => $component->visible(fn (?Application $record): bool => $record instanceof Application),
                 AclMixFields::components($locked),
             ),
         ];
+    }
+
+    private static function approvalSection(): Section
+    {
+        $adminEditable = fn (): bool => auth()->user()?->hasAnyRole(['Admin', 'Sales Admin']) ?? false;
+
+        return Section::make('Thông tin phê duyệt sơ bộ')
+            ->visible(fn (?Application $record): bool => $record instanceof Application)
+            ->disabled(fn (): bool => ! $adminEditable())
+            ->columns(4)
+            ->schema([
+                Select::make('payload.review.product')
+                    ->label('Sản phẩm')
+                    ->options(['ACL01' => 'ACL01', 'ACL02' => 'ACL02', 'ACL03' => 'ACL03', 'ACL04' => 'ACL04'])
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                TextInput::make('payload.review.pre_approved_amount')
+                    ->label('Số tiền phê duyệt')
+                    ->suffix('VNĐ')
+                    ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                    ->stripCharacters('.')
+                    ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric']),
+                TextInput::make('payload.review.pre_approved_months')
+                    ->label('Số tháng phê duyệt')
+                    ->numeric()
+                    ->suffix('tháng'),
+                TextInput::make('payload.review.pre_approved_interest_rate')
+                    ->label('Lãi suất phê duyệt')
+                    ->numeric()
+                    ->suffix('%'),
+                Textarea::make('payload.review.review_note')
+                    ->label('Ghi chú phê duyệt')
+                    ->rows(2)
+                    ->columnSpanFull(),
+            ]);
     }
 
     public static function normalizeDataForSave(Application $record, array $data): array
@@ -121,7 +159,7 @@ class AclMixApplicationForm
             ? AclMixFields::normalize(array_replace_recursive($existingPayload, $incomingPayload))
             : $existingPayload;
 
-        if (! auth()->user()?->hasRole('Admin')) {
+        if (! (auth()->user()?->hasAnyRole(['Admin', 'Sales Admin']) ?? false)) {
             foreach (['application_code', 'assigned_sale_id', 'created_by_id', 'created_at', 'status'] as $field) {
                 $data[$field] = $record->{$field};
             }
@@ -134,7 +172,7 @@ class AclMixApplicationForm
 
         }
 
-        if (auth()->user()?->hasRole('Admin') && filled($data['created_by_id'] ?? null)) {
+        if ((auth()->user()?->hasAnyRole(['Admin', 'Sales Admin']) ?? false) && filled($data['created_by_id'] ?? null)) {
             $data = array_replace($data, SalesLineSnapshot::hierarchyForUserId($data['created_by_id']));
         }
 

@@ -112,6 +112,7 @@ class AdminWorkflowOverrideTest extends TestCase
     {
         $user = Mockery::mock(User::class);
         $user->shouldReceive('hasRole')->with('Admin')->andReturn($isAdmin);
+        $user->shouldReceive('hasAnyRole')->with(['Admin', 'Sales Admin'])->andReturn($isAdmin);
 
         return $user;
     }

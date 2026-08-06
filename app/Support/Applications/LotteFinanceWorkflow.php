@@ -68,6 +68,18 @@ class LotteFinanceWorkflow
         return self::statusOptions()[$status] ?? ($status ?: '-');
     }
 
+    /** @return array<int, string> */
+    public static function returnableStatuses(): array
+    {
+        return [
+            self::UW_CALL,
+            self::UW_APPROVAL,
+            self::OP,
+            self::ESIGN,
+            self::POST_APPROVAL,
+        ];
+    }
+
     public static function statusColor(?string $status): string
     {
         return match ($status) {
@@ -199,7 +211,7 @@ class LotteFinanceWorkflow
         if ($user->hasAnyRole(['Admin', 'Sales Admin'])) {
             return true;
         }
-        if (! $user->can('application.update') || ! self::canView($user, $application) || ! in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE], true)) {
+        if (! self::canView($user, $application) || ! in_array($application->status, [self::SALE_COMPLETION, self::RETURNED_TO_SALE], true)) {
             return false;
         }
 
@@ -311,6 +323,16 @@ class LotteFinanceWorkflow
                 }
             }
 
+            if ($nextStatus === self::RETURNED_TO_SALE) {
+                $workflow['return_to_sale'] = [
+                    'from' => $currentStatus,
+                    'resume_to' => self::resumeStatusForReturnSource($currentStatus),
+                    'returned_by_id' => $actor->getKey(),
+                    'returned_at' => now()->toDateTimeString(),
+                    'note' => $data['processing_note'] ?? null,
+                ];
+            }
+
             $workflow['last_transition'] = [
                 'from' => $currentStatus,
                 'to' => $nextStatus,
@@ -341,20 +363,52 @@ class LotteFinanceWorkflow
 
             LotteFinanceDocuments::normalizeUploads($application);
             $application->refresh();
+            $nextStatus = $currentStatus === self::RETURNED_TO_SALE
+                ? self::resumeStatusAfterSaleReturn($application)
+                : self::UW_CALL;
             $payload = is_array($application->payload) ? $application->payload : [];
             $workflow = is_array($payload['workflow'] ?? null) ? $payload['workflow'] : [];
             $workflow['last_transition'] = [
                 'from' => $currentStatus,
-                'to' => self::UW_CALL,
+                'to' => $nextStatus,
                 'actor_id' => $actor->getKey(),
                 'at' => now()->toDateTimeString(),
                 'note' => self::saleSubmissionNote($payload),
             ];
             $payload['workflow'] = $workflow;
-            $application->forceFill(['status' => self::UW_CALL, 'payload' => $payload])->save();
+            $application->forceFill(['status' => $nextStatus, 'payload' => $payload])->save();
 
             return $application->refresh();
         });
+    }
+
+    public static function resumeStatusAfterSaleReturn(Application $application): string
+    {
+        $payload = is_array($application->payload) ? $application->payload : [];
+        $resumeTo = data_get($payload, 'workflow.return_to_sale.resume_to');
+
+        if (is_string($resumeTo) && in_array($resumeTo, self::returnableStatuses(), true)) {
+            return $resumeTo;
+        }
+
+        $lastTransition = data_get($payload, 'workflow.last_transition');
+
+        if (is_array($lastTransition) && ($lastTransition['to'] ?? null) === self::RETURNED_TO_SALE) {
+            $from = (string) ($lastTransition['from'] ?? '');
+
+            if (in_array($from, self::returnableStatuses(), true)) {
+                return $from;
+            }
+        }
+
+        return self::UW_CALL;
+    }
+
+    private static function resumeStatusForReturnSource(string $status): string
+    {
+        return in_array($status, self::returnableStatuses(), true)
+            ? $status
+            : self::UW_CALL;
     }
 
     public static function isLotteFinance(?Application $application): bool
