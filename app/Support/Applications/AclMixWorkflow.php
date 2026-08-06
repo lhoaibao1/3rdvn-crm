@@ -207,7 +207,7 @@ class AclMixWorkflow
             return true;
         }
 
-        if (! $user->can('application.update') || ! self::canView($user, $application)) {
+        if (! self::canView($user, $application)) {
             return false;
         }
 
@@ -320,6 +320,7 @@ class AclMixWorkflow
                 ->lockForUpdate()
                 ->with(['salesProject', 'assignedSale'])
                 ->findOrFail($application->getKey());
+            $currentStatus = (string) $application->status;
 
             if (! self::canProcess($actor, $application)) {
                 throw ValidationException::withMessages([
@@ -375,8 +376,18 @@ class AclMixWorkflow
                 $workflow['completed_at'] = now()->toDateTimeString();
             }
 
+            if ($nextStatus === self::RETURNED_TO_SALE) {
+                $workflow['return_to_sale'] = [
+                    'from' => $currentStatus,
+                    'resume_to' => self::resumeStatusForReturnSource($currentStatus),
+                    'returned_by_id' => $actor->getKey(),
+                    'returned_at' => now()->toDateTimeString(),
+                    'note' => $data['processing_note'] ?? null,
+                ];
+            }
+
             $workflow['last_transition'] = [
-                'from' => $application->status,
+                'from' => $currentStatus,
                 'to' => $nextStatus,
                 'actor_id' => $actor->getKey(),
                 'at' => now()->toDateTimeString(),
@@ -411,11 +422,15 @@ class AclMixWorkflow
                 ]);
             }
 
+            $currentStatus = (string) $application->status;
+            $nextStatus = $currentStatus === self::RETURNED_TO_SALE
+                ? self::resumeStatusAfterSaleReturn($application)
+                : self::CALL_RECORDING;
             $payload = is_array($application->payload) ? $application->payload : [];
             $workflow = is_array($payload['workflow'] ?? null) ? $payload['workflow'] : [];
             $workflow['last_transition'] = [
-                'from' => $application->status,
-                'to' => self::CALL_RECORDING,
+                'from' => $currentStatus,
+                'to' => $nextStatus,
                 'actor_id' => $actor->getKey(),
                 'at' => now()->toDateTimeString(),
                 'note' => 'Sale đã cập nhật đầy đủ thông tin hồ sơ.',
@@ -423,12 +438,41 @@ class AclMixWorkflow
             $payload['workflow'] = $workflow;
 
             $application->forceFill([
-                'status' => self::CALL_RECORDING,
+                'status' => $nextStatus,
                 'payload' => $payload,
             ])->save();
 
             return $application->refresh();
         });
+    }
+
+    public static function resumeStatusAfterSaleReturn(Application $application): string
+    {
+        $payload = is_array($application->payload) ? $application->payload : [];
+        $resumeTo = data_get($payload, 'workflow.return_to_sale.resume_to');
+
+        if (is_string($resumeTo) && in_array($resumeTo, self::returnableStatuses(), true)) {
+            return $resumeTo;
+        }
+
+        $lastTransition = data_get($payload, 'workflow.last_transition');
+
+        if (is_array($lastTransition) && ($lastTransition['to'] ?? null) === self::RETURNED_TO_SALE) {
+            $from = (string) ($lastTransition['from'] ?? '');
+
+            if (in_array($from, self::returnableStatuses(), true)) {
+                return $from;
+            }
+        }
+
+        return self::CALL_RECORDING;
+    }
+
+    private static function resumeStatusForReturnSource(string $status): string
+    {
+        return in_array($status, self::returnableStatuses(), true)
+            ? $status
+            : self::CALL_RECORDING;
     }
 
     public static function isAclMix(?Application $application): bool

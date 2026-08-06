@@ -63,10 +63,11 @@ class WorkflowConfigurationForm
                                     ->searchable()
                                     ->preload()
                                     ->native(false)
-                                    ->disabled(fn (Get $get): bool => ! in_array($get('mode'), [
-                                        ProjectWorkflowConfiguration::MANUAL,
-                                        ProjectWorkflowConfiguration::LEGACY,
-                                    ], true))
+                                    ->disabled(fn (Get $get): bool => ! in_array(
+                                        $get('mode'),
+                                        ProjectWorkflowConfiguration::configurableModes(),
+                                        true,
+                                    ))
                                     ->dehydrated()
                                     ->columnSpan(5),
                                 Placeholder::make('workflow_note')

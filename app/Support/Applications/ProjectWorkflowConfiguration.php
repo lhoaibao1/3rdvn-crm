@@ -27,6 +27,12 @@ class ProjectWorkflowConfiguration
         return in_array($projectSlug, self::supportedSlugs(), true);
     }
 
+    /** @return array<int, string> */
+    public static function configurableModes(): array
+    {
+        return [self::MANUAL, self::SPECIAL, self::LEGACY];
+    }
+
     /** @return array<int, array{status: string, label: string, next_statuses: array<int, string>, mode: string, note: string}> */
     public static function defaults(?string $projectSlug): array
     {
@@ -77,7 +83,7 @@ class ProjectWorkflowConfiguration
 
         return collect($defaults)
             ->map(function (array $step) use ($configured, $knownStatuses): array {
-                if (! in_array($step['mode'], [self::MANUAL, self::LEGACY], true)) {
+                if (! in_array($step['mode'], self::configurableModes(), true)) {
                     return $step;
                 }
 

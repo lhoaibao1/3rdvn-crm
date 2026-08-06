@@ -48,6 +48,24 @@ class ProjectWorkflowConfigurationTest extends TestCase
         ));
     }
 
+    public function test_acl_special_steps_can_be_configured_from_uat(): void
+    {
+        $project = new SalesProject([
+            'slug' => 'acl-mix',
+            'workflow_schema' => [[
+                'status' => AclMixWorkflow::OTP_REQUIRED,
+                'next_statuses' => [AclMixWorkflow::RETURNED_TO_SALE],
+            ]],
+        ]);
+
+        $this->assertSame([
+            AclMixWorkflow::RETURNED_TO_SALE => 'Trả về Sale',
+        ], ProjectWorkflowConfiguration::nextStatusOptions(
+            $project,
+            AclMixWorkflow::OTP_REQUIRED,
+        ));
+    }
+
     public function test_every_processable_acl_step_can_return_to_sale(): void
     {
         $project = new SalesProject(['slug' => 'acl-mix']);
