@@ -45,7 +45,7 @@ class ProjectWorkflowConfiguration
                 self::step(AclMixWorkflow::SALE_COMPLETION, 'Chờ Sale hoàn thiện thông tin', [AclMixWorkflow::CALL_RECORDING], self::AUTOMATIC, 'Tự chuyển khi Sale lưu hoàn tất hồ sơ.'),
                 self::step(AclMixWorkflow::CALL_RECORDING, 'Cuộc gọi ghi âm', [AclMixWorkflow::UNDERWRITING, AclMixWorkflow::RETURNED_TO_SALE], self::MANUAL, 'Người xử lý xác nhận đã hoàn tất cuộc gọi hoặc Trả về Sale.'),
                 self::step(AclMixWorkflow::UNDERWRITING, 'Đang thẩm định', [AclMixWorkflow::RETURNED_TO_SALE, AclMixWorkflow::AWAITING_CONTRACT, AclMixWorkflow::REJECTED], self::MANUAL, 'Người xử lý chọn kết quả thẩm định.'),
-                self::step(AclMixWorkflow::RETURNED_TO_SALE, 'Trả về Sale', [AclMixWorkflow::CALL_RECORDING], self::AUTOMATIC, 'Tự chuyển khi Sale cập nhật và gửi lại hồ sơ.'),
+                self::step(AclMixWorkflow::RETURNED_TO_SALE, 'Trả về Sale', [AclMixWorkflow::CALL_RECORDING], self::AUTOMATIC, 'Sau khi Sale cập nhật, hệ thống quay về đúng bước trước khi hồ sơ bị trả về.'),
                 self::step(AclMixWorkflow::AWAITING_CONTRACT, 'Chờ khách hàng ký hợp đồng', [AclMixWorkflow::COMPLETED, AclMixWorkflow::RETURNED_TO_SALE, AclMixWorkflow::REJECTED], self::MANUAL, 'Người xử lý cập nhật kết quả ký hợp đồng.'),
                 self::step(AclMixWorkflow::COMPLETED, 'Hoàn thành', [], self::TERMINAL, 'Điểm kết thúc workflow.'),
                 self::step(AclMixWorkflow::REJECTED, 'Từ chối', [], self::TERMINAL, 'Điểm kết thúc workflow.'),
@@ -53,7 +53,7 @@ class ProjectWorkflowConfiguration
             'lotte-finance' => [
                 self::step(LotteFinanceWorkflow::PRE_CHECK, 'Pre-Check', [LotteFinanceWorkflow::SALE_COMPLETION, LotteFinanceWorkflow::REJECTED], self::SPECIAL, 'Pass chuyển sang Chờ Sale bổ sung; Không Pass kết thúc.'),
                 self::step(LotteFinanceWorkflow::SALE_COMPLETION, 'Chờ Sale bổ sung thông tin', [LotteFinanceWorkflow::UW_CALL], self::AUTOMATIC, 'Tự chuyển khi Sale lưu hoàn tất hồ sơ.'),
-                self::step(LotteFinanceWorkflow::RETURNED_TO_SALE, 'Trả về Sale', [LotteFinanceWorkflow::UW_CALL], self::AUTOMATIC, 'Tự chuyển khi Sale cập nhật và gửi lại hồ sơ.'),
+                self::step(LotteFinanceWorkflow::RETURNED_TO_SALE, 'Trả về Sale', [LotteFinanceWorkflow::UW_CALL], self::AUTOMATIC, 'Sau khi Sale cập nhật, hệ thống quay về đúng bước trước khi hồ sơ bị trả về.'),
                 self::step(LotteFinanceWorkflow::UW_CALL, 'UW Call', [LotteFinanceWorkflow::UW_APPROVAL, LotteFinanceWorkflow::UW_REJECTED, LotteFinanceWorkflow::UW_FIELD, LotteFinanceWorkflow::RETURNED_TO_SALE], self::MANUAL, 'Người xử lý chọn kết quả UW Call.'),
                 self::step(LotteFinanceWorkflow::UW_APPROVAL, 'UW Approval', [LotteFinanceWorkflow::ESIGN, LotteFinanceWorkflow::RETURNED_TO_SALE], self::MANUAL, 'Người xử lý chọn eSign hoặc trả Sale.'),
                 self::step(LotteFinanceWorkflow::UW_REJECTED, 'UW Rej', [], self::TERMINAL, 'Điểm kết thúc workflow.'),

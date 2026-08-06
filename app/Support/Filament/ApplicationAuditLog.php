@@ -59,7 +59,23 @@ class ApplicationAuditLog
             ->sortBy(fn (array $change): int => self::businessPriority($change['path']))
             ->map(function (array $change): string {
                 if ($change['path'] === 'status') {
+                    if ($change['new'] === 'Trả về Sale') {
+                        return 'Trả về Sale: '.$change['old'].' → '.$change['new'];
+                    }
+
+                    if ($change['old'] === 'Trả về Sale') {
+                        return 'Quay về bước trước khi trả: '.$change['old'].' → '.$change['new'];
+                    }
+
                     return 'Chuyển bước: '.$change['old'].' → '.$change['new'];
+                }
+
+                if ($change['path'] === 'payload.workflow.return_to_sale.from') {
+                    return 'Bước bị trả về: '.$change['new'];
+                }
+
+                if ($change['path'] === 'payload.workflow.return_to_sale.resume_to') {
+                    return 'Bước sẽ quay lại sau khi Sale cập nhật: '.$change['new'];
                 }
 
                 if (self::isNote($change['path'])) {
@@ -151,7 +167,8 @@ class ApplicationAuditLog
             || in_array($path, ['updated_at', 'payload.updated_at'], true)
             || str_contains($path, 'otp_updated_by_id')
             || str_contains($path, 'otp_updated_at')
-            || str_contains($path, 'last_otp_update')) {
+            || str_contains($path, 'last_otp_update')
+            || str_contains($path, 'payload.workflow.last_transition')) {
             return;
         }
 
@@ -193,7 +210,7 @@ class ApplicationAuditLog
             return '-';
         }
 
-        if ($path === 'status') {
+        if ($path === 'status' || self::isWorkflowStatusPath($path)) {
             return (string) $statusResolver((string) $value);
         }
 
@@ -237,6 +254,11 @@ class ApplicationAuditLog
             'am_id' => 'AM',
             'zd_id' => 'ZD',
             'note', 'processing_note' => 'Ghi chú xử lý',
+            'from' => str_contains($path, 'return_to_sale') ? 'Bước bị trả về' : 'Từ bước',
+            'to' => 'Đến bước',
+            'resume_to' => 'Quay về bước trước khi trả',
+            'returned_by_id' => 'Người trả về Sale',
+            'returned_at' => 'Thời gian trả về Sale',
             'review_note' => 'Ghi chú Pre-Check',
             'approval_note' => 'Ghi chú Approval',
             'decision' => 'Kết quả Pre-Check',
@@ -276,6 +298,12 @@ class ApplicationAuditLog
             str_contains($path, 'documents.') => 8,
             default => 5,
         };
+    }
+
+    private static function isWorkflowStatusPath(string $path): bool
+    {
+        return str_contains($path, 'payload.workflow.return_to_sale.')
+            && in_array((string) str($path)->afterLast('.'), ['from', 'to', 'resume_to'], true);
     }
 
     private static function isNote(string $path): bool

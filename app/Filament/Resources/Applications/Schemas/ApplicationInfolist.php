@@ -448,6 +448,17 @@ class ApplicationInfolist
         }
 
         if (array_key_exists('status', $changes)) {
+            $oldStatus = (string) data_get($changes, 'status.old', '');
+            $newStatus = (string) data_get($changes, 'status.new', '');
+
+            if ($newStatus === AclMixWorkflow::RETURNED_TO_SALE || $newStatus === LotteFinanceWorkflow::RETURNED_TO_SALE) {
+                return 'Trả về Sale';
+            }
+
+            if ($oldStatus === AclMixWorkflow::RETURNED_TO_SALE || $oldStatus === LotteFinanceWorkflow::RETURNED_TO_SALE) {
+                return 'Quay về bước trước khi trả';
+            }
+
             return 'Chuyển bước xử lý';
         }
 
@@ -471,6 +482,16 @@ class ApplicationInfolist
     {
         $changes = is_array($log->changes) ? $log->changes : [];
         $status = (string) data_get($changes, 'status.new', '');
+
+        if ($status === AclMixWorkflow::RETURNED_TO_SALE || $status === LotteFinanceWorkflow::RETURNED_TO_SALE) {
+            return ['label' => 'Trả Sale', 'color' => '#c2410c', 'bg' => '#fff7ed', 'soft' => '#ffedd5', 'border' => '#fed7aa'];
+        }
+
+        $oldStatus = (string) data_get($changes, 'status.old', '');
+
+        if ($oldStatus === AclMixWorkflow::RETURNED_TO_SALE || $oldStatus === LotteFinanceWorkflow::RETURNED_TO_SALE) {
+            return ['label' => 'Quay lại', 'color' => '#047857', 'bg' => '#ecfdf5', 'soft' => '#d1fae5', 'border' => '#a7f3d0'];
+        }
 
         if ($status === 'approved') {
             return ['label' => 'Duyệt', 'color' => '#047857', 'bg' => '#ecfdf5', 'soft' => '#d1fae5', 'border' => '#a7f3d0'];
