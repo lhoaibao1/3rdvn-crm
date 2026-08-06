@@ -30,7 +30,7 @@ class WorkflowConfigurationForm
                             ->columnSpanFull(),
                     ]),
                 Section::make('Cấu hình chuyển bước')
-                    ->description('Chỉ trạng thái xử lý thủ công hoặc hồ sơ cũ được phép sửa. Bước tự động và bước kết thúc được khóa để tránh sai workflow.')
+                    ->description('Các bước xử lý thủ công và bước đặc biệt được phép sửa. Bước tự động được khóa vì hệ thống tự chuyển sau khi Sale lưu; riêng Trả về Sale sẽ quay về bước trước khi trả.')
                     ->schema([
                         Repeater::make('workflow_schema')
                             ->hiddenLabel()

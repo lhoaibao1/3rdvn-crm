@@ -68,7 +68,7 @@ class UatPanelProvider extends AdminPanelProvider
                 condition: fn () => (bool) UiSetting::current()->show_notifications,
                 position: DatabaseNotificationsPosition::Topbar,
             )
-            ->databaseNotificationsPolling(null)
+            ->databaseNotificationsPolling('5s')
             ->userMenuItems([
                 'profile' => fn (Action $action): Action => $this->accountMenuHeader($action),
                 Action::make('change-password')

@@ -58,7 +58,7 @@ class AdminPanelProvider extends PanelProvider
                 condition: fn () => (bool) UiSetting::current()->show_notifications,
                 position: DatabaseNotificationsPosition::Topbar,
             )
-            ->databaseNotificationsPolling(null)
+            ->databaseNotificationsPolling('5s')
 
             ->userMenuItems([
                 'profile' => fn (Action $action): Action => $this->accountMenuHeader($action),
@@ -3429,9 +3429,15 @@ HTML);
 
             try {
                 const response = await fetch('/crm/notifications/latest', {
-                    credentials: 'same-origin',
+                    credentials: 'include',
                     headers: { Accept: 'application/json' },
                 });
+
+                if (response.status === 401 || response.status === 419) {
+                    window.localStorage.removeItem(notificationIdKey);
+                    window.localStorage.removeItem(notificationTimeKey);
+                    return;
+                }
 
                 if (! response.ok) {
                     return;
