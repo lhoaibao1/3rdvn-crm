@@ -146,6 +146,11 @@ class ProjectWorkflowConfiguration
             ->all();
     }
 
+    public static function isDynamicReturnStep(?string $status): bool
+    {
+        return in_array($status, ['returned_to_sale', 'lotte_returned_to_sale'], true);
+    }
+
     public static function modeLabel(string $mode): string
     {
         return match ($mode) {

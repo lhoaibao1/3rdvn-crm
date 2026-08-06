@@ -63,12 +63,18 @@ class WorkflowConfigurationForm
                                     ->searchable()
                                     ->preload()
                                     ->native(false)
+                                    ->visible(fn (Get $get): bool => ! ProjectWorkflowConfiguration::isDynamicReturnStep((string) $get('status')))
                                     ->disabled(fn (Get $get): bool => ! in_array(
                                         $get('mode'),
                                         ProjectWorkflowConfiguration::configurableModes(),
                                         true,
                                     ))
                                     ->dehydrated()
+                                    ->columnSpan(5),
+                                Placeholder::make('dynamic_return_step')
+                                    ->label('Được chuyển đến')
+                                    ->content('Quay về bước trước khi trả')
+                                    ->visible(fn (Get $get): bool => ProjectWorkflowConfiguration::isDynamicReturnStep((string) $get('status')))
                                     ->columnSpan(5),
                                 Placeholder::make('workflow_note')
                                     ->label('Quy tắc áp dụng')
