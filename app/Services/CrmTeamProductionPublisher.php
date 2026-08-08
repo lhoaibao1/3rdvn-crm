@@ -59,6 +59,7 @@ final class CrmTeamProductionPublisher
         }
 
         $memberCodes = $team->members
+            ->toBase()
             ->map(fn ($member): string => trim((string) $member->employee_code))
             ->filter()
             ->unique()

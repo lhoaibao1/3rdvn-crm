@@ -48,6 +48,16 @@ class ProjectWorkflowConfigurationTest extends TestCase
         ));
     }
 
+    public function test_workflow_configuration_is_grouped_under_admin_path(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 2).'/app/Filament/Resources/WorkflowConfigurations/WorkflowConfigurationResource.php',
+        );
+
+        $this->assertStringContainsString('protected static ?string $slug = \'admin/workflow-configurations\';', $source);
+        $this->assertStringContainsString("return 'Admin';", $source);
+    }
+
     public function test_return_to_sale_steps_are_dynamic_resume_steps(): void
     {
         $this->assertTrue(ProjectWorkflowConfiguration::isDynamicReturnStep(AclMixWorkflow::RETURNED_TO_SALE));

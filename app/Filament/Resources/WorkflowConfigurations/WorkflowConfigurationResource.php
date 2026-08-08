@@ -22,7 +22,7 @@ class WorkflowConfigurationResource extends Resource
 {
     protected static ?string $model = SalesProject::class;
 
-    protected static ?string $slug = 'workflow-configurations';
+    protected static ?string $slug = 'admin/workflow-configurations';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
@@ -43,7 +43,7 @@ class WorkflowConfigurationResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Config Modules';
+        return 'Admin';
     }
 
     public static function getNavigationSort(): ?int
