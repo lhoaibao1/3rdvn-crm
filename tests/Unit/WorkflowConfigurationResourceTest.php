@@ -20,6 +20,8 @@ class WorkflowConfigurationResourceTest extends TestCase
 
         self::assertStringContainsString('WorkflowConfigurationResource::class', $provider);
         self::assertStringContainsString("return 'Workflow';", $resource);
+        self::assertStringContainsString('protected static ?string $slug = \'admin/workflow-configurations\';', $resource);
+        self::assertStringContainsString("return 'Admin';", $resource);
         self::assertStringContainsString("getId() === 'uat'", $resource);
         self::assertStringContainsString("->whereIn('slug', ProjectWorkflowConfiguration::supportedSlugs())", $resource);
         self::assertStringNotContainsString('Chi tiết workflow', $projectForm);

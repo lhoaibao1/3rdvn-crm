@@ -72,8 +72,14 @@ Route::get('/lead-referral/import-template', function (Request $request) {
     )->deleteFileAfterSend(true);
 })->middleware('auth')->name('lead-referral.import-template');
 
-Route::redirect('/admin', '/');
+Route::get('/admin', function () {
+    return redirect(app()->environment('uat') ? '/admin/workflow-configurations' : '/');
+});
 Route::redirect('/admin/login', '/authen/login');
+Route::redirect('/workflow-configurations', '/admin/workflow-configurations');
+Route::get('/workflow-configurations/{path}', function (string $path) {
+    return redirect('/admin/workflow-configurations/'.$path);
+})->where('path', '.*');
 Route::redirect('/login', '/authen/login')->name('login');
 Route::redirect('/dashboard', '/');
 Route::redirect('/profiles', '/sale-profiles');
