@@ -247,7 +247,7 @@ class Dashboard extends BaseDashboard
                 ->all(),
             'projects' => $this->projectPerformance($leadQuery, $applicationQuery),
             'links' => [
-                'leads' => LeadResource::canViewAny() ? LeadResource::getUrl('index') : null,
+                'leads' => null,
                 'applications' => $applicationResource ? $applicationResource::getUrl('index') : null,
                 'reports' => ProjectReportResource::canViewAny() ? ProjectReportResource::getUrl('index') : null,
             ],

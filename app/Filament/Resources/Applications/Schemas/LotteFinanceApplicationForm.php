@@ -16,6 +16,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 
 class LotteFinanceApplicationForm
 {
@@ -61,6 +62,7 @@ class LotteFinanceApplicationForm
                         ->disabled()
                         ->dehydrated(false),
                 ]),
+            self::reviewSection($visibleOnEdit),
             Section::make('Thông tin sản phẩm và khoản vay')
                 ->visible($visibleOnEdit)
                 ->columns(3)
@@ -108,7 +110,9 @@ class LotteFinanceApplicationForm
     {
         $existingPayload = is_array($record->payload) ? $record->payload : [];
         $incomingPayload = is_array($data['payload'] ?? null) ? $data['payload'] : [];
-        $canEditData = LotteFinanceWorkflow::canEditData(auth()->user(), $record);
+        $user = auth()->user();
+        $canEditData = LotteFinanceWorkflow::canEditData($user, $record);
+        $canEditReview = AdminWorkflowOverride::active($user);
         $data['payload'] = array_replace_recursive($existingPayload, $incomingPayload);
 
         if ($canEditData && array_key_exists('documents', $incomingPayload)) {
@@ -126,6 +130,12 @@ class LotteFinanceApplicationForm
             $data['payload']['fields'] = $existingPayload['fields'] ?? [];
             $data['payload']['module_fields'] = $existingPayload['module_fields'] ?? [];
             $data['payload']['documents'] = $existingPayload['documents'] ?? [];
+        }
+
+        if ($canEditReview) {
+            $data['payload'] = self::normalizeReviewData($data['payload']);
+        } else {
+            $data['payload']['review'] = $existingPayload['review'] ?? [];
         }
 
         if (! auth()->user()?->hasRole('Admin')) {
@@ -158,6 +168,105 @@ class LotteFinanceApplicationForm
     public static function prepareDataForFill(array $data): array
     {
         return LotteFinanceFields::prepareDataForFill($data);
+    }
+
+    private static function reviewSection(\Closure $visibleOnEdit): Section
+    {
+        $reviewOptions = [
+            'Pass' => 'Pass',
+            'Không Pass' => 'Không Pass',
+        ];
+
+        return Section::make('Thông tin phê duyệt / Pre-Check')
+            ->visible(fn (?Application $record, string $operation): bool => $visibleOnEdit($operation)
+                && $record instanceof Application
+                && AdminWorkflowOverride::active())
+            ->columns(3)
+            ->schema([
+                Select::make('payload.review.decision')
+                    ->label('Kết quả Pre-Check')
+                    ->options($reviewOptions)
+                    ->searchable()
+                    ->preload(),
+                Select::make('payload.review.blacklist_check')
+                    ->label('Blacklist')
+                    ->options($reviewOptions)
+                    ->searchable()
+                    ->preload(),
+                Select::make('payload.review.b11t_check')
+                    ->label('B11T')
+                    ->options($reviewOptions)
+                    ->searchable()
+                    ->preload(),
+                Select::make('payload.review.aml_check')
+                    ->label('AML')
+                    ->options($reviewOptions)
+                    ->searchable()
+                    ->preload(),
+                Select::make('payload.review.pcb_check')
+                    ->label('PCB')
+                    ->options($reviewOptions)
+                    ->searchable()
+                    ->preload(),
+                TextInput::make('payload.review.lf_grade')
+                    ->label('LF Grade')
+                    ->maxLength(50),
+                TextInput::make('payload.review.ml_grade')
+                    ->label('ML Grade')
+                    ->maxLength(50),
+                TextInput::make('payload.review.maximum_limit')
+                    ->label('Hạn mức tối đa')
+                    ->suffix('VNĐ')
+                    ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                    ->stripCharacters('.')
+                    ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric']),
+                TextInput::make('payload.review.estimated_interest_rate')
+                    ->label('Lãi suất dự kiến')
+                    ->numeric()
+                    ->suffix('%'),
+                TextInput::make('payload.review.approved_amount')
+                    ->label('Số tiền được phê duyệt')
+                    ->suffix('VNĐ')
+                    ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                    ->stripCharacters('.')
+                    ->extraInputAttributes(['class' => 'crm-money-input', 'inputmode' => 'numeric']),
+                DateTimePicker::make('payload.review.reviewed_at')
+                    ->label('Thời gian Pre-Check')
+                    ->seconds(false),
+                DateTimePicker::make('payload.review.approved_at')
+                    ->label('Thời gian Approval')
+                    ->seconds(false),
+                Textarea::make('payload.review.review_note')
+                    ->label('Ghi chú Pre-Check')
+                    ->rows(2)
+                    ->columnSpanFull(),
+                Textarea::make('payload.review.approval_note')
+                    ->label('Ghi chú Approval')
+                    ->rows(2)
+                    ->columnSpanFull(),
+            ]);
+    }
+
+    private static function normalizeReviewData(array $payload): array
+    {
+        $review = is_array($payload['review'] ?? null) ? $payload['review'] : [];
+
+        foreach (['maximum_limit', 'approved_amount'] as $key) {
+            if (array_key_exists($key, $review)) {
+                $review[$key] = self::digits($review[$key]);
+            }
+        }
+
+        $payload['review'] = $review;
+
+        return $payload;
+    }
+
+    private static function digits(mixed $value): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+
+        return filled($digits) ? $digits : null;
     }
 
     private static function readOnly(string $name, string $label): TextInput

@@ -44,7 +44,8 @@ class LeadResource extends Resource
 
     public static function shouldRegisterNavigation(array $parameters = []): bool
     {
-        return ModuleNavigation::visible('leads', 'lead.view');
+        // Lead cũ được giữ để tương thích dữ liệu/liên kết, nhưng không còn hiển thị như một module.
+        return false;
     }
 
     public static function getNavigationGroup(): ?string
