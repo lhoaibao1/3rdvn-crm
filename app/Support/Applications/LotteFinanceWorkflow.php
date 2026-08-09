@@ -61,6 +61,8 @@ class LotteFinanceWorkflow
 
     public static function statusLabel(?string $status): string
     {
+        $status = self::normalizeLegacyStatus($status);
+
         if ($status === self::OP) {
             return 'OP';
         }
@@ -82,6 +84,8 @@ class LotteFinanceWorkflow
 
     public static function statusColor(?string $status): string
     {
+        $status = self::normalizeLegacyStatus($status);
+
         return match ($status) {
             self::PRE_CHECK => 'warning',
             self::SALE_COMPLETION => 'info',
@@ -107,7 +111,19 @@ class LotteFinanceWorkflow
             ? $project
             : new SalesProject(['slug' => 'lotte-finance']);
 
-        return ProjectWorkflowConfiguration::nextStatusOptions($project, (string) $application->status);
+        return ProjectWorkflowConfiguration::nextStatusOptions(
+            $project,
+            (string) self::normalizeLegacyStatus($application->status),
+        );
+    }
+
+    public static function normalizeLegacyStatus(?string $status): ?string
+    {
+        return match ($status) {
+            'processing' => self::SALE_COMPLETION,
+            'rejected' => self::REJECTED,
+            default => $status,
+        };
     }
 
     public static function canCreate(?User $user): bool

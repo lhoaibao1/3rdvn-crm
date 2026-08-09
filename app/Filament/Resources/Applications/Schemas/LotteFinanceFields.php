@@ -175,6 +175,9 @@ class LotteFinanceFields
     public static function personalEntries(): array
     {
         return [
+            self::entry('customer_name', 'Họ tên khách hàng'),
+            self::entry('phone', 'Số điện thoại'),
+            self::entry('identity_number', 'CCCD/CMND'),
             self::entry('birthday', 'Ngày sinh'),
             self::optionEntry('gender', 'Giới tính', [
                 'MALE' => 'Nam',
@@ -313,7 +316,18 @@ class LotteFinanceFields
 
     private static function displayValue(Application $record, string $key): mixed
     {
-        return data_get(self::mergeLegacyIntoFields(is_array($record->payload) ? $record->payload : []), $key);
+        $value = data_get(self::mergeLegacyIntoFields(is_array($record->payload) ? $record->payload : []), $key);
+
+        if (filled($value)) {
+            return $value;
+        }
+
+        return match ($key) {
+            'customer_name' => $record->applicant_name,
+            'phone' => $record->phone,
+            'identity_number' => $record->identity_number,
+            default => $value,
+        };
     }
 
     private static function entry(string $key, string $label): TextEntry

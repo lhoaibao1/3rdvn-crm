@@ -78,7 +78,7 @@ class LeadApplicationConverter
                 'applicant_name' => $applicantName,
                 'phone' => $phone,
                 'identity_number' => LeadPayload::identityNumber($payload),
-                'status' => 'processing',
+                'status' => $project->slug === 'lotte-finance' ? LotteFinanceWorkflow::SALE_COMPLETION : 'processing',
                 ...SalesLineSnapshot::fromLeadLike($lead),
                 ...($assignee ? RecordAssignment::leadLikeAssignmentAttributes($assignee) : []),
                 'assigned_sale_id' => $assignee?->getKey(),

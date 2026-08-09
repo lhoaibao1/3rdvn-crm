@@ -47,6 +47,18 @@ class LotteFinanceWorkflowTest extends TestCase
         );
     }
 
+    public function test_lotte_customer_identity_fields_are_visible_and_legacy_statuses_are_normalized(): void
+    {
+        $personal = collect(LotteFinanceFields::personalEntries())->keyBy(fn ($entry) => $entry->getName());
+
+        $this->assertArrayHasKey('payload.fields.customer_name', $personal->all());
+        $this->assertArrayHasKey('payload.fields.phone', $personal->all());
+        $this->assertArrayHasKey('payload.fields.identity_number', $personal->all());
+        $this->assertSame(LotteFinanceWorkflow::SALE_COMPLETION, LotteFinanceWorkflow::normalizeLegacyStatus('processing'));
+        $this->assertSame(LotteFinanceWorkflow::REJECTED, LotteFinanceWorkflow::normalizeLegacyStatus('rejected'));
+        $this->assertSame('Chờ Sale bổ sung thông tin', LotteFinanceWorkflow::statusLabel('processing'));
+    }
+
     public function test_sales_hierarchy_snapshot_contains_every_management_level(): void
     {
         $user = new class extends User
