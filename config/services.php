@@ -50,4 +50,8 @@ return [
         'sso_issuer' => env('MAIL_SSO_ISSUER', '3rdvn-crm'),
     ],
 
+    'vpn_directory' => [
+        'token' => env('VPN_DIRECTORY_API_TOKEN'),
+    ],
+
 ];

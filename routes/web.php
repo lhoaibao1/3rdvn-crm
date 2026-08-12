@@ -5,6 +5,7 @@ use App\Http\Controllers\CandidateApplicationController;
 use App\Http\Controllers\CorporateWebsiteController;
 use App\Http\Controllers\Crm\LatestNotificationController;
 use App\Http\Controllers\Crm\TableColumnPreferenceController;
+use App\Http\Controllers\Integration\VpnUserDirectoryController;
 use App\Http\Controllers\LosApplicationLookupController;
 use App\Http\Controllers\LosAuthenticationController;
 use App\Http\Controllers\MailSsoController;
@@ -133,3 +134,7 @@ Route::post('/authen/reset-password', [PasswordOtpResetController::class, 'reset
 Route::post('/crm/table-column-preferences', [TableColumnPreferenceController::class, 'store'])
     ->middleware('auth')
     ->name('crm.table-columns.store');
+
+Route::get('/api/integration/v1/users', VpnUserDirectoryController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.integration.vpn.users');
