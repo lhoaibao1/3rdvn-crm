@@ -10,6 +10,7 @@ use App\Filament\Resources\CrmLookups\Schemas\CrmLookupForm;
 use App\Filament\Resources\CrmLookups\Schemas\CrmLookupInfolist;
 use App\Filament\Resources\CrmLookups\Tables\CrmLookupsTable;
 use App\Models\CrmLookup;
+use App\Support\Filament\AdminOnlyResource;
 use App\Support\Filament\ModuleNavigation;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -19,6 +20,8 @@ use Filament\Tables\Table;
 
 class CrmLookupResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = CrmLookup::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedListBullet;
@@ -36,11 +39,6 @@ class CrmLookupResource extends Resource
     public static function getNavigationLabel(): string
     {
         return ModuleNavigation::label('lookups', 'Danh mục user');
-    }
-
-    public static function shouldRegisterNavigation(array $parameters = []): bool
-    {
-        return ModuleNavigation::visible('lookups', 'lookup.view');
     }
 
     public static function getNavigationGroup(): ?string

@@ -40,19 +40,7 @@ class AclMixWorkflow
 
     public static function statusOptions(): array
     {
-        return [
-            self::PENDING_INITIAL_REVIEW => 'Chờ kiểm tra',
-            self::OTP_REQUIRED => 'Đang kiểm tra',
-            self::CUSTOMER_CAPP => 'Khách hàng thao tác CAPP',
-            self::INELIGIBLE => 'Không thoả điều kiện',
-            self::SALE_COMPLETION => 'Chờ Sale hoàn thiện thông tin',
-            self::CALL_RECORDING => 'Đang thực hiện cuộc gọi ghi âm với Khách hàng',
-            self::UNDERWRITING => 'Đang thẩm định',
-            self::RETURNED_TO_SALE => 'Trả về Sale',
-            self::AWAITING_CONTRACT => 'Chờ khách hàng ký hợp đồng',
-            self::COMPLETED => 'Hoàn thành',
-            self::REJECTED => 'Từ chối',
-        ];
+        return ProjectWorkflowConfiguration::statusOptions('acl-mix');
     }
 
     /** @return array<int, string> */

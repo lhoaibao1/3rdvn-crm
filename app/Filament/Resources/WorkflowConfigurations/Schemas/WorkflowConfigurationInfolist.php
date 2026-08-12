@@ -18,7 +18,7 @@ class WorkflowConfigurationInfolist
             ->columns(1)
             ->components([
                 Section::make('Trạng thái và chuyển bước')
-                    ->description('Workflow đang được UAT áp dụng thực tế cho dự án.')
+                    ->description('Workflow đang được PROD áp dụng trực tiếp cho dự án.')
                     ->schema([
                         TextEntry::make('workflow_overview')
                             ->hiddenLabel()

@@ -10,6 +10,7 @@ use App\Filament\Resources\UiSettings\Schemas\UiSettingForm;
 use App\Filament\Resources\UiSettings\Schemas\UiSettingInfolist;
 use App\Filament\Resources\UiSettings\Tables\UiSettingsTable;
 use App\Models\UiSetting;
+use App\Support\Filament\AdminOnlyResource;
 use App\Support\Filament\ModuleNavigation;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -19,6 +20,8 @@ use Filament\Tables\Table;
 
 class UiSettingResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = UiSetting::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
@@ -38,14 +41,9 @@ class UiSettingResource extends Resource
         return ModuleNavigation::label('settings', 'Cài đặt giao diện');
     }
 
-    public static function shouldRegisterNavigation(array $parameters = []): bool
-    {
-        return ModuleNavigation::visible('settings', 'settings.view');
-    }
-
     public static function getNavigationGroup(): ?string
     {
-        return 'UAT';
+        return 'Admin';
     }
 
     public static function getNavigationSort(): ?int

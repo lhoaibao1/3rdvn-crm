@@ -6,6 +6,7 @@ use App\Filament\Resources\WorkflowConfigurations\WorkflowConfigurationResource;
 use App\Models\SalesProject;
 use App\Support\Applications\ProjectWorkflowConfiguration;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Icons\Heroicon;
@@ -38,6 +39,7 @@ class WorkflowConfigurationsTable
                         ->label('Xem workflow')
                         ->url(fn (SalesProject $record): string => WorkflowConfigurationResource::getUrl('view', ['record' => $record])),
                     EditAction::make()->label('Cấu hình chuyển bước'),
+                    DeleteAction::make()->label('Xóa Workflow'),
                 ])
                     ->iconButton()
                     ->label('Hành động')

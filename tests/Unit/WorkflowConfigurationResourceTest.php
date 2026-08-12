@@ -9,21 +9,23 @@ use PHPUnit\Framework\TestCase;
 
 class WorkflowConfigurationResourceTest extends TestCase
 {
-    public function test_workflow_is_a_separate_uat_resource_instead_of_sales_project_content(): void
+    public function test_workflow_and_config_resources_live_in_prod_not_uat(): void
     {
         $root = dirname(__DIR__, 2);
-        $provider = file_get_contents($root.'/app/Providers/Filament/UatPanelProvider.php');
+        $adminProvider = file_get_contents($root.'/app/Providers/Filament/AdminPanelProvider.php');
+        $uatProvider = file_get_contents($root.'/app/Providers/Filament/UatPanelProvider.php');
         $resource = file_get_contents($root.'/app/Filament/Resources/WorkflowConfigurations/WorkflowConfigurationResource.php');
         $projectForm = file_get_contents($root.'/app/Filament/Resources/SalesProjects/Schemas/SalesProjectForm.php');
         $projectView = file_get_contents($root.'/app/Filament/Resources/SalesProjects/Schemas/SalesProjectInfolist.php');
         $projectResource = file_get_contents($root.'/app/Filament/Resources/SalesProjects/SalesProjectResource.php');
 
-        self::assertStringContainsString('WorkflowConfigurationResource::class', $provider);
+        self::assertStringContainsString('WorkflowConfigurationResource::class', $adminProvider);
+        self::assertStringNotContainsString('WorkflowConfigurationResource::class', $uatProvider);
         self::assertStringContainsString("return 'Workflow';", $resource);
         self::assertStringContainsString('protected static ?string $slug = \'admin/workflow-configurations\';', $resource);
         self::assertStringContainsString("return 'Admin';", $resource);
-        self::assertStringContainsString("getId() === 'uat'", $resource);
-        self::assertStringContainsString("->whereIn('slug', ProjectWorkflowConfiguration::supportedSlugs())", $resource);
+        self::assertStringContainsString("getId() === 'admin'", $resource);
+        self::assertStringContainsString('CreateWorkflowConfiguration::route', $resource);
         self::assertStringNotContainsString('Chi tiết workflow', $projectForm);
         self::assertStringNotContainsString('Chi tiết workflow', $projectView);
         self::assertStringContainsString("return 'Cấu hình dự án';", $projectResource);
@@ -37,20 +39,20 @@ class WorkflowConfigurationResourceTest extends TestCase
         );
 
         foreach ([
-            'Trạng thái hiện tại',
             'Mã trạng thái',
+            'Tên hiển thị',
             'Cách xử lý',
             'Được chuyển đến',
-            'Quy tắc áp dụng',
+            'Ghi chú / quy tắc nghiệp vụ',
         ] as $label) {
             self::assertStringContainsString($label, $source);
         }
 
         self::assertStringContainsString("Repeater::make('workflow_schema')", $source);
         self::assertStringContainsString('ProjectWorkflowConfiguration::forProject($record)', $source);
-        self::assertStringContainsString('->addable(false)', $source);
-        self::assertStringContainsString('->deletable(false)', $source);
-        self::assertStringContainsString('->reorderable(false)', $source);
+        self::assertStringContainsString('->addable()', $source);
+        self::assertStringContainsString('->deletable()', $source);
+        self::assertStringContainsString('->reorderable()', $source);
     }
 
     public function test_workflow_overview_shows_real_acl_statuses_and_transitions(): void

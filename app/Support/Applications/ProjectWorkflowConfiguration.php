@@ -30,7 +30,7 @@ class ProjectWorkflowConfiguration
     /** @return array<int, string> */
     public static function configurableModes(): array
     {
-        return [self::MANUAL, self::SPECIAL, self::LEGACY];
+        return [self::MANUAL, self::AUTOMATIC, self::SPECIAL, self::TERMINAL, self::LEGACY];
     }
 
     /** @return array<int, array{status: string, label: string, next_statuses: array<int, string>, mode: string, note: string}> */
@@ -75,53 +75,52 @@ class ProjectWorkflowConfiguration
             return [];
         }
 
-        $defaults = self::defaults($project->slug);
-        $knownStatuses = collect($defaults)->pluck('status')->all();
-        $configured = collect(is_array($project->workflow_schema) ? $project->workflow_schema : [])
-            ->filter(fn (mixed $step): bool => is_array($step) && filled($step['status'] ?? null))
-            ->keyBy('status');
+        $configured = is_array($project->workflow_schema) ? $project->workflow_schema : [];
 
-        return collect($defaults)
-            ->map(function (array $step) use ($configured, $knownStatuses): array {
-                if (! in_array($step['mode'], self::configurableModes(), true)) {
+        if ($configured === []) {
+            return self::normalizeSteps(self::defaults($project->slug));
+        }
+
+        // Older releases stored only status + next_statuses. Hydrate those rows
+        // from defaults once so existing PROD workflows keep their labels/modes;
+        // the next Admin save persists the complete editable schema.
+        if (collect($configured)->contains(fn (mixed $step): bool => is_array($step)
+            && (! array_key_exists('label', $step) || ! array_key_exists('mode', $step)))) {
+            $savedTransitions = collect($configured)->keyBy('status');
+            $configured = collect(self::defaults($project->slug))
+                ->map(function (array $step) use ($savedTransitions): array {
+                    $saved = $savedTransitions->get($step['status']);
+
+                    if (is_array($saved) && array_key_exists('next_statuses', $saved)) {
+                        $step['next_statuses'] = (array) $saved['next_statuses'];
+                    }
+
                     return $step;
-                }
+                })
+                ->all();
+        }
 
-                $saved = $configured->get($step['status']);
-
-                if (! is_array($saved) || ! array_key_exists('next_statuses', $saved)) {
-                    return $step;
-                }
-
-                $step['next_statuses'] = collect((array) $saved['next_statuses'])
-                    ->filter(fn (mixed $status): bool => is_string($status)
-                        && $status !== $step['status']
-                        && in_array($status, $knownStatuses, true))
-                    ->unique()
-                    ->values()
-                    ->all();
-
-                return $step;
-            })
-            ->map(function (array $step) use ($project): array {
-                if ($project->slug !== 'acl-mix'
-                    || ! in_array($step['status'], AclMixWorkflow::returnableStatuses(), true)
-                    || in_array(AclMixWorkflow::RETURNED_TO_SALE, $step['next_statuses'], true)) {
-                    return $step;
-                }
-
-                $step['next_statuses'][] = AclMixWorkflow::RETURNED_TO_SALE;
-
-                return $step;
-            })
-            ->values()
-            ->all();
+        return self::normalizeSteps($configured);
     }
 
     /** @return array<string, string> */
     public static function statusOptions(?string $projectSlug): array
     {
-        return collect(self::defaults($projectSlug))
+        $steps = self::defaults($projectSlug);
+
+        if (filled($projectSlug)) {
+            try {
+                $project = SalesProject::query()->where('slug', $projectSlug)->first();
+
+                if ($project instanceof SalesProject) {
+                    $steps = self::forProject($project);
+                }
+            } catch (\Throwable) {
+                // Defaults keep CLI/unit-test callers functional before the database is available.
+            }
+        }
+
+        return collect($steps)
             ->mapWithKeys(fn (array $step): array => [$step['status'] => $step['label']])
             ->all();
     }
@@ -165,11 +164,42 @@ class ProjectWorkflowConfiguration
 
     public static function normalizeForStorage(SalesProject $project): array
     {
-        return collect(self::forProject($project))
-            ->map(fn (array $step): array => [
-                'status' => $step['status'],
-                'next_statuses' => $step['next_statuses'],
-            ])
+        return self::forProject($project);
+    }
+
+    /** @return array<int, array{status: string, label: string, next_statuses: array<int, string>, mode: string, note: string}> */
+    private static function normalizeSteps(array $steps): array
+    {
+        $statuses = collect($steps)
+            ->filter(fn (mixed $step): bool => is_array($step) && filled($step['status'] ?? null))
+            ->map(fn (array $step): string => trim((string) $step['status']))
+            ->unique()
+            ->values()
+            ->all();
+
+        return collect($steps)
+            ->filter(fn (mixed $step): bool => is_array($step) && filled($step['status'] ?? null))
+            ->unique(fn (array $step): string => trim((string) $step['status']))
+            ->map(function (array $step) use ($statuses): array {
+                $status = trim((string) $step['status']);
+                $mode = in_array($step['mode'] ?? null, self::configurableModes(), true)
+                    ? (string) $step['mode']
+                    : self::MANUAL;
+
+                return self::step(
+                    $status,
+                    trim((string) ($step['label'] ?? '')) ?: $status,
+                    collect((array) ($step['next_statuses'] ?? []))
+                        ->filter(fn (mixed $next): bool => is_string($next)
+                            && $next !== $status
+                            && in_array($next, $statuses, true))
+                        ->unique()
+                        ->values()
+                        ->all(),
+                    $mode,
+                    trim((string) ($step['note'] ?? '')),
+                );
+            })
             ->values()
             ->all();
     }

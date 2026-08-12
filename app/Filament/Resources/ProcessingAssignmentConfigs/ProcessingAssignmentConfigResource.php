@@ -8,6 +8,7 @@ use App\Filament\Resources\ProcessingAssignmentConfigs\Pages\ListProcessingAssig
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\ProcessingAssignmentConfig;
 use App\Models\SalesProject;
+use App\Support\Filament\AdminOnlyResource;
 use App\Support\Permissions\HotLeadAccess;
 use BackedEnum;
 use Filament\Actions\ActionGroup;
@@ -28,6 +29,8 @@ use Filament\Tables\Table;
 
 class ProcessingAssignmentConfigResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = ProcessingAssignmentConfig::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;

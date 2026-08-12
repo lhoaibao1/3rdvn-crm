@@ -5,27 +5,17 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\ChangePassword;
 use App\Filament\Pages\Dashboard as CrmDashboard;
-use App\Filament\Resources\ApiMappings\ApiMappingResource;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\CandidateApplications\CandidateApplicationResource;
 use App\Filament\Resources\CbpApplications\CbpApplicationResource;
-use App\Filament\Resources\CrmLookups\CrmLookupResource;
-use App\Filament\Resources\CrmModules\CrmModuleResource;
-use App\Filament\Resources\CrmTeams\CrmTeamResource;
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
 use App\Filament\Resources\HotLeads\HotLeadResource;
 use App\Filament\Resources\JobVacancies\JobVacancyResource;
 use App\Filament\Resources\Leads\LeadResource;
 use App\Filament\Resources\LotteFinanceApplications\LotteFinanceApplicationResource;
-use App\Filament\Resources\ProcessingAssignmentConfigs\ProcessingAssignmentConfigResource;
 use App\Filament\Resources\ProjectReports\ProjectReportResource;
-use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\SaleProfiles\SaleProfileResource;
-use App\Filament\Resources\SalesChannels\SalesChannelResource;
-use App\Filament\Resources\SalesProjects\SalesProjectResource;
-use App\Filament\Resources\UiSettings\UiSettingResource;
 use App\Filament\Resources\Users\UserResource;
-use App\Filament\Resources\WorkflowConfigurations\WorkflowConfigurationResource;
 use App\Models\UiSetting;
 use Filament\Actions\Action;
 use Filament\Enums\DatabaseNotificationsPosition;
@@ -115,16 +105,6 @@ class UatPanelProvider extends AdminPanelProvider
                 JobVacancyResource::class,
                 CandidateApplicationResource::class,
                 UserResource::class,
-                CrmModuleResource::class,
-                CrmTeamResource::class,
-                SalesProjectResource::class,
-                WorkflowConfigurationResource::class,
-                CrmLookupResource::class,
-                SalesChannelResource::class,
-                ProcessingAssignmentConfigResource::class,
-                UiSettingResource::class,
-                ApiMappingResource::class,
-                RoleResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

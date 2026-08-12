@@ -9,17 +9,19 @@ use App\Filament\Resources\Roles\Pages\ViewRole;
 use App\Filament\Resources\Roles\Schemas\RoleForm;
 use App\Filament\Resources\Roles\Schemas\RoleInfolist;
 use App\Filament\Resources\Roles\Tables\RolesTable;
+use App\Support\Filament\AdminOnlyResource;
+use App\Support\Filament\ModuleNavigation;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use App\Support\Filament\ModuleNavigation;
 use Spatie\Permission\Models\Role;
 
 class RoleResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = Role::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
@@ -39,14 +41,9 @@ class RoleResource extends Resource
         return ModuleNavigation::label('roles', 'Vai trò');
     }
 
-    public static function shouldRegisterNavigation(array $parameters = []): bool
-    {
-        return auth()->user()?->hasRole('Admin') && ModuleNavigation::visible('roles', 'role.view');
-    }
-
     public static function getNavigationGroup(): ?string
     {
-        return 'UAT';
+        return 'Admin';
     }
 
     public static function getNavigationSort(): ?int
@@ -67,23 +64,6 @@ class RoleResource extends Resource
     public static function table(Table $table): Table
     {
         return RolesTable::configure($table);
-    }
-
-
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasRole('Admin') === true && (auth()->user()?->can('role.view') ?? false);
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        $query = parent::getEloquentQuery();
-
-        if (! static::canAccess()) {
-            $query->whereRaw('1 = 0');
-        }
-
-        return $query;
     }
 
     public static function getRelations(): array

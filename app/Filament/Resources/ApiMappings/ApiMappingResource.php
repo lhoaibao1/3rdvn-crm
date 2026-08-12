@@ -10,6 +10,7 @@ use App\Filament\Resources\ApiMappings\Schemas\ApiMappingForm;
 use App\Filament\Resources\ApiMappings\Schemas\ApiMappingInfolist;
 use App\Filament\Resources\ApiMappings\Tables\ApiMappingsTable;
 use App\Models\ApiMapping;
+use App\Support\Filament\AdminOnlyResource;
 use App\Support\Filament\ModuleNavigation;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ApiMappingResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = ApiMapping::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLink;
@@ -38,11 +41,6 @@ class ApiMappingResource extends Resource
     public static function getNavigationLabel(): string
     {
         return ModuleNavigation::label('api-mappings', 'API Mapping');
-    }
-
-    public static function shouldRegisterNavigation(array $parameters = []): bool
-    {
-        return ModuleNavigation::visible('api-mappings', 'api_mapping.view');
     }
 
     public static function getNavigationGroup(): ?string

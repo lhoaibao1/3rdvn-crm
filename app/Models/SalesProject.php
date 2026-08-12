@@ -44,7 +44,7 @@ class SalesProject extends Model
             $project->lead_form_schema = self::normalizeFieldSchema($project->lead_form_schema);
             $project->module_form_schema = self::normalizeFieldSchema($project->module_form_schema);
 
-            if (ProjectWorkflowConfiguration::supports($project->slug)) {
+            if (ProjectWorkflowConfiguration::supports($project->slug) || ! empty($project->workflow_schema)) {
                 $project->workflow_schema = ProjectWorkflowConfiguration::normalizeForStorage($project);
             }
         });

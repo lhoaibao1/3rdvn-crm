@@ -4,6 +4,7 @@ namespace App\Filament\Resources\WorkflowConfigurations\Pages;
 
 use App\Filament\Resources\WorkflowConfigurations\WorkflowConfigurationResource;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
@@ -23,6 +24,7 @@ class EditWorkflowConfiguration extends EditRecord
             ViewAction::make()
                 ->label('Xem sơ đồ')
                 ->icon(Heroicon::OutlinedEye),
+            DeleteAction::make()->label('Xóa Workflow'),
         ];
     }
 

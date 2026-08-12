@@ -10,6 +10,7 @@ use App\Filament\Resources\CrmModules\Schemas\CrmModuleForm;
 use App\Filament\Resources\CrmModules\Schemas\CrmModuleInfolist;
 use App\Filament\Resources\CrmModules\Tables\CrmModulesTable;
 use App\Models\CrmModule;
+use App\Support\Filament\AdminOnlyResource;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -18,6 +19,8 @@ use Filament\Tables\Table;
 
 class CrmModuleResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = CrmModule::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquaresPlus;

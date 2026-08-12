@@ -10,6 +10,7 @@ use App\Filament\Resources\CrmTeams\Schemas\CrmTeamForm;
 use App\Filament\Resources\CrmTeams\Schemas\CrmTeamInfolist;
 use App\Filament\Resources\CrmTeams\Tables\CrmTeamsTable;
 use App\Models\CrmTeam;
+use App\Support\Filament\AdminOnlyResource;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -18,6 +19,8 @@ use Filament\Tables\Table;
 
 class CrmTeamResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = CrmTeam::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;

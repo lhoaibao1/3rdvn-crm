@@ -10,6 +10,7 @@ use App\Filament\Resources\SalesProjects\Schemas\SalesProjectForm;
 use App\Filament\Resources\SalesProjects\Schemas\SalesProjectInfolist;
 use App\Filament\Resources\SalesProjects\Tables\SalesProjectsTable;
 use App\Models\SalesProject;
+use App\Support\Filament\AdminOnlyResource;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -18,6 +19,8 @@ use Filament\Tables\Table;
 
 class SalesProjectResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = SalesProject::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsHorizontal;
@@ -35,11 +38,6 @@ class SalesProjectResource extends Resource
     public static function getNavigationLabel(): string
     {
         return 'Cấu hình dự án';
-    }
-
-    public static function shouldRegisterNavigation(array $parameters = []): bool
-    {
-        return auth()->user()?->can('sales_project.view') ?? false;
     }
 
     public static function getNavigationGroup(): ?string

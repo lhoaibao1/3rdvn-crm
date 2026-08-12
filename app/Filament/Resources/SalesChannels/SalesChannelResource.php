@@ -10,6 +10,7 @@ use App\Filament\Resources\SalesChannels\Schemas\SalesChannelForm;
 use App\Filament\Resources\SalesChannels\Schemas\SalesChannelInfolist;
 use App\Filament\Resources\SalesChannels\Tables\SalesChannelsTable;
 use App\Models\SalesChannel;
+use App\Support\Filament\AdminOnlyResource;
 use App\Support\Filament\ModuleNavigation;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -19,6 +20,8 @@ use Filament\Tables\Table;
 
 class SalesChannelResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = SalesChannel::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;
@@ -36,11 +39,6 @@ class SalesChannelResource extends Resource
     public static function getNavigationLabel(): string
     {
         return ModuleNavigation::label('sales-channels', 'Kênh bán hàng');
-    }
-
-    public static function shouldRegisterNavigation(array $parameters = []): bool
-    {
-        return ModuleNavigation::visible('sales-channels', 'sales_channel.view');
     }
 
     public static function getNavigationGroup(): ?string

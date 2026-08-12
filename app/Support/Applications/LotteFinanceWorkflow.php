@@ -44,19 +44,7 @@ class LotteFinanceWorkflow
 
     public static function statusOptions(): array
     {
-        return [
-            self::PRE_CHECK => 'Pre-Check',
-            self::SALE_COMPLETION => 'Chờ Sale bổ sung thông tin',
-            self::RETURNED_TO_SALE => 'Trả về Sale',
-            self::UW_CALL => 'UW Call',
-            self::UW_APPROVAL => 'UW Approval',
-            self::UW_REJECTED => 'UW Rej',
-            self::UW_FIELD => 'UW Field',
-            self::ESIGN => 'eSign',
-            self::POST_APPROVAL => 'Post Approval',
-            self::DISBURSED => 'Đã giải ngân',
-            self::REJECTED => 'Không Pass',
-        ];
+        return ProjectWorkflowConfiguration::statusOptions('lotte-finance');
     }
 
     public static function statusLabel(?string $status): string

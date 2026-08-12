@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\WorkflowConfigurations;
 
+use App\Filament\Resources\WorkflowConfigurations\Pages\CreateWorkflowConfiguration;
 use App\Filament\Resources\WorkflowConfigurations\Pages\EditWorkflowConfiguration;
 use App\Filament\Resources\WorkflowConfigurations\Pages\ListWorkflowConfigurations;
 use App\Filament\Resources\WorkflowConfigurations\Pages\ViewWorkflowConfiguration;
@@ -9,14 +10,12 @@ use App\Filament\Resources\WorkflowConfigurations\Schemas\WorkflowConfigurationF
 use App\Filament\Resources\WorkflowConfigurations\Schemas\WorkflowConfigurationInfolist;
 use App\Filament\Resources\WorkflowConfigurations\Tables\WorkflowConfigurationsTable;
 use App\Models\SalesProject;
-use App\Support\Applications\ProjectWorkflowConfiguration;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class WorkflowConfigurationResource extends Resource
 {
@@ -53,7 +52,7 @@ class WorkflowConfigurationResource extends Resource
 
     public static function shouldRegisterNavigation(array $parameters = []): bool
     {
-        return Filament::getCurrentPanel()?->getId() === 'uat'
+        return Filament::getCurrentPanel()?->getId() === 'admin'
             && (auth()->user()?->hasRole('Admin') ?? false);
     }
 
@@ -72,32 +71,41 @@ class WorkflowConfigurationResource extends Resource
         return WorkflowConfigurationsTable::configure($table);
     }
 
-    public static function getEloquentQuery(): Builder
+    public static function canViewAny(): bool
     {
-        return parent::getEloquentQuery()
-            ->whereIn('slug', ProjectWorkflowConfiguration::supportedSlugs())
-            ->orderBy('sort_order');
+        return auth()->user()?->hasRole('Admin') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return false;
+        return static::canViewAny();
     }
 
     public static function canDelete(mixed $record): bool
     {
-        return false;
+        return static::canViewAny();
     }
 
     public static function canEdit(mixed $record): bool
     {
-        return auth()->user()?->hasRole('Admin') ?? false;
+        return static::canViewAny();
+    }
+
+    public static function canView(mixed $record): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return static::canViewAny();
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListWorkflowConfigurations::route('/'),
+            'create' => CreateWorkflowConfiguration::route('/create'),
             'view' => ViewWorkflowConfiguration::route('/{record}'),
             'edit' => EditWorkflowConfiguration::route('/{record}/edit'),
         ];
