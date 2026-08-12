@@ -52,6 +52,12 @@ class ApplicationInfolist
                                         ->formatStateUsing(fn (?string $state, Application $record): string => self::statusLabel($state, $record))->placeholder('-'),
                                     TextEntry::make('salesProject.name')->label('Dự án')->placeholder('-'),
                                     TextEntry::make('applicant_name')->label('Khách hàng')->placeholder('-'),
+                                    TextEntry::make('application_phone')
+                                        ->label('Số điện thoại')
+                                        ->state(fn (Application $record): mixed => $record->phone
+                                            ?: data_get($record->payload, 'fields.phone')
+                                            ?: data_get($record->payload, 'module_fields.phone'))
+                                        ->placeholder('-'),
                                     TextEntry::make('payload.review.otp')
                                         ->label('OTP')
                                         ->badge()
