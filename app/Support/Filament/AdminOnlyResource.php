@@ -6,7 +6,10 @@ trait AdminOnlyResource
 {
     protected static function currentUserIsAdmin(): bool
     {
-        return auth()->user()?->hasRole('Admin') ?? false;
+        $appHost = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        return ! str_starts_with($appHost, 'uat-')
+            && (auth()->user()?->hasRole('Admin') ?? false);
     }
 
     public static function shouldRegisterNavigation(array $parameters = []): bool

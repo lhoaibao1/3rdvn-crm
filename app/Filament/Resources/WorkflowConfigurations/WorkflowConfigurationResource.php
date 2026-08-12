@@ -10,8 +10,8 @@ use App\Filament\Resources\WorkflowConfigurations\Schemas\WorkflowConfigurationF
 use App\Filament\Resources\WorkflowConfigurations\Schemas\WorkflowConfigurationInfolist;
 use App\Filament\Resources\WorkflowConfigurations\Tables\WorkflowConfigurationsTable;
 use App\Models\SalesProject;
+use App\Support\Filament\AdminOnlyResource;
 use BackedEnum;
-use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -19,6 +19,8 @@ use Filament\Tables\Table;
 
 class WorkflowConfigurationResource extends Resource
 {
+    use AdminOnlyResource;
+
     protected static ?string $model = SalesProject::class;
 
     protected static ?string $slug = 'admin/workflow-configurations';
@@ -50,12 +52,6 @@ class WorkflowConfigurationResource extends Resource
         return 21;
     }
 
-    public static function shouldRegisterNavigation(array $parameters = []): bool
-    {
-        return Filament::getCurrentPanel()?->getId() === 'admin'
-            && (auth()->user()?->hasRole('Admin') ?? false);
-    }
-
     public static function form(Schema $schema): Schema
     {
         return WorkflowConfigurationForm::configure($schema);
@@ -69,36 +65,6 @@ class WorkflowConfigurationResource extends Resource
     public static function table(Table $table): Table
     {
         return WorkflowConfigurationsTable::configure($table);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->hasRole('Admin') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        return static::canViewAny();
-    }
-
-    public static function canDelete(mixed $record): bool
-    {
-        return static::canViewAny();
-    }
-
-    public static function canEdit(mixed $record): bool
-    {
-        return static::canViewAny();
-    }
-
-    public static function canView(mixed $record): bool
-    {
-        return static::canViewAny();
-    }
-
-    public static function canDeleteAny(): bool
-    {
-        return static::canViewAny();
     }
 
     public static function getPages(): array

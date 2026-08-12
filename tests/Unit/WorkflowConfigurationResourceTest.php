@@ -18,13 +18,15 @@ class WorkflowConfigurationResourceTest extends TestCase
         $projectForm = file_get_contents($root.'/app/Filament/Resources/SalesProjects/Schemas/SalesProjectForm.php');
         $projectView = file_get_contents($root.'/app/Filament/Resources/SalesProjects/Schemas/SalesProjectInfolist.php');
         $projectResource = file_get_contents($root.'/app/Filament/Resources/SalesProjects/SalesProjectResource.php');
+        $adminOnlyResource = file_get_contents($root.'/app/Support/Filament/AdminOnlyResource.php');
 
         self::assertStringContainsString('WorkflowConfigurationResource::class', $adminProvider);
         self::assertStringNotContainsString('WorkflowConfigurationResource::class', $uatProvider);
         self::assertStringContainsString("return 'Workflow';", $resource);
         self::assertStringContainsString('protected static ?string $slug = \'admin/workflow-configurations\';', $resource);
         self::assertStringContainsString("return 'Admin';", $resource);
-        self::assertStringContainsString("getId() === 'admin'", $resource);
+        self::assertStringContainsString('use AdminOnlyResource;', $resource);
+        self::assertStringContainsString("str_starts_with(\$appHost, 'uat-')", $adminOnlyResource);
         self::assertStringContainsString('CreateWorkflowConfiguration::route', $resource);
         self::assertStringNotContainsString('Chi tiết workflow', $projectForm);
         self::assertStringNotContainsString('Chi tiết workflow', $projectView);
