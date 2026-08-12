@@ -17,21 +17,20 @@ class LosLoginExperienceTest extends TestCase
         self::assertStringContainsString('data-crm-login-page', $login);
         self::assertStringContainsString("route('los.login.store')", $login);
         self::assertStringContainsString('@csrf', $login);
-        self::assertStringContainsString("sessionStorage.setItem('3rdvn:login-entry'", $login);
-        self::assertStringContainsString("@include('filament.hooks.login-entry-transition')", $login);
-        self::assertStringContainsString("@include('filament.hooks.login-entry-transition')", $index);
+        self::assertStringNotContainsString("sessionStorage.setItem('3rdvn:login-entry'", $login);
+        self::assertStringNotContainsString("@include('filament.hooks.login-entry-transition')", $login);
+        self::assertStringNotContainsString("@include('filament.hooks.login-entry-transition')", $index);
     }
 
-    public function test_shared_login_shell_resolves_environment_and_los_logo_target_dynamically(): void
+    public function test_shared_login_shell_resolves_environment_without_an_intro_animation(): void
     {
         $root = dirname(__DIR__, 2);
         $shell = file_get_contents($root.'/resources/views/components/auth/crm-login-shell.blade.php');
-        $transition = file_get_contents($root.'/resources/views/filament/hooks/login-entry-transition.blade.php');
 
-        self::assertStringContainsString("$"."environment ??= $"."isUat ? 'UAT' : 'PROD';", $shell);
+        self::assertStringContainsString('$'.'environment ??= $'."isUat ? 'UAT' : 'PROD';", $shell);
         self::assertStringContainsString('{{ $environment }}', $shell);
         self::assertStringNotContainsString('<span class="crm-login-env">UAT</span>', $shell);
-        self::assertStringContainsString("document.documentElement.hasAttribute('data-crm-login-page')", $transition);
-        self::assertStringContainsString("'.los-brand-mark img'", $transition);
+        self::assertStringNotContainsString('class="crm-login-intro"', $shell);
+        self::assertStringNotContainsString('crm-login-dialog-in .9s', $shell);
     }
 }

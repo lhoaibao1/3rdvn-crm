@@ -15,18 +15,9 @@
             if ($el.dataset.authPending === 'true') return;
 
             $el.dataset.authPending = 'true';
-            window.sessionStorage.setItem('3rdvn:login-entry', String(Date.now()));
-            window.dispatchEvent(new CustomEvent('crm:login-submit', {
-                detail: {
-                    rect: $root.querySelector('.crm-login-form-wrap')?.getBoundingClientRect(),
-                },
-            }));
-
-            window.setTimeout(() => {
-                $wire.authenticate()
-                    .catch(() => {})
-                    .finally(() => { $el.dataset.authPending = 'false'; });
-            }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 760);
+            $wire.authenticate()
+                .catch(() => {})
+                .finally(() => { $el.dataset.authPending = 'false'; });
         "
     >
         <div class="crm-login-field">

@@ -1,7 +1,6 @@
 @php
     $settings = \App\Models\UiSetting::current();
     $favicon = $settings->favicon_path ? asset('storage/'.$settings->favicon_path) : asset('favicon.ico');
-    $hasLoginErrors = $errors->any();
 @endphp
 <!doctype html>
 <html lang="vi" data-crm-login-page>
@@ -15,8 +14,6 @@
     <link rel="stylesheet" href="{{ asset('fonts/filament/filament/inter/index.css') }}">
 </head>
 <body>
-    @include('filament.hooks.login-entry-transition')
-
     <x-auth.crm-login-shell
         title="Đăng nhập LOS"
         subtitle="Truy vấn hồ sơ"
@@ -123,28 +120,6 @@
 
     <script>
         (() => {
-            const root = document.querySelector('.crm-login-screen');
-            const intro = root?.querySelector('.crm-login-intro');
-            const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const hasLoginErrors = @json($hasLoginErrors);
-
-            if (hasLoginErrors) {
-                try {
-                    window.sessionStorage.removeItem('3rdvn:login-entry');
-                } catch (_) {
-                    // Storage may be unavailable in strict privacy mode.
-                }
-            }
-
-            if (intro) {
-                if (reducedMotion || hasLoginErrors) {
-                    intro.style.display = 'none';
-                } else {
-                    window.setTimeout(() => intro.classList.add('is-leaving'), 1800);
-                    window.setTimeout(() => { intro.style.display = 'none'; }, 3200);
-                }
-            }
-
             const password = document.getElementById('los-login-password');
             const passwordToggle = document.querySelector('[data-los-password-toggle]');
 
@@ -166,12 +141,10 @@
             const submitSpinner = form?.querySelector('[data-los-submit-spinner]');
             let pending = false;
 
-            form?.addEventListener('submit', (event) => {
+            form?.addEventListener('submit', () => {
                 if (! form.checkValidity()) {
                     return;
                 }
-
-                event.preventDefault();
 
                 if (pending) {
                     return;
@@ -182,23 +155,6 @@
                 if (submitLabel) submitLabel.textContent = 'Đang xác thực...';
                 if (submitArrow) submitArrow.hidden = true;
                 if (submitSpinner) submitSpinner.hidden = false;
-
-                try {
-                    window.sessionStorage.setItem('3rdvn:login-entry', String(Date.now()));
-                } catch (_) {
-                    // Authentication still proceeds when storage is unavailable.
-                }
-
-                window.dispatchEvent(new CustomEvent('crm:login-submit', {
-                    detail: {
-                        rect: root?.querySelector('.crm-login-form-wrap')?.getBoundingClientRect(),
-                    },
-                }));
-
-                window.setTimeout(
-                    () => form.submit(),
-                    reducedMotion ? 0 : 760,
-                );
             });
         })();
     </script>

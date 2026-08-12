@@ -36,8 +36,7 @@
 
 <div
     class="crm-login-screen"
-    x-data="{ passwordVisible: false, introVisible: true, introLeaving: false }"
-    x-init="if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { introVisible = false } else { window.setTimeout(() => introLeaving = true, 1800); window.setTimeout(() => introVisible = false, 3200) }"
+    x-data="{ passwordVisible: false }"
     style="--crm-login-primary: {{ $primary }}; --crm-login-cover: {{ $coverStyle }};"
 >
     <style>
@@ -413,7 +412,6 @@
             flex-direction: column;
             width: min(100%, 650px);
             min-height: 0;
-            animation: crm-login-scene-in .82s cubic-bezier(.16, 1, .3, 1) 2.08s both;
         }
 
         .crm-login-story-header,
@@ -607,7 +605,6 @@
             box-shadow: 0 30px 80px rgba(15, 23, 42, .12), 0 3px 12px rgba(15, 23, 42, .04);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            animation: crm-login-dialog-in .9s cubic-bezier(.16, 1, .3, 1) 2.02s both;
             transform-origin: center;
         }
 
@@ -1132,35 +1129,6 @@
             }
         }
     </style>
-
-    <div
-        class="crm-login-intro"
-        x-show="introVisible"
-        x-bind:class="{ 'is-leaving': introLeaving }"
-        aria-hidden="true"
-    >
-        <div class="crm-login-intro-panel crm-login-intro-panel--left"></div>
-        <div class="crm-login-intro-panel crm-login-intro-panel--right"></div>
-        <div class="crm-login-intro-glow"></div>
-        <div class="crm-login-intro-scan"></div>
-
-        <div class="crm-login-intro-center">
-            <div class="crm-login-intro-rings">
-                <span class="crm-login-intro-ring"></span>
-                <span class="crm-login-intro-ring"></span>
-                <div class="crm-login-intro-emblem">
-                    @if ($logo)
-                        <img src="{{ $logo }}" alt="">
-                    @else
-                        <span>3RD</span>
-                    @endif
-                </div>
-            </div>
-            <div class="crm-login-intro-line"><span></span></div>
-            <strong>{{ $brandName }}</strong>
-            <small>{{ $workspace }} <span>{{ $environment }}</span></small>
-        </div>
-    </div>
 
     <div class="crm-login-layout">
         <aside class="crm-login-story" aria-label="Giới thiệu {{ $brandName }}">

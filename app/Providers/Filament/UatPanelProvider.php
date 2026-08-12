@@ -75,7 +75,6 @@ class UatPanelProvider extends AdminPanelProvider
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->notificationPanelStyles())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => $this->pwaHead())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.hooks.searchable-select-assets'))
-            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.hooks.login-entry-transition'))
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->sidebarDefaultScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->userFiltersToggleScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->repaymentPreviewScript())
