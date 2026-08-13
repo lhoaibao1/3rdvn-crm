@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: [
+            'api/integration/*',
+        ]);
+
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->getHost() === 'los.3rdvn.io.vn'
             ? route('los.login')
             : url('/authen/login'));

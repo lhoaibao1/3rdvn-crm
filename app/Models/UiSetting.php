@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class UiSetting extends Model
 {
@@ -42,6 +43,10 @@ class UiSetting extends Model
 
     public static function current(): self
     {
+        if (! Schema::hasTable((new static)->getTable())) {
+            return new static(static::defaults());
+        }
+
         return static::query()->first() ?? new static(static::defaults());
     }
 
