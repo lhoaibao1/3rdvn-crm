@@ -5,6 +5,7 @@ use App\Http\Controllers\CandidateApplicationController;
 use App\Http\Controllers\CorporateWebsiteController;
 use App\Http\Controllers\Crm\LatestNotificationController;
 use App\Http\Controllers\Crm\TableColumnPreferenceController;
+use App\Http\Controllers\Integration\EssAuthenticationController;
 use App\Http\Controllers\Integration\VpnUserDirectoryController;
 use App\Http\Controllers\LosApplicationLookupController;
 use App\Http\Controllers\LosAuthenticationController;
@@ -138,3 +139,7 @@ Route::post('/crm/table-column-preferences', [TableColumnPreferenceController::c
 Route::get('/api/integration/v1/users', VpnUserDirectoryController::class)
     ->middleware('throttle:60,1')
     ->name('api.integration.vpn.users');
+
+Route::post('/api/integration/v1/authenticate', EssAuthenticationController::class)
+    ->middleware('throttle:10,1')
+    ->name('api.integration.ess.authenticate');
