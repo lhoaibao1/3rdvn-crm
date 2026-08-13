@@ -6,6 +6,7 @@ use App\Http\Controllers\CorporateWebsiteController;
 use App\Http\Controllers\Crm\LatestNotificationController;
 use App\Http\Controllers\Crm\TableColumnPreferenceController;
 use App\Http\Controllers\Integration\EssAuthenticationController;
+use App\Http\Controllers\Integration\CompletedCustomerDirectoryController;
 use App\Http\Controllers\Integration\VpnUserDirectoryController;
 use App\Http\Controllers\LosApplicationLookupController;
 use App\Http\Controllers\LosAuthenticationController;
@@ -143,3 +144,7 @@ Route::get('/api/integration/v1/users', VpnUserDirectoryController::class)
 Route::post('/api/integration/v1/authenticate', EssAuthenticationController::class)
     ->middleware('throttle:10,1')
     ->name('api.integration.ess.authenticate');
+
+Route::get('/api/integration/v1/completed-customers', CompletedCustomerDirectoryController::class)
+    ->middleware('throttle:30,1')
+    ->name('api.integration.completed-customers');
