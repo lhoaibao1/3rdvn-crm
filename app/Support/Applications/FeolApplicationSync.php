@@ -81,7 +81,6 @@ class FeolApplicationSync
                 'topup_amount' => 'topup_amount',
                 'insurance_amount' => 'insurance_amount',
                 'fee_amount' => 'fee_amount',
-                'pic' => 'pic',
                 'disbursed_at' => 'disbursed_at',
             ] as $source => $target) {
                 if (array_key_exists($source, $data) && $data[$source] !== null) {

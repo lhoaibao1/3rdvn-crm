@@ -52,9 +52,11 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringNotContainsString('name="referral_code"', $landing);
         self::assertStringContainsString("data_get(auth()->user()->sales_codes, 'fe-deeplink')", $form);
 
-        foreach (['fee_amount', 'note', 'pic'] as $partnerField) {
+        foreach (['fee_amount', 'note'] as $partnerField) {
             self::assertStringContainsString("'{$partnerField}'", $request);
             self::assertStringContainsString("'{$partnerField}'", $sync);
         }
+        self::assertStringNotContainsString("'pic' =>", $request);
+        self::assertStringNotContainsString("'pic' => 'pic'", $sync);
     }
 }

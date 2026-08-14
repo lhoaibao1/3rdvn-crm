@@ -7,6 +7,7 @@ use App\Jobs\SubmitFeolApplicationToPartner;
 use App\Models\Application;
 use App\Models\SalesProject;
 use App\Models\User;
+use App\Support\Applications\FeolApplicationSync;
 use App\Support\Applications\FeolPartnerSubmitter;
 use App\Support\Applications\FeolConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -246,6 +247,40 @@ class FeolProxySubmissionTest extends TestCase
             && $request['referralCode'] === '26801'
             && $request['salesman'] === 'SGBOCTV13765'
             && $request['consent_tickbox'] === 'YES');
+    }
+
+    public function test_partner_sync_never_overwrites_internal_employee_or_manager_chain(): void
+    {
+        [$application] = $this->application();
+        $manager = User::factory()->create();
+        $payload = $application->payload;
+        data_set($payload, 'fields.pic', 'PIC nội bộ 3RDVN');
+        $application->forceFill([
+            'assigned_sale_id' => $application->created_by_id,
+            'team_leader_id' => $manager->getKey(),
+            'am_id' => $manager->getKey(),
+            'zd_id' => $manager->getKey(),
+            'payload' => $payload,
+        ])->save();
+
+        app(FeolApplicationSync::class)->sync($application, [
+            'sub_status' => 'Eligible',
+            'pic' => 'Nhân viên đối tác',
+            'employee_code' => 'PARTNER-001',
+            'manager_id' => 999,
+            'raw_payload' => [
+                'username' => 'Nhân viên đối tác',
+                'manager_name' => 'Quản lý đối tác',
+            ],
+        ]);
+
+        $application->refresh();
+        $this->assertSame($application->created_by_id, $application->assigned_sale_id);
+        $this->assertSame($manager->getKey(), $application->team_leader_id);
+        $this->assertSame($manager->getKey(), $application->am_id);
+        $this->assertSame($manager->getKey(), $application->zd_id);
+        $this->assertSame('PIC nội bộ 3RDVN', data_get($application->payload, 'fields.pic'));
+        $this->assertSame('Nhân viên đối tác', data_get($application->feolIntegration->raw_payload, 'username'));
     }
 
     private function application(): array

@@ -28,7 +28,6 @@ class SyncFeolApplicationRequest extends FormRequest
             'fee_amount' => ['nullable', 'integer', 'min:0'],
             'disbursed_at' => ['nullable', 'date'],
             'note' => ['nullable', 'string', 'max:2000'],
-            'pic' => ['nullable', 'string', 'max:255'],
             'error' => ['nullable', 'string', 'max:2000'],
             'raw_payload' => ['nullable', 'array'],
         ];
