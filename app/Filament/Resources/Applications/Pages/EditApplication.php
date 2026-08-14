@@ -100,7 +100,7 @@ class EditApplication extends EditRecord
             $resolved = ApplicationFinancialData::disbursedAt($this->record);
 
             if ($resolved) {
-                data_set($data, 'payload.fields.disbursed_at', $resolved->format('Y-m-d'));
+                data_set($data, 'payload.fields.disbursed_at', $resolved->format('Y-m-d H:i:s'));
             }
         }
 

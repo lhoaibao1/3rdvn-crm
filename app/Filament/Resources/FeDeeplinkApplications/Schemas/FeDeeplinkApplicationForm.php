@@ -39,7 +39,7 @@ class FeDeeplinkApplicationForm
                     ->schema([
                         TextInput::make('applicant_name')
                             ->label('Họ và tên')
-                            ->required()
+                            ->required(fn (string $operation): bool => $operation === 'create')
                             ->maxLength(255)
                             ->columnSpanFull(),
                         TextInput::make('phone')
@@ -47,13 +47,13 @@ class FeDeeplinkApplicationForm
                             ->tel()
                             ->length(10)
                             ->rules(['regex:/^0[0-9]{9}$/'])
-                            ->required()
+                            ->required(fn (string $operation): bool => $operation === 'create')
                             ->placeholder('Nhập số điện thoại (bắt buộc), phải đủ 10 số'),
                         TextInput::make('identity_number')
                             ->label('Số CCCD')
                             ->length(12)
                             ->rules(['regex:/^[0-9]{12}$/'])
-                            ->required()
+                            ->required(fn (string $operation): bool => $operation === 'create')
                             ->placeholder('Nhập số CCCD (bắt buộc), phải đủ 12 số'),
                         TextInput::make('payload.fields.date_of_birth')
                             ->label('Ngày tháng năm sinh')
@@ -68,12 +68,12 @@ class FeDeeplinkApplicationForm
                             ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
                                 ? CarbonImmutable::createFromFormat('d/m/Y', $state)->format('Y-m-d')
                                 : null)
-                            ->required(),
+                            ->required(fn (string $operation): bool => $operation === 'create'),
                         TextInput::make('payload.fields.email')
                             ->label('Địa chỉ Email')
                             ->email()
                             ->maxLength(255)
-                            ->required(),
+                            ->required(fn (string $operation): bool => $operation === 'create'),
                         TextInput::make('payload.fields.loan_amount')
                             ->label('Số tiền vay')
                             ->mask(RawJs::make("\$money(\$input, ',', '.', 0)"))
@@ -81,34 +81,34 @@ class FeDeeplinkApplicationForm
                             ->minValue(1000000)
                             ->prefix('₫')
                             ->rules(['integer', 'max:1000000000'])
-                            ->required(),
+                            ->required(fn (string $operation): bool => $operation === 'create'),
                         TextInput::make('payload.fields.loan_term_months')
                             ->label('Thời hạn vay (tháng)')
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(120)
                             ->suffix('tháng')
-                            ->required(),
+                            ->required(fn (string $operation): bool => $operation === 'create'),
                         TextInput::make('payload.fields.referral_code')
                             ->label('Mã giới thiệu')
                             ->default(fn (): ?string => auth()->user()
                                 ? data_get(auth()->user()->sales_codes, 'fe-deeplink')
                                 : null)
                             ->length(5)
-                            ->required()
+                            ->required(fn (string $operation): bool => $operation === 'create')
                             ->readOnly()
                             ->dehydrated()
                             ->helperText('Tự động lấy từ mã bán hàng FE Deeplink của tài khoản đang đăng nhập.'),
                         Hidden::make('created_by_id')
                             ->default(fn (): ?int => auth()->id())
-                            ->required(),
+                            ->required(fn (string $operation): bool => $operation === 'create'),
                         Hidden::make('created_at')
                             ->default(now())
-                            ->required(),
+                            ->required(fn (string $operation): bool => $operation === 'create'),
                         Checkbox::make('payload.fields.customer_consent')
                             ->label(FeolConsent::TEXT)
                             ->accepted()
-                            ->required()
+                            ->required(fn (string $operation): bool => $operation === 'create')
                             ->columnSpanFull(),
                         Hidden::make('status')
                             ->default(FeDeeplinkStatus::PENDING_SUBMISSION->value)

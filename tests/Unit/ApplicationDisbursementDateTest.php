@@ -13,7 +13,7 @@ class ApplicationDisbursementDateTest extends TestCase
     {
         $manual = new Application([
             'status' => 'approved',
-            'payload' => ['fields' => ['disbursed_at' => '2026-08-14']],
+            'payload' => ['fields' => ['disbursed_at' => '2026-08-14 18:35:00']],
         ]);
         $acl = new Application([
             'status' => 'completed',
@@ -24,9 +24,9 @@ class ApplicationDisbursementDateTest extends TestCase
             'payload' => ['workflow' => ['last_transition' => ['at' => '2026-08-12 16:42:15']]],
         ]);
 
-        self::assertSame('2026-08-14', ApplicationFinancialData::disbursedAt($manual)?->format('Y-m-d'));
-        self::assertSame('2026-08-13', ApplicationFinancialData::disbursedAt($acl)?->format('Y-m-d'));
-        self::assertSame('2026-08-12', ApplicationFinancialData::disbursedAt($lotte)?->format('Y-m-d'));
+        self::assertSame('2026-08-14 18:35:00', ApplicationFinancialData::disbursedAt($manual)?->format('Y-m-d H:i:s'));
+        self::assertSame('2026-08-13 09:30:00', ApplicationFinancialData::disbursedAt($acl)?->format('Y-m-d H:i:s'));
+        self::assertSame('2026-08-12 16:42:15', ApplicationFinancialData::disbursedAt($lotte)?->format('Y-m-d H:i:s'));
     }
 
     public function test_it_never_fabricates_disbursement_date_from_updated_at(): void
@@ -51,8 +51,9 @@ class ApplicationDisbursementDateTest extends TestCase
         }
 
         $component = file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/ApplicationDateInput.php');
-        self::assertStringContainsString("->mask('99/99/9999')", $component);
-        self::assertStringContainsString("->placeholder('dd/mm/yyyy')", $component);
-        self::assertStringContainsString("->rule('date_format:d/m/Y')", $component);
+        self::assertStringContainsString("->mask('99/99/9999 99:99')", $component);
+        self::assertStringContainsString("->placeholder('dd/mm/yyyy HH:mm')", $component);
+        self::assertStringContainsString("->rule('date_format:d/m/Y H:i')", $component);
+        self::assertStringContainsString("->format('Y-m-d H:i:00')", $component);
     }
 }

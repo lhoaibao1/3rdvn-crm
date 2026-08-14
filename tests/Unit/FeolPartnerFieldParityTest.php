@@ -58,10 +58,11 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringContainsString('data-money-mask', $landing);
         self::assertStringContainsString('RawJs::make("\\$money(\\$input, \',\', \'.\', 0)")', $form);
         self::assertStringContainsString("->stripCharacters('.')", $form);
-        self::assertStringContainsString("->accepted()\n                            ->required()", $form);
+        self::assertStringContainsString("->accepted()\n                            ->required(fn (string \$operation): bool => \$operation === 'create')", $form);
         foreach (['payload.fields.date_of_birth', 'payload.fields.email', 'payload.fields.loan_amount', 'payload.fields.loan_term_months'] as $requiredField) {
             self::assertStringContainsString("make('{$requiredField}')", $form);
         }
+        self::assertStringContainsString("->required(fn (string \$operation): bool => \$operation === 'create')", $form);
         self::assertStringNotContainsString('name="referral_code"', $landing);
         self::assertStringContainsString("data_get(auth()->user()->sales_codes, 'fe-deeplink')", $form);
         self::assertStringNotContainsString("TextInput::make('payload.fields.salesman_code')", $form);
