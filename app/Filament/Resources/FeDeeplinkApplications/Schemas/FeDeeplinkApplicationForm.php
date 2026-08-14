@@ -113,7 +113,6 @@ class FeDeeplinkApplicationForm
                                 'Xsell' => 'Xsell',
                                 'Topup' => 'Topup',
                             ])
-                            ->required()
                             ->searchable()
                             ->preload()
                             ->native(false),
@@ -121,8 +120,7 @@ class FeDeeplinkApplicationForm
                             ->label('Số tiền duyệt')
                             ->numeric()
                             ->minValue(0)
-                            ->prefix('₫')
-                            ->required(),
+                            ->prefix('₫'),
                     ]),
             ]);
     }
