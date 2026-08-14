@@ -1,6 +1,6 @@
 <style>
     .fi-page:has(.feol-partner-form-card) .fi-page-content {
-        width: min(100%, 980px);
+        width: min(100%, 760px);
         margin-inline: auto;
     }
 

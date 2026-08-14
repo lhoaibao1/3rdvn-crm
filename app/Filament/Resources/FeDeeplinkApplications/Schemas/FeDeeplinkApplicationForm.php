@@ -5,6 +5,7 @@ namespace App\Filament\Resources\FeDeeplinkApplications\Schemas;
 use App\Enums\FeDeeplinkStatus;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
+use App\Support\Applications\FeolConsent;
 use App\Support\SalesLineSnapshot;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\DatePicker;
@@ -106,7 +107,7 @@ class FeDeeplinkApplicationForm
                             ->default(now())
                             ->required(),
                         Toggle::make('payload.fields.customer_consent')
-                            ->label('Tôi đồng ý cung cấp dữ liệu cá nhân đầy đủ, chính xác và cho phép chuyển dữ liệu phục vụ thẩm định, xét duyệt hồ sơ cấp tín dụng.')
+                            ->label(FeolConsent::TEXT)
                             ->accepted()
                             ->required()
                             ->inline(false)

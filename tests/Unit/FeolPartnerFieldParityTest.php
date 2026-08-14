@@ -35,6 +35,8 @@ class FeolPartnerFieldParityTest extends TestCase
         }
 
         self::assertStringContainsString('Thông tin đăng ký', $form);
+        self::assertStringContainsString('width: min(100%, 760px);', $landing);
+        self::assertStringContainsString('width: min(100%, 760px);', file_get_contents($root.'resources/views/filament/feol/create-header.blade.php'));
         self::assertStringContainsString('applications.fe-deeplink.partner-v1', $resource);
         self::assertStringContainsString("? 'Tạo khách hàng' : 'Tạo hồ sơ'", $table);
         self::assertStringContainsString("->label('Copy link')", $table);

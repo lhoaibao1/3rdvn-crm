@@ -10,8 +10,6 @@ use RuntimeException;
 
 final class FeolPartnerSubmitter
 {
-    private const CONSENT_CONTENT = 'Tôi đồng ý cung cấp dữ liệu cá nhân đầy đủ, chính xác và/hoặc cho phép Công ty Cổ phần SÀI GÒN BPO chuyển dữ liệu cá nhân cơ bản của tôi (bao gồm tên Khách Hàng, số điện thoại, số CCCD/Căn cước/Hộ chiếu, ngày sinh) cho Công ty Tài chính TNHH Ngân hàng Việt Nam Thịnh Vượng SMBC nhằm mục đích thẩm định, xét duyệt hồ sơ cấp tín dụng cho Khách Hàng.';
-
     public function __construct(private readonly FeolPartnerLanding $landing) {}
 
     /**
@@ -40,7 +38,7 @@ final class FeolPartnerSubmitter
                 'request_time' => now()->toIso8601String(),
                 'referralCode' => data_get($fields, 'referral_code'),
                 'consent_tickbox' => 'YES',
-                'consent_content' => self::CONSENT_CONTENT,
+                'consent_content' => FeolConsent::TEXT,
                 'cam_url' => (string) config('services.feol_bridge.landing_campaign'),
                 'original_unique_url' => $this->landing->originalUrl(),
                 'encrypt_unique_url' => $this->landing->encryptedUrl(),

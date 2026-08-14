@@ -8,6 +8,7 @@ use App\Jobs\SubmitFeolApplicationToPartner;
 use App\Models\Application;
 use App\Models\FeolApplicationIntegration;
 use App\Support\Applications\CreateFeolPublicApplication;
+use App\Support\Applications\FeolConsent;
 use App\Support\Applications\FeolSalesIdentity;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,7 @@ class FeolPublicLandingController extends Controller
             'application' => $integration->application,
             'integration' => $integration,
             'submitted' => $integration->submit_state === FeolSubmitState::SUBMITTED,
+            'consentText' => FeolConsent::TEXT,
             'referralCode' => data_get($integration->application->payload, 'fields.referral_code'),
             'submitUrl' => route('feol.landing.store', ['token' => $integration->public_token]),
         ]);
@@ -38,6 +40,7 @@ class FeolPublicLandingController extends Controller
             'application' => null,
             'integration' => null,
             'submitted' => false,
+            'consentText' => FeolConsent::TEXT,
             'referralCode' => $salesCode,
             'submitUrl' => route('feol.registration.store', ['salesCode' => $salesCode]),
         ]);

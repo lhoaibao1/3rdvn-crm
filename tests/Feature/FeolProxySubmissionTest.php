@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\SalesProject;
 use App\Models\User;
 use App\Support\Applications\FeolPartnerSubmitter;
+use App\Support\Applications\FeolConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -32,6 +33,7 @@ class FeolProxySubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Tạo khách hàng')
             ->assertSee('images/fe-credit.svg', false)
+            ->assertSee(FeolConsent::TEXT)
             ->assertSee('data-date-mask', false)
             ->assertSee('placeholder="dd/mm/yyyy"', false)
             ->assertSee('inputmode="numeric"', false)
@@ -132,6 +134,7 @@ class FeolProxySubmissionTest extends TestCase
         $this->assertNotNull($application->feolIntegration->partner_submitted_at);
         Http::assertSent(fn ($request): bool => $request->url() === 'https://partner.test/landingPageFE/createFEOL'
             && $request['referralCode'] === '26801'
+            && $request['consent_content'] === FeolConsent::TEXT
             && $request['customer_name'] === 'Khach Hang Full Flow');
     }
 
