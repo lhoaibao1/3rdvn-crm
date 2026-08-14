@@ -143,6 +143,28 @@ class FeolProxySubmissionTest extends TestCase
         $this->get(route('feol.registration.show', ['salesCode' => '99999']))->assertNotFound();
     }
 
+    public function test_pending_bridge_payload_exposes_the_three_match_keys_and_last_fingerprint(): void
+    {
+        config()->set('services.feol_bridge.token', 'bridge-test-token');
+        [$application] = $this->application();
+        $application->feolIntegration()->update([
+            'raw_payload' => ['_bridge' => ['fingerprint' => 'fp-previous']],
+            'next_sync_at' => now()->subSecond(),
+        ]);
+
+        $response = $this
+            ->withToken('bridge-test-token')
+            ->getJson(route('api.integration.feol.pending'));
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $application->getKey())
+            ->assertJsonPath('data.0.name', 'Khach hang cu')
+            ->assertJsonPath('data.0.phone', '0900000000')
+            ->assertJsonPath('data.0.referral_code', '26801')
+            ->assertJsonPath('data.0.partner_fingerprint', 'fp-previous');
+    }
+
     public function test_public_form_saves_crm_before_queuing_partner_submission(): void
     {
         Queue::fake();
