@@ -183,6 +183,34 @@ Lỗi"],
 
             $cbp->save();
 
+            $feDeeplink = SalesProject::query()->firstOrNew(['slug' => 'fe-deeplink']);
+            $feDeeplink->fill([
+                'crm_module_id' => $applicationModule->getKey(),
+                'name' => 'FE Deeplink',
+                'code_prefix' => 'FEDL',
+                'description' => $feDeeplink->description ?: 'Dự án FE Deeplink trong Application.',
+                'sort_order' => 40,
+                'is_active' => true,
+            ]);
+
+            if (blank($feDeeplink->lead_form_schema)) {
+                $feDeeplink->lead_form_schema = [
+                    ['field_key' => 'customer_name', 'label' => 'Họ tên khách hàng', 'type' => 'text', 'required' => true],
+                    ['field_key' => 'phone', 'label' => 'Số điện thoại', 'type' => 'phone', 'required' => true],
+                    ['field_key' => 'identity_number', 'label' => 'CCCD/CMND', 'type' => 'text', 'required' => false],
+                    ['field_key' => 'approved_amount', 'label' => 'Số tiền phê duyệt', 'type' => 'number', 'required' => false],
+                    ['field_key' => 'completed_at', 'label' => 'Ngày hoàn thành', 'type' => 'date', 'required' => false],
+                ];
+            }
+
+            if (blank($feDeeplink->module_form_schema)) {
+                $feDeeplink->module_form_schema = [
+                    ['field_key' => 'processing_note', 'label' => 'Ghi chú xử lý', 'type' => 'textarea', 'required' => false],
+                ];
+            }
+
+            $feDeeplink->save();
+
         }
     }
 }

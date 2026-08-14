@@ -22,7 +22,14 @@ class CompletedCustomerDirectoryController extends Controller
         $perPage = min(1000, max(1, (int) $request->integer('per_page', 500)));
         $applications = Application::query()
             ->with('salesProject:id,name,slug')
-            ->whereIn('status', [AclMixWorkflow::COMPLETED, LotteFinanceWorkflow::DISBURSED])
+            ->where(function ($query): void {
+                $query->whereIn('status', [AclMixWorkflow::COMPLETED, LotteFinanceWorkflow::DISBURSED])
+                    ->orWhere(function ($feQuery): void {
+                        $feQuery->where('status', 'approved')
+                            ->whereNotNull('payload->fields->completed_at')
+                            ->whereHas('salesProject', fn ($project) => $project->where('slug', 'fe-deeplink'));
+                    });
+            })
             ->when($projectSlug !== '', fn ($query) => $query->whereHas('salesProject', fn ($project) => $project->where('slug', $projectSlug)))
             ->latest('updated_at')
             ->paginate($perPage);
@@ -36,6 +43,14 @@ class CompletedCustomerDirectoryController extends Controller
                 data_get($payload, 'fields.pre_approved_amount'),
                 data_get($payload, 'approved_amount'),
             ])->first(fn (mixed $value): bool => filled($value));
+            $completedAt = collect([
+                data_get($payload, 'fields.completed_at'),
+                data_get($payload, 'workflow.completed_at'),
+                data_get($payload, 'workflow.disbursed_at'),
+                data_get($payload, 'workflow.last_transition.at'),
+                data_get($payload, 'review.disbursed_at'),
+                data_get($payload, 'review.approved_at'),
+            ])->first(fn (mixed $value): bool => filled($value));
 
             return [
                 'id' => (string) $application->getKey(),
@@ -46,7 +61,8 @@ class CompletedCustomerDirectoryController extends Controller
                 'phone' => $application->phone ?: data_get($payload, 'fields.phone'),
                 'status' => $application->status === LotteFinanceWorkflow::DISBURSED ? 'Đã giải ngân' : 'Hoàn thành',
                 'approved_amount' => (int) preg_replace('/[^0-9]/', '', (string) $approved),
-                'completed_at' => $application->updated_at?->toIso8601String(),
+                'completed_at' => filled($completedAt) ?
+                    \Illuminate\Support\Carbon::parse((string) $completedAt)->toIso8601String() : null,
             ];
         })->values();
 
