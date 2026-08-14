@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Support\SalesLineSnapshot;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Select as NativeSelect;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -54,13 +53,15 @@ class FeDeeplinkApplicationForm
                         DatePicker::make('payload.fields.disbursed_at')
                             ->label('Ngày giải ngân')
                             ->required(),
-                        NativeSelect::make('status')
+                        Select::make('status')
                             ->label('Trạng thái')
                             ->options(FeDeeplinkStatus::options())
                             ->default(FeDeeplinkStatus::END->value)
                             ->required()
+                            ->searchable()
+                            ->preload()
                             ->native(false),
-                        NativeSelect::make('payload.fields.product')
+                        Select::make('payload.fields.product')
                             ->label('Sản phẩm')
                             ->options([
                                 'NTB' => 'NTB',
@@ -68,6 +69,8 @@ class FeDeeplinkApplicationForm
                                 'Topup' => 'Topup',
                             ])
                             ->required()
+                            ->searchable()
+                            ->preload()
                             ->native(false),
                         TextInput::make('payload.fields.approved_amount')
                             ->label('Số tiền duyệt')

@@ -24,7 +24,11 @@ class FeDeeplinkStatusTest extends TestCase
         $create = file_get_contents($root.'Filament/Resources/FeDeeplinkApplications/Pages/CreateFeDeeplinkApplication.php');
         $directory = file_get_contents($root.'Http/Controllers/Integration/CompletedCustomerDirectoryController.php');
 
-        self::assertStringContainsString("NativeSelect::make('status')", $form);
+        self::assertStringContainsString("Select::make('status')", $form);
+        self::assertStringContainsString("Select::make('payload.fields.product')", $form);
+        self::assertStringNotContainsString('NativeSelect', $form);
+        self::assertSame(3, substr_count($form, '->searchable()'));
+        self::assertSame(3, substr_count($form, '->preload()'));
         self::assertStringContainsString('FeDeeplinkStatus::options()', $form);
         self::assertStringContainsString('FeDeeplinkStatus::END->value', $form);
         self::assertStringContainsString('FeDeeplinkStatus::from', $create);
