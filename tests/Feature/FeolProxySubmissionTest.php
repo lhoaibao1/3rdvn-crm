@@ -36,7 +36,6 @@ class FeolProxySubmissionTest extends TestCase
             'email' => 'SALE@EXAMPLE.COM',
             'loan_amount' => 50000000,
             'loan_term_months' => 24,
-            'referral_code' => '12345',
             'customer_consent' => '1',
         ]);
 
@@ -47,6 +46,7 @@ class FeolProxySubmissionTest extends TestCase
         $this->assertSame('Nguyen Van A', $application->applicant_name);
         $this->assertSame('1995-05-20', data_get($application->payload, 'fields.date_of_birth'));
         $this->assertSame('sale@example.com', data_get($application->payload, 'fields.email'));
+        $this->assertSame('26801', data_get($application->payload, 'fields.referral_code'));
         $this->assertSame(FeolSubmitState::QUEUED, $integration->submit_state);
         $this->assertNotNull($integration->consented_at);
         Queue::assertPushed(SubmitFeolApplicationToPartner::class, fn ($job): bool => $job->applicationId === $application->getKey());
@@ -88,12 +88,17 @@ class FeolProxySubmissionTest extends TestCase
             && $request['encrypt_unique_url'] === $encryptedUrl
             && $request['original_unique_url'] === 'https://os.saigonbpo.vn'.$plain
             && $request['customer_name'] === 'Khach hang cu'
+            && $request['referralCode'] === '26801'
+            && $request['salesman'] === 'SGBOCTV13765'
             && $request['consent_tickbox'] === 'YES');
     }
 
     private function application(): array
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
         $project = SalesProject::query()->create([
             'name' => 'FE Deeplink',
             'slug' => 'fe-deeplink',
@@ -108,7 +113,10 @@ class FeolProxySubmissionTest extends TestCase
             'status' => 'pending_submission',
             'created_by_id' => $user->getKey(),
             'assigned_sale_id' => $user->getKey(),
-            'payload' => ['fields' => []],
+            'payload' => ['fields' => [
+                'referral_code' => '26801',
+                'salesman_code' => 'SGBOCTV13765',
+            ]],
         ]);
         $token = Str::random(48);
         $application->feolIntegration()->create([

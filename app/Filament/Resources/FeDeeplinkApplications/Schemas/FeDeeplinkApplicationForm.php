@@ -5,14 +5,13 @@ namespace App\Filament\Resources\FeDeeplinkApplications\Schemas;
 use App\Enums\FeDeeplinkStatus;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
-use App\Models\User;
 use App\Support\SalesLineSnapshot;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class FeDeeplinkApplicationForm
@@ -22,15 +21,20 @@ class FeDeeplinkApplicationForm
         return $schema
             ->extraAttributes(['class' => 'crm-record-form-frame'])
             ->components([
-                Section::make('Thông tin hồ sơ FE Deeplink')
-                    ->columns(2)
+                View::make('filament.feol.create-header')
+                    ->columnSpanFull()
+                    ->visibleOn('create'),
+                Section::make('Thông tin đăng ký')
+                    ->description('Nhập đúng theo biểu mẫu FE CREDIT. Hồ sơ được lưu CRM trước khi gửi đối tác.')
+                    ->extraAttributes(['class' => 'feol-partner-form-card'])
+                    ->columns(1)
                     ->schema([
                         TextInput::make('applicant_name')
-                            ->label('Họ tên')
+                            ->label('Họ và tên')
                             ->required()
                             ->maxLength(255),
                         TextInput::make('phone')
-                            ->label('SĐT')
+                            ->label('Số điện thoại')
                             ->tel()
                             ->required()
                             ->maxLength(50),
@@ -41,44 +45,49 @@ class FeDeeplinkApplicationForm
                         DatePicker::make('payload.fields.date_of_birth')
                             ->label('Ngày tháng năm sinh')
                             ->displayFormat('d/m/Y')
-                            ->native(false),
+                            ->native(false)
+                            ->required(),
                         TextInput::make('payload.fields.email')
                             ->label('Địa chỉ Email')
                             ->email()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->required(),
                         TextInput::make('payload.fields.loan_amount')
                             ->label('Số tiền vay')
                             ->numeric()
-                            ->minValue(0)
-                            ->prefix('₫'),
+                            ->minValue(1000000)
+                            ->prefix('₫')
+                            ->required(),
                         TextInput::make('payload.fields.loan_term_months')
-                            ->label('Thời hạn vay')
+                            ->label('Thời hạn vay (tháng)')
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(120)
-                            ->suffix('tháng'),
+                            ->suffix('tháng')
+                            ->required(),
                         TextInput::make('payload.fields.referral_code')
                             ->label('Mã giới thiệu')
-                            ->numeric()
+                            ->default(fn (): ?string => auth()->user()
+                                ? data_get(auth()->user()->sales_codes, 'fe-deeplink')
+                                : null)
                             ->length(5)
-                            ->helperText('Mã bán hàng 5 số truyền sang FEOL.'),
-                        Select::make('created_by_id')
-                            ->label('Tên nhân viên / Tạo bởi')
-                            ->options(fn (): array => auth()->user()?->hasRole('Admin')
-                                ? User::query()->orderBy('name')->pluck('name', 'id')->all()
-                                : User::query()->whereKey(auth()->id())->pluck('name', 'id')->all())
-                            ->default(fn (): ?int => auth()->id())
                             ->required()
-                            ->searchable()
-                            ->preload()
-                            ->native(false),
-                        DateTimePicker::make('created_at')
-                            ->label('Ngày tạo')
+                            ->readOnly()
+                            ->dehydrated()
+                            ->helperText('Tự động lấy từ mã bán hàng dự án FE Deeplink của tài khoản đang đăng nhập.'),
+                        TextInput::make('payload.fields.salesman_code')
+                            ->label('Mã nhân viên')
+                            ->default(fn (): ?string => config('services.feol_bridge.landing_sale_code'))
+                            ->readOnly()
+                            ->dehydrated(),
+                        Hidden::make('created_by_id')
+                            ->default(fn (): ?int => auth()->id())
+                            ->required(),
+                        Hidden::make('created_at')
                             ->default(now())
-                            ->seconds(false)
                             ->required(),
                         Toggle::make('payload.fields.customer_consent')
-                            ->label('Khách hàng đã đồng ý cung cấp thông tin')
+                            ->label('Tôi đồng ý cung cấp dữ liệu cá nhân đầy đủ, chính xác và cho phép chuyển dữ liệu phục vụ thẩm định, xét duyệt hồ sơ cấp tín dụng.')
                             ->accepted()
                             ->required()
                             ->inline(false)

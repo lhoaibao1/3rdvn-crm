@@ -9,6 +9,7 @@ use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationF
 use App\Models\Application;
 use App\Models\SalesProject;
 use App\Enums\FeolSyncState;
+use App\Support\Applications\FeolSalesIdentity;
 use App\Support\SalesLineSnapshot;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -31,7 +32,12 @@ class CreateFeDeeplinkApplication extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         $project = SalesProject::query()->where('slug', 'fe-deeplink')->where('is_active', true)->firstOrFail();
-        $creatorId = (int) $data['created_by_id'];
+        $creator = auth()->user();
+        abort_unless($creator, 403);
+        $creatorId = (int) $creator->getKey();
+        $payload = FeDeeplinkApplicationForm::normalizePayload($data['payload'] ?? []);
+        data_set($payload, 'fields.referral_code', app(FeolSalesIdentity::class)->referralCode($creator));
+        data_set($payload, 'fields.salesman_code', (string) config('services.feol_bridge.landing_sale_code'));
         $application = new Application([
             'sales_project_id' => $project->getKey(),
             'application_code' => 'FEDL-'.Str::upper((string) Str::ulid()),
@@ -41,7 +47,7 @@ class CreateFeDeeplinkApplication extends CreateRecord
             'status' => FeDeeplinkStatus::PENDING_SUBMISSION->value,
             'assigned_sale_id' => $creatorId,
             'created_by_id' => $creatorId,
-            'payload' => FeDeeplinkApplicationForm::normalizePayload($data['payload'] ?? []),
+            'payload' => $payload,
             ...SalesLineSnapshot::hierarchyForUserId($creatorId),
         ]);
         $application->setCreatedAt(CarbonImmutable::parse((string) $data['created_at']));
@@ -63,7 +69,7 @@ class CreateFeDeeplinkApplication extends CreateRecord
     protected function getCreateFormAction(): Action
     {
         return parent::getCreateFormAction()
-            ->label('Tạo hồ sơ')
+            ->label('Tạo hồ sơ và Landing Page B1')
             ->icon(Heroicon::OutlinedDocumentPlus);
     }
 

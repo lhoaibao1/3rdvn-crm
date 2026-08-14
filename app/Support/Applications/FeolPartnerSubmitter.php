@@ -35,7 +35,7 @@ final class FeolPartnerSubmitter
                 'customer_name' => $application->applicant_name,
                 'customer_phone' => $application->phone,
                 'id_card_no' => $application->identity_number,
-                'salesman' => (string) config('services.feol_bridge.landing_sale_code'),
+                'salesman' => (string) (data_get($fields, 'salesman_code') ?: config('services.feol_bridge.landing_sale_code')),
                 'request_id' => $integration->partner_request_id,
                 'request_time' => now()->toIso8601String(),
                 'referralCode' => data_get($fields, 'referral_code'),

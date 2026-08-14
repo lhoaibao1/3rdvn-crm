@@ -21,7 +21,6 @@ class SubmitFeolLandingRequest extends FormRequest
             'email' => ['required', 'email:rfc', 'max:255'],
             'loan_amount' => ['required', 'integer', 'min:1000000', 'max:1000000000'],
             'loan_term_months' => ['required', 'integer', 'min:1', 'max:120'],
-            'referral_code' => ['nullable', 'regex:/^\d{5}$/'],
             'customer_consent' => ['accepted'],
         ];
     }
@@ -32,7 +31,6 @@ class SubmitFeolLandingRequest extends FormRequest
             'phone.regex' => 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0.',
             'identity_number.regex' => 'Số CCCD phải gồm đúng 12 số.',
             'date_of_birth.date_format' => 'Ngày sinh phải theo định dạng ngày/tháng/năm.',
-            'referral_code.regex' => 'Mã giới thiệu phải gồm đúng 5 số.',
             'customer_consent.accepted' => 'Khách hàng phải đồng ý trước khi gửi đăng ký.',
         ];
     }

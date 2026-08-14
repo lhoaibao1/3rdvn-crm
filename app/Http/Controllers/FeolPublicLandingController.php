@@ -52,7 +52,6 @@ class FeolPublicLandingController extends Controller
             data_set($payload, 'fields.email', mb_strtolower($validated['email']));
             data_set($payload, 'fields.loan_amount', (int) $validated['loan_amount']);
             data_set($payload, 'fields.loan_term_months', (int) $validated['loan_term_months']);
-            data_set($payload, 'fields.referral_code', $validated['referral_code'] ?: null);
             data_set($payload, 'fields.customer_consent', true);
 
             $application->update([
