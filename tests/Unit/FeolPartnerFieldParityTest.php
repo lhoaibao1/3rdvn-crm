@@ -45,6 +45,9 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringContainsString("Checkbox::make('payload.fields.customer_consent')", $form);
         self::assertStringContainsString('class="consent-mark"', $landing);
         self::assertStringContainsString('.consent{position:relative;display:flex;gap:10px;align-items:flex-start;margin:0;', $landing);
+        self::assertStringContainsString('<h1 class="page-heading">Đăng ký khoản vay</h1>', $landing);
+        self::assertStringContainsString('input:not([type="checkbox"]):not([type="radio"])', file_get_contents($root.'resources/views/filament/feol/create-header.blade.php'));
+        self::assertStringContainsString('input[type="checkbox"]', file_get_contents($root.'resources/views/filament/feol/create-header.blade.php'));
         self::assertStringContainsString("->accepted()\n                            ->required()", $form);
         foreach (['payload.fields.date_of_birth', 'payload.fields.email', 'payload.fields.loan_amount', 'payload.fields.loan_term_months'] as $requiredField) {
             self::assertStringContainsString("make('{$requiredField}')", $form);

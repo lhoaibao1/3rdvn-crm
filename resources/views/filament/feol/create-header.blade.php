@@ -30,8 +30,16 @@
         box-shadow: none !important;
     }
 
-    .feol-partner-form-card input {
+    .feol-partner-form-card input:not([type="checkbox"]):not([type="radio"]) {
         min-height: 40px;
+    }
+
+    .feol-partner-form-card input[type="checkbox"] {
+        width: 18px !important;
+        min-width: 18px !important;
+        height: 18px !important;
+        min-height: 18px !important;
+        border-radius: 3px !important;
     }
 
     @media (max-width: 767px) {

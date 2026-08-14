@@ -32,7 +32,7 @@ class FeolProxySubmissionTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Tạo khách hàng')
+            ->assertSee('Đăng ký khoản vay')
             ->assertSee('images/fe-credit.svg', false)
             ->assertSee(FeolConsent::TEXT)
             ->assertSee('data-date-mask', false)
@@ -180,7 +180,7 @@ class FeolProxySubmissionTest extends TestCase
 
         $this->get(route('feol.landing.show', ['token' => $token]))
             ->assertOk()
-            ->assertSee('Tạo khách hàng')
+            ->assertSee('Đăng ký khoản vay')
             ->assertSee('images/fe-credit.svg', false)
             ->assertSee('Khach hang cu');
 
