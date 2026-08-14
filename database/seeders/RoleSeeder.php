@@ -34,7 +34,7 @@ class RoleSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::findOrCreate($permission);
+            Permission::findOrCreate($permission, 'web');
         }
 
         $roles = [
@@ -118,7 +118,7 @@ class RoleSeeder extends Seeder
         ];
 
         foreach ($roles as $role => $rolePermissions) {
-            Role::findOrCreate($role)->syncPermissions($rolePermissions);
+            Role::findOrCreate($role, 'web')->syncPermissions($rolePermissions);
         }
 
         $legacyRoleMap = [
