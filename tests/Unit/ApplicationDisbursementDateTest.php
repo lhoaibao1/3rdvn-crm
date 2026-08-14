@@ -5,7 +5,6 @@ namespace Tests\Unit;
 use App\Models\Application;
 use App\Support\Applications\ApplicationFinancialData;
 use App\Support\Applications\LotteFinanceWorkflow;
-use Carbon\CarbonImmutable;
 use PHPUnit\Framework\TestCase;
 
 class ApplicationDisbursementDateTest extends TestCase
@@ -33,7 +32,10 @@ class ApplicationDisbursementDateTest extends TestCase
     public function test_it_never_fabricates_disbursement_date_from_updated_at(): void
     {
         $application = new Application(['status' => 'processing', 'payload' => []]);
-        $application->updated_at = CarbonImmutable::parse('2026-08-14 12:00:00');
+        $application->setRawAttributes([
+            ...$application->getAttributes(),
+            'updated_at' => '2026-08-14 12:00:00',
+        ]);
 
         self::assertNull(ApplicationFinancialData::disbursedAt($application));
     }
