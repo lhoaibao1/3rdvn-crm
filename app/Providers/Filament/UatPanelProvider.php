@@ -9,6 +9,7 @@ use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\CandidateApplications\CandidateApplicationResource;
 use App\Filament\Resources\CbpApplications\CbpApplicationResource;
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
+use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
 use App\Filament\Resources\HotLeads\HotLeadResource;
 use App\Filament\Resources\JobVacancies\JobVacancyResource;
 use App\Filament\Resources\Leads\LeadResource;
@@ -99,6 +100,7 @@ class UatPanelProvider extends AdminPanelProvider
                 ApplicationResource::class,
                 CbpApplicationResource::class,
                 LotteFinanceApplicationResource::class,
+                FeDeeplinkApplicationResource::class,
                 ProjectReportResource::class,
                 SaleProfileResource::class,
                 JobVacancyResource::class,
