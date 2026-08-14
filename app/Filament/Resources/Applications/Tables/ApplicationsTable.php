@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Applications\Tables;
 
 use App\Enums\FeDeeplinkStatus;
-use App\Enums\FeolSyncState;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\Application;
@@ -48,24 +47,27 @@ class ApplicationsTable
             ->defaultSort('created_at', 'desc')
             ->columns(TableColumnPreferences::apply($columnTable, [
                 TextColumn::make('application_code')
-                    ->label($projectSlug === 'fe-deeplink' ? 'Mã hồ sơ CRM' : 'Mã hồ sơ')
+                    ->label('Mã hồ sơ')
                     ->badge()
                     ->color('info')
                     ->placeholder('Chờ cập nhật')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 TextColumn::make('applicant_name')
-                    ->label($projectSlug === 'fe-deeplink' ? 'Họ tên' : 'Khách hàng')
+                    ->label('Khách hàng')
                     ->searchable()
                     ->weight('bold')
-                    ->color('gray'),
+                    ->color('gray')
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 TextColumn::make('phone')
                     ->label('SĐT')
                     ->placeholder('-')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 TextColumn::make('status')
-                    ->label($projectSlug === 'fe-deeplink' ? 'Trạng thái FEOL' : 'Trạng thái')
+                    ->label('Trạng thái')
                     ->badge()
                     ->color(fn (?string $state): string => match ($projectSlug) {
                         'acl-mix' => AclMixWorkflow::statusColor($state),
@@ -82,12 +84,14 @@ class ApplicationsTable
                     ->formatStateUsing(fn (?string $state): string => $projectSlug === 'fe-deeplink'
                         ? FeDeeplinkStatus::labelFor($state)
                         : self::statusLabel($state))
-                    ->sortable(),
+                    ->sortable()
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 TextColumn::make('disbursed_at')
                     ->label('Ngày giải ngân')
                     ->state(fn (Application $record): mixed => ApplicationFinancialData::disbursedAt($record))
                     ->dateTime('d/m/Y')
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 ...match ($projectSlug) {
                     'acl-mix' => self::aclMixSummaryColumns(),
                     'lotte-finance' => self::lotteFinanceDataColumns(),
@@ -97,27 +101,32 @@ class ApplicationsTable
                 TextColumn::make('assignedSale.name')
                     ->label('Người xử lý')
                     ->placeholder('-')
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 TextColumn::make('createdBy.name')
-                    ->label($projectSlug === 'fe-deeplink' ? 'Tên nhân viên (Tạo bởi)' : 'Người tạo')
+                    ->label('Người tạo')
                     ->placeholder('-')
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 TextColumn::make('team.name')
                     ->label('Team')
                     ->badge()
                     ->color('info')
                     ->placeholder('-')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 TextColumn::make('created_at')
                     ->label('Ngày tạo')
                     ->dateTime('H:i d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->visible($projectSlug !== 'fe-deeplink'),
                 TextColumn::make('updated_at')
                     ->label('Cập nhật')
                     ->dateTime('H:i d/m/Y')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible($projectSlug !== 'fe-deeplink'),
             ]))
             ->filters([
                 Filter::make('quick_lookup')
@@ -282,85 +291,107 @@ class ApplicationsTable
     private static function feDeeplinkColumns(): array
     {
         return [
-            TextColumn::make('identity_number')
-                ->label('Số CCCD')
+            TextColumn::make('feolIntegration.partner_lead_id')
+                ->label('ID')
                 ->placeholder('-')
                 ->searchable()
                 ->toggleable(),
-            TextColumn::make('payload.fields.date_of_birth')
-                ->label('Ngày tháng năm sinh')
-                ->date('d/m/Y')
-                ->placeholder('-')
+            TextColumn::make('fe_campaign')
+                ->label('Chiến dịch')
+                ->state(fn (): string => (string) config('services.feol_bridge.partner_campaign_code', 'CTV_FEC_DL'))
+                ->badge()
                 ->toggleable(),
-            TextColumn::make('payload.fields.email')
-                ->label('Địa chỉ Email')
-                ->placeholder('-')
+            TextColumn::make('applicant_name')
+                ->label('Tên khách hàng')
                 ->searchable()
-                ->toggleable(),
-            TextColumn::make('payload.fields.loan_amount')
-                ->label('Số tiền vay')
-                ->money('VND', locale: 'vi')
-                ->placeholder('-')
-                ->toggleable(),
-            TextColumn::make('payload.fields.loan_term_months')
-                ->label('Thời hạn vay (tháng)')
-                ->suffix(' tháng')
-                ->placeholder('-')
-                ->toggleable(),
+                ->weight('bold'),
+            TextColumn::make('phone')
+                ->label('Số điện thoại')
+                ->searchable()
+                ->placeholder('-'),
+            TextColumn::make('fe_employee')
+                ->label('Nhân viên')
+                ->state(fn (Application $record): ?string => $record->createdBy?->name)
+                ->description(fn (Application $record): ?string => data_get($record->payload, 'fields.salesman_code'))
+                ->placeholder('-'),
+            TextColumn::make('fe_manager')
+                ->label('Quản lý')
+                ->state(fn (Application $record): ?string => $record->teamLeader?->name ?: $record->am?->name ?: $record->zd?->name)
+                ->description(fn (Application $record): ?string => $record->teamLeader?->employee_code ?: $record->am?->employee_code ?: $record->zd?->employee_code)
+                ->placeholder('-'),
             TextColumn::make('payload.fields.referral_code')
                 ->label('Mã giới thiệu')
+                ->placeholder('-'),
+            TextColumn::make('feolIntegration.main_status')
+                ->label('Trạng thái chính')
                 ->badge()
-                ->placeholder('-')
-                ->toggleable(),
-            TextColumn::make('payload.fields.salesman_code')
-                ->label('Mã nhân viên')
+                ->placeholder('-'),
+            TextColumn::make('feolIntegration.sub_status')
+                ->label('Trạng thái phụ')
                 ->badge()
-                ->placeholder('-')
-                ->toggleable(),
-            TextColumn::make('feolIntegration.partner_lead_id')
-                ->label('Lead ID')
-                ->placeholder('-')
-                ->toggleable(),
+                ->formatStateUsing(fn (mixed $state): string => FeDeeplinkStatus::labelFor($state instanceof FeDeeplinkStatus ? $state->value : (string) $state))
+                ->color(fn (mixed $state): string => FeDeeplinkStatus::colorFor($state instanceof FeDeeplinkStatus ? $state->value : (string) $state))
+                ->placeholder('-'),
             TextColumn::make('feolIntegration.partner_app_id')
-                ->label('App ID')
+                ->label('App id')
                 ->placeholder('-')
                 ->toggleable(),
             TextColumn::make('fe_product')
-                ->label('Sản phẩm')
+                ->label('App type')
                 ->state(fn (Application $record): mixed => ApplicationFinancialData::product($record))
                 ->badge()
                 ->placeholder('-'),
             TextColumn::make('fe_approved_amount')
-                ->label('Số tiền duyệt')
+                ->label('Offer Amt')
                 ->state(fn (Application $record): mixed => ApplicationFinancialData::approvedAmount($record))
                 ->money('VND', locale: 'vi')
                 ->placeholder('-'),
-            TextColumn::make('feolIntegration.b1_url')
-                ->label('Landing Page B1')
-                ->formatStateUsing(fn (mixed $state): string => filled($state) ? 'Sao chép B1' : '-')
-                ->copyable()
-                ->copyMessage('Đã sao chép Landing Page B1')
-                ->icon(Heroicon::OutlinedClipboardDocument)
-                ->color('info')
+            TextColumn::make('payload.fields.disbursed_amount')
+                ->label('Disbursed Amt')
+                ->money('VND', locale: 'vi')
                 ->placeholder('-'),
-            TextColumn::make('feolIntegration.deeplink_url')
+            TextColumn::make('payload.fields.topup_amount')
+                ->label('Topup Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.insurance_amount')
+                ->label('Insurance Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.fee_amount')
+                ->label('Fee Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('fe_disbursed_at')
+                ->label('Disbursed Date')
+                ->state(fn (Application $record): mixed => ApplicationFinancialData::disbursedAt($record))
+                ->date('d/m/Y')
+                ->placeholder('-'),
+            TextColumn::make('note')
+                ->label('Ghi chú')
+                ->limit(60)
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.pic')
+                ->label('PIC')
+                ->placeholder('-'),
+            TextColumn::make('feolIntegration.last_synced_at')
+                ->label('Thời gian cập nhật')
+                ->dateTime('d/m/Y H:i:s')
+                ->placeholder('-'),
+            TextColumn::make('fe_action')
                 ->label('Hành động')
-                ->formatStateUsing(fn (mixed $state): string => filled($state) ? 'Sao chép Deeplink' : '-')
+                ->state(fn (Application $record): ?string => $record->feolIntegration?->deeplink_url ?: $record->feolIntegration?->b1_url)
+                ->formatStateUsing(fn (mixed $state, Application $record): string => blank($state)
+                    ? '-'
+                    : (filled($record->feolIntegration?->deeplink_url) ? 'Sao chép Deeplink' : 'Sao chép B1'))
                 ->copyable()
-                ->copyMessage('Đã sao chép Deeplink')
-                ->icon(Heroicon::OutlinedLink)
-                ->color('success')
-                ->placeholder('Chờ Eligible'),
-            TextColumn::make('feolIntegration.sync_state')
-                ->label('Đồng bộ')
-                ->badge()
-                ->formatStateUsing(fn (mixed $state): string => $state instanceof FeolSyncState ? $state->label() : FeolSyncState::tryFrom((string) $state)?->label() ?? '-')
-                ->color(fn (mixed $state): string => match ($state instanceof FeolSyncState ? $state : FeolSyncState::tryFrom((string) $state)) {
-                    FeolSyncState::SYNCED => 'success',
-                    FeolSyncState::FAILED => 'danger',
-                    FeolSyncState::POLLING => 'info',
-                    default => 'warning',
-                })
+                ->copyMessage(fn (Application $record): string => filled($record->feolIntegration?->deeplink_url)
+                    ? 'Đã sao chép Deeplink'
+                    : 'Đã sao chép Landing Page B1')
+                ->icon(fn (Application $record): Heroicon => filled($record->feolIntegration?->deeplink_url)
+                    ? Heroicon::OutlinedLink
+                    : Heroicon::OutlinedClipboardDocument)
+                ->color(fn (Application $record): string => filled($record->feolIntegration?->deeplink_url) ? 'success' : 'info')
                 ->placeholder('-'),
         ];
     }

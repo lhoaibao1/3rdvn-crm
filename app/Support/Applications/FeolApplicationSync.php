@@ -80,6 +80,8 @@ class FeolApplicationSync
                 'disbursed_amount' => 'disbursed_amount',
                 'topup_amount' => 'topup_amount',
                 'insurance_amount' => 'insurance_amount',
+                'fee_amount' => 'fee_amount',
+                'pic' => 'pic',
                 'disbursed_at' => 'disbursed_at',
             ] as $source => $target) {
                 if (array_key_exists($source, $data) && $data[$source] !== null) {
@@ -90,6 +92,7 @@ class FeolApplicationSync
             $application->forceFill([
                 'status' => $status?->value ?? $application->status,
                 'payload' => $payload,
+                'note' => array_key_exists('note', $data) ? $data['note'] : $application->note,
             ])->save();
 
             $this->audit($application, 'feol_synced', $before, $integration->fresh()->toArray());

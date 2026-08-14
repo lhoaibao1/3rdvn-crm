@@ -12,6 +12,8 @@ class FeolPartnerFieldParityTest extends TestCase
         $form = file_get_contents($root.'app/Filament/Resources/FeDeeplinkApplications/Schemas/FeDeeplinkApplicationForm.php');
         $landing = file_get_contents($root.'resources/views/feol/landing.blade.php');
         $table = file_get_contents($root.'app/Filament/Resources/Applications/Tables/ApplicationsTable.php');
+        $request = file_get_contents($root.'app/Http/Requests/Integration/SyncFeolApplicationRequest.php');
+        $sync = file_get_contents($root.'app/Support/Applications/FeolApplicationSync.php');
 
         foreach ([
             'Họ và tên',
@@ -27,7 +29,7 @@ class FeolPartnerFieldParityTest extends TestCase
             self::assertStringContainsString($title, $landing);
         }
 
-        foreach (['Họ tên', 'SĐT', 'Số CCCD', 'Ngày tháng năm sinh', 'Địa chỉ Email', 'Số tiền vay', 'Thời hạn vay (tháng)', 'Mã giới thiệu', 'Mã nhân viên', 'Ngày tạo', 'Ngày giải ngân', 'Sản phẩm', 'Số tiền duyệt', 'App ID', 'Tên nhân viên (Tạo bởi)', 'Hành động'] as $title) {
+        foreach (['ID', 'Chiến dịch', 'Tên khách hàng', 'Số điện thoại', 'Nhân viên', 'Quản lý', 'Mã giới thiệu', 'Trạng thái chính', 'Trạng thái phụ', 'App id', 'App type', 'Offer Amt', 'Disbursed Amt', 'Topup Amt', 'Insurance Amt', 'Fee Amt', 'Disbursed Date', 'Ghi chú', 'PIC', 'Thời gian cập nhật', 'Hành động'] as $title) {
             self::assertStringContainsString($title, $table);
         }
 
@@ -35,5 +37,10 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringContainsString("->hiddenOn('create')", $form);
         self::assertStringNotContainsString('name="referral_code"', $landing);
         self::assertStringContainsString("data_get(auth()->user()->sales_codes, 'fe-deeplink')", $form);
+
+        foreach (['fee_amount', 'note', 'pic'] as $partnerField) {
+            self::assertStringContainsString("'{$partnerField}'", $request);
+            self::assertStringContainsString("'{$partnerField}'", $sync);
+        }
     }
 }
