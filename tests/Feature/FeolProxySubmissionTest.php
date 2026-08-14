@@ -126,7 +126,9 @@ class FeolProxySubmissionTest extends TestCase
         $this->assertSame(FeolSubmitState::SUBMITTED, $application->feolIntegration->submit_state);
         $this->assertSame('PARTNER-LEAD-001', $application->feolIntegration->partner_lead_id);
         $this->assertNotNull($application->feolIntegration->partner_submitted_at);
-        Http::assertSentCount(1);
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://partner.test/landingPageFE/createFEOL'
+            && $request['referralCode'] === '26801'
+            && $request['customer_name'] === 'Khach Hang Full Flow');
     }
 
     public function test_inactive_or_unknown_sales_code_cannot_open_public_registration(): void
