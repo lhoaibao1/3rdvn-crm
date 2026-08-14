@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Tables;
 
+use App\Enums\FeDeeplinkStatus;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\Application;
@@ -66,6 +67,7 @@ class ApplicationsTable
                     ->color(fn (?string $state): string => match ($projectSlug) {
                         'acl-mix' => AclMixWorkflow::statusColor($state),
                         'lotte-finance' => LotteFinanceWorkflow::statusColor($state),
+                        'fe-deeplink' => FeDeeplinkStatus::colorFor($state),
                         default => match ($state) {
                             'processing' => 'info',
                             'pending_approval' => 'warning',
@@ -74,7 +76,9 @@ class ApplicationsTable
                             default => 'gray',
                         },
                     })
-                    ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
+                    ->formatStateUsing(fn (?string $state): string => $projectSlug === 'fe-deeplink'
+                        ? FeDeeplinkStatus::labelFor($state)
+                        : self::statusLabel($state))
                     ->sortable(),
                 TextColumn::make('disbursed_at')
                     ->label('Ngày giải ngân')
@@ -133,6 +137,7 @@ class ApplicationsTable
                     ->options(match ($projectSlug) {
                         'acl-mix' => AclMixWorkflow::statusOptions(),
                         'lotte-finance' => LotteFinanceWorkflow::statusOptions(),
+                        'fe-deeplink' => FeDeeplinkStatus::options(),
                         default => [
                             'processing' => 'Đang xử lý',
                             'pending_approval' => 'Chờ duyệt',
@@ -344,6 +349,10 @@ class ApplicationsTable
 
         if (array_key_exists((string) $state, LotteFinanceWorkflow::statusOptions())) {
             return LotteFinanceWorkflow::statusLabel($state);
+        }
+
+        if (FeDeeplinkStatus::tryFrom((string) $state)) {
+            return FeDeeplinkStatus::labelFor($state);
         }
 
         return match ($state) {

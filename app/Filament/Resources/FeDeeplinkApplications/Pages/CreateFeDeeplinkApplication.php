@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\FeDeeplinkApplications\Pages;
 
+use App\Enums\FeDeeplinkStatus;
 use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
 use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationForm;
 use App\Models\Application;
@@ -33,7 +34,7 @@ class CreateFeDeeplinkApplication extends CreateRecord
             'application_code' => $data['application_code'],
             'applicant_name' => $data['applicant_name'],
             'phone' => $data['phone'],
-            'status' => 'approved',
+            'status' => FeDeeplinkStatus::from((string) $data['status'])->value,
             'assigned_sale_id' => $creatorId,
             'created_by_id' => $creatorId,
             'payload' => FeDeeplinkApplicationForm::normalizePayload($data['payload'] ?? []),

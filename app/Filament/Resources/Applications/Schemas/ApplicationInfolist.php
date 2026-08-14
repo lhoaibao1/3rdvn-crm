@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Applications\Schemas;
 
+use App\Enums\FeDeeplinkStatus;
 use App\Models\Application;
 use App\Models\RecordChangeLog;
 use App\Support\Applications\AclMixWorkflow;
@@ -48,6 +49,7 @@ class ApplicationInfolist
                                         ->color(fn (?string $state, Application $record): string => match ($record->salesProject?->slug) {
                                             'acl-mix' => AclMixWorkflow::statusColor($state),
                                             'lotte-finance' => LotteFinanceWorkflow::statusColor($state),
+                                            'fe-deeplink' => FeDeeplinkStatus::colorFor($state),
                                             default => 'gray',
                                         })
                                         ->formatStateUsing(fn (?string $state, Application $record): string => self::statusLabel($state, $record))->placeholder('-'),
@@ -517,11 +519,11 @@ class ApplicationInfolist
             return ['label' => 'Quay lại', 'color' => '#047857', 'bg' => '#ecfdf5', 'soft' => '#d1fae5', 'border' => '#a7f3d0'];
         }
 
-        if ($status === 'approved') {
+        if ($status === 'approved' || $status === FeDeeplinkStatus::END->value) {
             return ['label' => 'Duyệt', 'color' => '#047857', 'bg' => '#ecfdf5', 'soft' => '#d1fae5', 'border' => '#a7f3d0'];
         }
 
-        if ($status === 'rejected' || $log->action === 'deleted') {
+        if (in_array($status, ['rejected', FeDeeplinkStatus::REJECT->value], true) || $log->action === 'deleted') {
             return ['label' => 'Đóng', 'color' => '#b91c1c', 'bg' => '#fef2f2', 'soft' => '#fee2e2', 'border' => '#fecaca'];
         }
 
@@ -540,6 +542,10 @@ class ApplicationInfolist
 
         if ($record?->salesProject?->slug === 'acl-mix') {
             return AclMixWorkflow::statusLabel($state);
+        }
+
+        if ($record?->salesProject?->slug === 'fe-deeplink') {
+            return FeDeeplinkStatus::labelFor($state);
         }
 
         if (array_key_exists((string) $state, LotteFinanceWorkflow::statusOptions())) {
