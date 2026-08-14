@@ -176,7 +176,8 @@ class FeolProxySubmissionTest extends TestCase
 
         $this->get(route('feol.landing.show', ['token' => $token]))
             ->assertOk()
-            ->assertSee('Đăng ký vay FE CREDIT')
+            ->assertSee('Tạo khách hàng')
+            ->assertSee('images/fe-credit.svg', false)
             ->assertSee('Khach hang cu');
 
         $response = $this->post(route('feol.landing.store', ['token' => $token]), [
