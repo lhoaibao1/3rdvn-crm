@@ -32,17 +32,9 @@ class FeolPendingApplicationsController extends Controller
                                     ->where(fn (Builder $query): Builder => $query
                                         ->whereNull('last_synced_at')
                                         ->orWhereColumn('sync_requested_at', '>', 'last_synced_at')));
-                        }))
-                    ->orWhere(function (Builder $query): void {
-                        $query->whereNotNull('payload->fields->approved_amount')
-                            ->where('payload->fields->approved_amount', '>', 0)
-                            ->whereHas('feolIntegration', fn (Builder $query): Builder => $query
-                                ->whereNotNull('partner_lead_id')
-                                ->where(fn (Builder $query): Builder => $query
-                                    ->whereNull('last_synced_at')
-                                    ->orWhere('last_synced_at', '<=', now()->subMinutes(10))));
-                    });
+                        }));
             })
+            ->whereNotIn('status', collect(FeDeeplinkStatus::cases())->filter->isTerminal()->map->value->all())
             ->with(['createdBy:id,name,uid,employee_code', 'feolIntegration'])
             ->orderByDesc('updated_at')
             ->limit(50)
