@@ -38,17 +38,31 @@ class RecordVisibility
                 if (self::hasColumn($table, 'zd_id')) {
                     $scope->orWhere('zd_id', $user->getKey());
                 }
-                $scope->orWhereHas($ownerRelation, fn (Builder $owner): Builder => $owner->where('zd_id', $user->getKey()));
+                $scope->orWhereHas($ownerRelation, function (Builder $owner) use ($user): void {
+                    $owner->where('zd_id', $user->getKey())
+                        ->orWhereHas('am', fn (Builder $am): Builder => $am->where('zd_id', $user->getKey()))
+                        ->orWhereHas('teamLeader', fn (Builder $leader): Builder => $leader
+                            ->where('zd_id', $user->getKey())
+                            ->orWhereHas('am', fn (Builder $am): Builder => $am->where('zd_id', $user->getKey())))
+                        ->orWhereHas('team.manager', fn (Builder $leader): Builder => $leader
+                            ->where('zd_id', $user->getKey())
+                            ->orWhereHas('am', fn (Builder $am): Builder => $am->where('zd_id', $user->getKey())));
+                });
             } elseif ($user->hasRole('AM')) {
                 if (self::hasColumn($table, 'am_id')) {
                     $scope->orWhere('am_id', $user->getKey());
                 }
-                $scope->orWhereHas($ownerRelation, fn (Builder $owner): Builder => $owner->where('am_id', $user->getKey()));
+                $scope->orWhereHas($ownerRelation, fn (Builder $owner): Builder => $owner
+                    ->where('am_id', $user->getKey())
+                    ->orWhereHas('teamLeader', fn (Builder $leader): Builder => $leader->where('am_id', $user->getKey()))
+                    ->orWhereHas('team.manager', fn (Builder $leader): Builder => $leader->where('am_id', $user->getKey())));
             } elseif ($user->hasRole('Team Leader')) {
                 if (self::hasColumn($table, 'team_leader_id')) {
                     $scope->orWhere('team_leader_id', $user->getKey());
                 }
-                $scope->orWhereHas($ownerRelation, fn (Builder $owner): Builder => $owner->where('team_leader_id', $user->getKey()));
+                $scope->orWhereHas($ownerRelation, fn (Builder $owner): Builder => $owner
+                    ->where('team_leader_id', $user->getKey())
+                    ->orWhereHas('team', fn (Builder $team): Builder => $team->where('manager_id', $user->getKey())));
             } elseif ($user->hasRole('Courier Manager')) {
                 $scope->orWhereHas($ownerRelation, fn (Builder $owner): Builder => $owner->where('courier_manager_id', $user->getKey()));
             }
@@ -83,19 +97,27 @@ class RecordVisibility
             return false;
         }
 
+        $owner->loadMissing(['am', 'teamLeader.am', 'team.manager.am']);
+        $teamLeader = $owner->teamLeader ?: $owner->team?->manager;
+        $am = $owner->am ?: $teamLeader?->am;
+
         if ($user->hasRole('ZD')) {
             return (int) ($record->zd_id ?? 0) === (int) $user->getKey()
-                || (int) $owner->zd_id === (int) $user->getKey();
+                || (int) $owner->zd_id === (int) $user->getKey()
+                || (int) $teamLeader?->zd_id === (int) $user->getKey()
+                || (int) $am?->zd_id === (int) $user->getKey();
         }
 
         if ($user->hasRole('AM')) {
             return (int) ($record->am_id ?? 0) === (int) $user->getKey()
-                || (int) $owner->am_id === (int) $user->getKey();
+                || (int) $owner->am_id === (int) $user->getKey()
+                || (int) $teamLeader?->am_id === (int) $user->getKey();
         }
 
         if ($user->hasRole('Team Leader')) {
             return (int) ($record->team_leader_id ?? 0) === (int) $user->getKey()
-                || (int) $owner->team_leader_id === (int) $user->getKey();
+                || (int) $owner->team_leader_id === (int) $user->getKey()
+                || (int) $owner->team?->manager_id === (int) $user->getKey();
         }
 
         if ($user->hasRole('Courier Manager')) {
