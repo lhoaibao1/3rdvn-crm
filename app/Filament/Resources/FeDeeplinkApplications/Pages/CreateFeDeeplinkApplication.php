@@ -26,7 +26,7 @@ class CreateFeDeeplinkApplication extends CreateRecord
 
     public function getTitle(): string
     {
-        return 'Tạo hồ sơ FE Deeplink';
+        return 'Tạo Landing Page B1';
     }
 
     protected function handleRecordCreation(array $data): Model
@@ -69,7 +69,7 @@ class CreateFeDeeplinkApplication extends CreateRecord
     protected function getCreateFormAction(): Action
     {
         return parent::getCreateFormAction()
-            ->label('Tạo hồ sơ và Landing Page B1')
+            ->label('Tạo Landing Page B1')
             ->icon(Heroicon::OutlinedDocumentPlus);
     }
 

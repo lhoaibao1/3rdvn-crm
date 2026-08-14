@@ -48,14 +48,14 @@ class ApplicationsTable
             ->defaultSort('created_at', 'desc')
             ->columns(TableColumnPreferences::apply($columnTable, [
                 TextColumn::make('application_code')
-                    ->label('Mã hồ sơ')
+                    ->label($projectSlug === 'fe-deeplink' ? 'Mã hồ sơ CRM' : 'Mã hồ sơ')
                     ->badge()
                     ->color('info')
                     ->placeholder('Chờ cập nhật')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('applicant_name')
-                    ->label('Khách hàng')
+                    ->label($projectSlug === 'fe-deeplink' ? 'Họ tên' : 'Khách hàng')
                     ->searchable()
                     ->weight('bold')
                     ->color('gray'),
@@ -65,7 +65,7 @@ class ApplicationsTable
                     ->searchable()
                     ->toggleable(),
                 TextColumn::make('status')
-                    ->label('Trạng thái')
+                    ->label($projectSlug === 'fe-deeplink' ? 'Trạng thái FEOL' : 'Trạng thái')
                     ->badge()
                     ->color(fn (?string $state): string => match ($projectSlug) {
                         'acl-mix' => AclMixWorkflow::statusColor($state),
@@ -99,7 +99,7 @@ class ApplicationsTable
                     ->placeholder('-')
                     ->toggleable(),
                 TextColumn::make('createdBy.name')
-                    ->label('Người tạo')
+                    ->label($projectSlug === 'fe-deeplink' ? 'Tên nhân viên (Tạo bởi)' : 'Người tạo')
                     ->placeholder('-')
                     ->toggleable(),
                 TextColumn::make('team.name')
@@ -282,8 +282,43 @@ class ApplicationsTable
     private static function feDeeplinkColumns(): array
     {
         return [
+            TextColumn::make('identity_number')
+                ->label('Số CCCD')
+                ->placeholder('-')
+                ->searchable()
+                ->toggleable(),
+            TextColumn::make('payload.fields.date_of_birth')
+                ->label('Ngày tháng năm sinh')
+                ->date('d/m/Y')
+                ->placeholder('-')
+                ->toggleable(),
+            TextColumn::make('payload.fields.email')
+                ->label('Địa chỉ Email')
+                ->placeholder('-')
+                ->searchable()
+                ->toggleable(),
+            TextColumn::make('payload.fields.loan_amount')
+                ->label('Số tiền vay')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-')
+                ->toggleable(),
+            TextColumn::make('payload.fields.loan_term_months')
+                ->label('Thời hạn vay (tháng)')
+                ->suffix(' tháng')
+                ->placeholder('-')
+                ->toggleable(),
+            TextColumn::make('payload.fields.referral_code')
+                ->label('Mã giới thiệu')
+                ->badge()
+                ->placeholder('-')
+                ->toggleable(),
+            TextColumn::make('payload.fields.salesman_code')
+                ->label('Mã nhân viên')
+                ->badge()
+                ->placeholder('-')
+                ->toggleable(),
             TextColumn::make('feolIntegration.partner_lead_id')
-                ->label('Lead ID đối tác')
+                ->label('Lead ID')
                 ->placeholder('-')
                 ->toggleable(),
             TextColumn::make('feolIntegration.partner_app_id')
@@ -309,7 +344,7 @@ class ApplicationsTable
                 ->color('info')
                 ->placeholder('-'),
             TextColumn::make('feolIntegration.deeplink_url')
-                ->label('Deeplink')
+                ->label('Hành động')
                 ->formatStateUsing(fn (mixed $state): string => filled($state) ? 'Sao chép Deeplink' : '-')
                 ->copyable()
                 ->copyMessage('Đã sao chép Deeplink')
