@@ -75,7 +75,7 @@ class FeDeeplinkApplicationForm
                             ->required(),
                         TextInput::make('payload.fields.loan_amount')
                             ->label('Số tiền vay')
-                            ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                            ->mask(RawJs::make("\$money(\$input, ',', '.', 0)"))
                             ->stripCharacters('.')
                             ->minValue(1000000)
                             ->prefix('₫')
