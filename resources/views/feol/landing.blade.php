@@ -22,7 +22,7 @@
                 <div class="field full"><label>Họ và tên <span class="req">*</span></label><input name="applicant_name" value="{{ old('applicant_name', $application?->applicant_name) }}" required maxlength="255">@error('applicant_name')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Số điện thoại <span class="req">*</span></label><input name="phone" value="{{ old('phone', $application?->phone) }}" required inputmode="numeric" maxlength="10">@error('phone')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Số CCCD <span class="req">*</span></label><input name="identity_number" value="{{ old('identity_number', $application?->identity_number) }}" required inputmode="numeric" maxlength="12">@error('identity_number')<div class="error">{{ $message }}</div>@enderror</div>
-                <div class="field"><label>Ngày tháng năm sinh <span class="req">*</span></label><input name="date_of_birth" type="text" placeholder="dd/mm/yyyy" value="{{ old('date_of_birth', filled(data_get($application?->payload, 'fields.date_of_birth')) ? \Carbon\CarbonImmutable::parse(data_get($application?->payload, 'fields.date_of_birth'))->format('d/m/Y') : '') }}" required>@error('date_of_birth')<div class="error">{{ $message }}</div>@enderror</div>
+                <div class="field"><label>Ngày tháng năm sinh <span class="req">*</span></label><input name="date_of_birth" type="text" inputmode="numeric" autocomplete="bday" maxlength="10" placeholder="dd/mm/yyyy" data-date-mask value="{{ old('date_of_birth', filled(data_get($application?->payload, 'fields.date_of_birth')) ? \Carbon\CarbonImmutable::parse(data_get($application?->payload, 'fields.date_of_birth'))->format('d/m/Y') : '') }}" required>@error('date_of_birth')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Địa chỉ Email <span class="req">*</span></label><input name="email" type="email" value="{{ old('email', data_get($application?->payload, 'fields.email')) }}" required>@error('email')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Số tiền vay <span class="req">*</span></label><input name="loan_amount" type="number" min="1000000" max="1000000000" value="{{ old('loan_amount', data_get($application?->payload, 'fields.loan_amount')) }}" required>@error('loan_amount')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Thời hạn vay (tháng) <span class="req">*</span></label><input name="loan_term_months" type="number" min="1" max="120" value="{{ old('loan_term_months', data_get($application?->payload, 'fields.loan_term_months')) }}" required>@error('loan_term_months')<div class="error">{{ $message }}</div>@enderror</div>
@@ -36,6 +36,22 @@
     </section>
     <div class="foot">Thông tin được truyền qua kết nối bảo mật · 3RD-VN</div>
 </div></main>
-<script>document.getElementById('feol-form')?.addEventListener('submit',()=>{const b=document.getElementById('submit-button');b.disabled=true;b.textContent='Đang lưu hồ sơ...'});</script>
+<script>
+    const dateInput = document.querySelector('[data-date-mask]');
+    const formatDate = (value) => {
+        const digits = value.replace(/\D/g, '').slice(0, 8);
+
+        if (digits.length <= 2) return digits;
+        if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+
+        return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+    };
+
+    dateInput?.addEventListener('input', (event) => {
+        event.currentTarget.value = formatDate(event.currentTarget.value);
+    });
+
+    document.getElementById('feol-form')?.addEventListener('submit',()=>{const b=document.getElementById('submit-button');b.disabled=true;b.textContent='Đang lưu hồ sơ...'});
+</script>
 </body>
 </html>

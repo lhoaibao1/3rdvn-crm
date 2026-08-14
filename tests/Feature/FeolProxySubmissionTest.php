@@ -31,6 +31,9 @@ class FeolProxySubmissionTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Đăng ký vay FE CREDIT')
+            ->assertSee('data-date-mask', false)
+            ->assertSee('placeholder="dd/mm/yyyy"', false)
+            ->assertSee('inputmode="numeric"', false)
             ->assertSee('26801')
             ->assertSee(route('feol.registration.store', ['salesCode' => '26801']), false);
         $this->assertGuest();
