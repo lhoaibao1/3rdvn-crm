@@ -36,9 +36,7 @@ class VpnUserDirectoryController extends Controller
                         ->orWhere('phone', 'like', "%{$search}%");
                 });
             })
-            ->where(fn (Builder $query) => $query
-                ->where('employment_status', User::STATUS_ACTIVE)
-                ->orWhereNull('employment_status'))
+            ->where('employment_status', User::STATUS_ACTIVE)
             ->whereDoesntHave('roles', fn (Builder $query) => $query
                 ->whereRaw('LOWER(name) = ?', ['courier']))
             ->when(filled($validated['status'] ?? null), fn (Builder $query) => $query->where('employment_status', $validated['status']))
