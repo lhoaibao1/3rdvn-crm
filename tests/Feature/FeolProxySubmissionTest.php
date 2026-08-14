@@ -316,6 +316,30 @@ class FeolProxySubmissionTest extends TestCase
         $this->assertSame(1, (new SubmitFeolApplicationToPartner($application->getKey()))->tries);
     }
 
+    public function test_failed_partner_submission_cannot_be_resubmitted_from_the_same_customer_link(): void
+    {
+        Queue::fake();
+        [$application, $token] = $this->application();
+        $application->feolIntegration()->update([
+            'submit_state' => FeolSubmitState::FAILED,
+            'submit_attempts' => 1,
+        ]);
+
+        $this->post(route('feol.landing.store', ['token' => $token]), [
+            'applicant_name' => 'Nguyen Van A',
+            'phone' => '0901234567',
+            'identity_number' => '012345678901',
+            'date_of_birth' => '20/05/1995',
+            'email' => 'sale@example.com',
+            'loan_amount' => 50000000,
+            'loan_term_months' => 24,
+            'customer_consent' => '1',
+        ])->assertConflict();
+
+        Queue::assertNothingPushed();
+        $this->assertSame(1, $application->feolIntegration()->value('submit_attempts'));
+    }
+
     public function test_partner_sync_never_overwrites_internal_employee_or_manager_chain(): void
     {
         [$application] = $this->application();

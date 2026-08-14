@@ -81,10 +81,11 @@ class FeolPublicLandingController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            abort_unless(in_array($integration->submit_state, [
-                FeolSubmitState::AWAITING_CUSTOMER,
-                FeolSubmitState::FAILED,
-            ], true), 409, 'Hồ sơ này đã được tiếp nhận và đang xử lý.');
+            abort_unless(
+                $integration->submit_state === FeolSubmitState::AWAITING_CUSTOMER,
+                409,
+                'Hồ sơ này đã được tiếp nhận. Hệ thống không gửi lại để tránh tạo trùng lead đối tác.',
+            );
 
             $application = Application::query()
                 ->with('salesProject')
