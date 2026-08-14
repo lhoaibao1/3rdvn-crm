@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Machine-to-machine ESS authentication is protected by its bearer token,
+        // so it must not require a browser CSRF cookie.
+        $middleware->validateCsrfTokens(except: [
+            'api/integration/v1/authenticate',
+        ]);
+
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->getHost() === 'los.3rdvn.io.vn'
             ? route('los.login')
             : url('/authen/login'));
