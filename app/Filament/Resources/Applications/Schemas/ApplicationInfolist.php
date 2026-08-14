@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Applications\Schemas;
 
 use App\Enums\FeDeeplinkStatus;
+use App\Enums\FeolSyncState;
 use App\Models\Application;
 use App\Models\RecordChangeLog;
 use App\Support\Applications\AclMixWorkflow;
@@ -182,6 +183,51 @@ class ApplicationInfolist
                                         ->money('VND', locale: 'vi')
                                         ->placeholder('-')
                                         ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.partner_lead_id')
+                                        ->label('Lead ID đối tác')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.partner_app_id')
+                                        ->label('App ID')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.main_status')
+                                        ->label('Trạng thái chính FEOL')
+                                        ->badge()
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.sync_state')
+                                        ->label('Trạng thái đồng bộ')
+                                        ->badge()
+                                        ->formatStateUsing(fn (mixed $state): string => $state instanceof FeolSyncState ? $state->label() : FeolSyncState::tryFrom((string) $state)?->label() ?? '-')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.b1_url')
+                                        ->label('Landing Page B1')
+                                        ->copyable()
+                                        ->copyMessage('Đã sao chép Landing Page B1')
+                                        ->placeholder('Chờ đối tác tạo B1')
+                                        ->columnSpan(3)
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.deeplink_url')
+                                        ->label('Deeplink')
+                                        ->copyable()
+                                        ->copyMessage('Đã sao chép Deeplink')
+                                        ->placeholder('Chỉ có sau khi Eligible')
+                                        ->columnSpan(3)
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.last_synced_at')
+                                        ->label('Đồng bộ gần nhất')
+                                        ->dateTime('H:i:s d/m/Y')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.last_error')
+                                        ->label('Lỗi đồng bộ')
+                                        ->color('danger')
+                                        ->placeholder('-')
+                                        ->columnSpanFull()
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'
+                                            && filled($record->feolIntegration?->last_error)),
                                     TextEntry::make('updated_at')
                                         ->label('Cập nhật')
                                         ->dateTime('H:i d/m/Y')
@@ -519,11 +565,11 @@ class ApplicationInfolist
             return ['label' => 'Quay lại', 'color' => '#047857', 'bg' => '#ecfdf5', 'soft' => '#d1fae5', 'border' => '#a7f3d0'];
         }
 
-        if ($status === 'approved' || $status === FeDeeplinkStatus::END->value) {
+        if ($status === 'approved' || $status === FeDeeplinkStatus::PL_DISBURSED->value) {
             return ['label' => 'Duyệt', 'color' => '#047857', 'bg' => '#ecfdf5', 'soft' => '#d1fae5', 'border' => '#a7f3d0'];
         }
 
-        if (in_array($status, ['rejected', FeDeeplinkStatus::REJECT->value], true) || $log->action === 'deleted') {
+        if (in_array($status, ['rejected', FeDeeplinkStatus::HARD_REJECT->value, FeDeeplinkStatus::INELIGIBLE->value], true) || $log->action === 'deleted') {
             return ['label' => 'Đóng', 'color' => '#b91c1c', 'bg' => '#fef2f2', 'soft' => '#fee2e2', 'border' => '#fecaca'];
         }
 

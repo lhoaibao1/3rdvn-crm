@@ -140,4 +140,9 @@ class Application extends Model
     {
         return $this->hasOne(ProjectReport::class);
     }
+
+    public function feolIntegration(): HasOne
+    {
+        return $this->hasOne(FeolApplicationIntegration::class);
+    }
 }

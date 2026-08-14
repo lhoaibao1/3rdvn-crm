@@ -7,12 +7,14 @@ use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
 use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationForm;
 use App\Models\Application;
 use App\Models\SalesProject;
+use App\Enums\FeolSyncState;
 use App\Support\SalesLineSnapshot;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class CreateFeDeeplinkApplication extends CreateRecord
 {
@@ -31,10 +33,11 @@ class CreateFeDeeplinkApplication extends CreateRecord
         $creatorId = (int) $data['created_by_id'];
         $application = new Application([
             'sales_project_id' => $project->getKey(),
-            'application_code' => $data['application_code'],
+            'application_code' => 'FEDL-'.Str::upper((string) Str::ulid()),
             'applicant_name' => $data['applicant_name'],
             'phone' => $data['phone'],
-            'status' => FeDeeplinkStatus::from((string) $data['status'])->value,
+            'identity_number' => $data['identity_number'],
+            'status' => FeDeeplinkStatus::PENDING_SUBMISSION->value,
             'assigned_sale_id' => $creatorId,
             'created_by_id' => $creatorId,
             'payload' => FeDeeplinkApplicationForm::normalizePayload($data['payload'] ?? []),
@@ -42,6 +45,11 @@ class CreateFeDeeplinkApplication extends CreateRecord
         ]);
         $application->setCreatedAt(CarbonImmutable::parse((string) $data['created_at']));
         $application->save();
+        $application->feolIntegration()->create([
+            'sync_state' => FeolSyncState::PENDING,
+            'sync_requested_at' => now(),
+            'next_sync_at' => now(),
+        ]);
 
         return $application;
     }

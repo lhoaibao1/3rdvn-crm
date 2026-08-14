@@ -54,4 +54,9 @@ return [
         'token' => env('VPN_DIRECTORY_API_TOKEN'),
     ],
 
+    'feol_bridge' => [
+        'token' => env('FEOL_BRIDGE_API_TOKEN'),
+        'poll_seconds' => (int) env('FEOL_BRIDGE_POLL_SECONDS', 5),
+    ],
+
 ];

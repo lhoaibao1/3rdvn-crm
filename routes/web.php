@@ -7,6 +7,8 @@ use App\Http\Controllers\Crm\LatestNotificationController;
 use App\Http\Controllers\Crm\TableColumnPreferenceController;
 use App\Http\Controllers\Integration\EssAuthenticationController;
 use App\Http\Controllers\Integration\CompletedCustomerDirectoryController;
+use App\Http\Controllers\Integration\FeolApplicationSyncController;
+use App\Http\Controllers\Integration\FeolPendingApplicationsController;
 use App\Http\Controllers\Integration\VpnUserDirectoryController;
 use App\Http\Controllers\LosApplicationLookupController;
 use App\Http\Controllers\LosAuthenticationController;
@@ -148,3 +150,11 @@ Route::post('/api/integration/v1/authenticate', EssAuthenticationController::cla
 Route::get('/api/integration/v1/completed-customers', CompletedCustomerDirectoryController::class)
     ->middleware('throttle:30,1')
     ->name('api.integration.completed-customers');
+
+Route::get('/api/integration/v1/feol/pending', FeolPendingApplicationsController::class)
+    ->middleware('throttle:120,1')
+    ->name('api.integration.feol.pending');
+
+Route::post('/api/integration/v1/feol/applications/{application}/sync', FeolApplicationSyncController::class)
+    ->middleware('throttle:240,1')
+    ->name('api.integration.feol.sync');

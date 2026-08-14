@@ -9,7 +9,9 @@ use App\Models\User;
 use App\Support\SalesLineSnapshot;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -23,11 +25,6 @@ class FeDeeplinkApplicationForm
                 Section::make('Thông tin hồ sơ FE Deeplink')
                     ->columns(2)
                     ->schema([
-                        TextInput::make('application_code')
-                            ->label('App ID')
-                            ->required()
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
                         TextInput::make('applicant_name')
                             ->label('Họ tên')
                             ->required()
@@ -37,9 +34,34 @@ class FeDeeplinkApplicationForm
                             ->tel()
                             ->required()
                             ->maxLength(50),
+                        TextInput::make('identity_number')
+                            ->label('Số CCCD')
+                            ->required()
+                            ->maxLength(20),
+                        DatePicker::make('payload.fields.date_of_birth')
+                            ->label('Ngày tháng năm sinh')
+                            ->displayFormat('d/m/Y')
+                            ->native(false),
+                        TextInput::make('payload.fields.email')
+                            ->label('Địa chỉ Email')
+                            ->email()
+                            ->maxLength(255),
+                        TextInput::make('payload.fields.loan_amount')
+                            ->label('Số tiền vay')
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix('₫'),
+                        TextInput::make('payload.fields.loan_term_months')
+                            ->label('Thời hạn vay')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(120)
+                            ->suffix('tháng'),
                         Select::make('created_by_id')
                             ->label('Tên nhân viên / Tạo bởi')
-                            ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->options(fn (): array => auth()->user()?->hasRole('Admin')
+                                ? User::query()->orderBy('name')->pluck('name', 'id')->all()
+                                : User::query()->whereKey(auth()->id())->pluck('name', 'id')->all())
                             ->default(fn (): ?int => auth()->id())
                             ->required()
                             ->searchable()
@@ -50,17 +72,40 @@ class FeDeeplinkApplicationForm
                             ->default(now())
                             ->seconds(false)
                             ->required(),
-                        DatePicker::make('payload.fields.disbursed_at')
-                            ->label('Ngày giải ngân')
-                            ->required(),
+                        Toggle::make('payload.fields.customer_consent')
+                            ->label('Khách hàng đã đồng ý cung cấp thông tin')
+                            ->accepted()
+                            ->required()
+                            ->inline(false)
+                            ->columnSpanFull(),
+                        Hidden::make('status')
+                            ->default(FeDeeplinkStatus::PENDING_SUBMISSION->value)
+                            ->visibleOn('create'),
                         Select::make('status')
-                            ->label('Trạng thái')
+                            ->label('Trạng thái FEOL')
                             ->options(FeDeeplinkStatus::options())
-                            ->default(FeDeeplinkStatus::END->value)
+                            ->default(FeDeeplinkStatus::PENDING_SUBMISSION->value)
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->native(false),
+                            ->native(false)
+                            ->hiddenOn('create'),
+                    ]),
+                Section::make('Kết quả đối tác / nhập thủ công UAT')
+                    ->relationship('feolIntegration')
+                    ->columns(2)
+                    ->hiddenOn('create')
+                    ->schema([
+                        TextInput::make('partner_lead_id')->label('Lead ID đối tác')->maxLength(100),
+                        TextInput::make('partner_app_id')->label('App ID')->maxLength(100),
+                        TextInput::make('main_status')->label('Trạng thái chính')->maxLength(100),
+                        TextInput::make('b1_url')->label('Landing Page B1')->url()->maxLength(4000)->columnSpanFull(),
+                        TextInput::make('deeplink_url')->label('Deeplink')->url()->maxLength(4000)->columnSpanFull(),
+                    ]),
+                Section::make('Kết quả tài chính FEOL')
+                    ->columns(2)
+                    ->hiddenOn('create')
+                    ->schema([
                         Select::make('payload.fields.product')
                             ->label('Sản phẩm')
                             ->options([

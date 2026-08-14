@@ -11,6 +11,8 @@ use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationF
 use BackedEnum;
 use Filament\Support\Icons\Heroicon;
 use Filament\Schemas\Schema;
+use App\Models\Application;
+use App\Support\Permissions\SalesProjectAccess;
 
 class FeDeeplinkApplicationResource extends ApplicationResource
 {
@@ -35,12 +37,15 @@ class FeDeeplinkApplicationResource extends ApplicationResource
 
     public static function canCreate(): bool
     {
-        return (bool) auth()->user()?->hasRole('Admin');
+        $user = auth()->user();
+
+        return $user?->can('create', Application::class) === true
+            && SalesProjectAccess::canAccessProject($user, static::applicationProject());
     }
 
     public static function canEdit(mixed $record): bool
     {
-        return (bool) auth()->user()?->hasRole('Admin');
+        return $record instanceof Application && (auth()->user()?->can('update', $record) ?? false);
     }
 
     protected static function projectSlug(): string

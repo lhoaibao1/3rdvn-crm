@@ -7,14 +7,17 @@ use PHPUnit\Framework\TestCase;
 
 class FeDeeplinkStatusTest extends TestCase
 {
-    public function test_fe_has_only_reject_and_end_statuses(): void
+    public function test_fe_uses_the_full_partner_status_catalogue(): void
     {
-        self::assertSame([
-            'reject' => 'Reject',
-            'end' => 'END',
-        ], FeDeeplinkStatus::options());
-        self::assertSame('danger', FeDeeplinkStatus::REJECT->color());
-        self::assertSame('success', FeDeeplinkStatus::END->color());
+        self::assertCount(17, FeDeeplinkStatus::options());
+        self::assertSame('Eligible', FeDeeplinkStatus::options()['eligible']);
+        self::assertSame('PL Disbursed', FeDeeplinkStatus::options()['pl_disbursed']);
+        self::assertSame('danger', FeDeeplinkStatus::HARD_REJECT->color());
+        self::assertSame('success', FeDeeplinkStatus::ELIGIBLE->color());
+        self::assertSame(FeDeeplinkStatus::PENDING_ESIGN, FeDeeplinkStatus::fromPartnerLabel('Pending eSign'));
+        self::assertSame(FeDeeplinkStatus::DROP_OFF, FeDeeplinkStatus::fromPartnerLabel('Drop-Off'));
+        self::assertTrue(FeDeeplinkStatus::ELIGIBLE->permitsFirstDeeplinkCapture());
+        self::assertFalse(FeDeeplinkStatus::INELIGIBLE->permitsFirstDeeplinkCapture());
     }
 
     public function test_fe_form_creation_and_directory_use_the_status_enum(): void
@@ -30,9 +33,9 @@ class FeDeeplinkStatusTest extends TestCase
         self::assertSame(3, substr_count($form, '->searchable()'));
         self::assertSame(3, substr_count($form, '->preload()'));
         self::assertStringContainsString('FeDeeplinkStatus::options()', $form);
-        self::assertStringContainsString('FeDeeplinkStatus::END->value', $form);
-        self::assertStringContainsString('FeDeeplinkStatus::from', $create);
-        self::assertStringContainsString("where('status', FeDeeplinkStatus::END->value)", $directory);
+        self::assertStringContainsString('FeDeeplinkStatus::PENDING_SUBMISSION->value', $form);
+        self::assertStringContainsString('FeDeeplinkStatus::PENDING_SUBMISSION->value', $create);
+        self::assertStringContainsString("where('status', FeDeeplinkStatus::PL_DISBURSED->value)", $directory);
     }
 
     public function test_status_migration_is_reversible(): void
@@ -41,7 +44,7 @@ class FeDeeplinkStatusTest extends TestCase
 
         self::assertStringContainsString('public function up(): void', $migration);
         self::assertStringContainsString('public function down(): void', $migration);
-        self::assertStringContainsString('FeDeeplinkStatus::END->value', $migration);
-        self::assertStringContainsString('FeDeeplinkStatus::REJECT->value', $migration);
+        self::assertStringContainsString('FeDeeplinkStatus::PL_DISBURSED->value', $migration);
+        self::assertStringContainsString('FeDeeplinkStatus::HARD_REJECT->value', $migration);
     }
 }

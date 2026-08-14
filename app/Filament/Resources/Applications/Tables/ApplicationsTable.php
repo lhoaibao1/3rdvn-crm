@@ -3,12 +3,14 @@
 namespace App\Filament\Resources\Applications\Tables;
 
 use App\Enums\FeDeeplinkStatus;
+use App\Enums\FeolSyncState;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Applications\ApplicationFinancialData;
 use App\Support\Applications\LotteFinanceWorkflow;
+use App\Support\Applications\RequestFeolApplicationSync;
 use App\Support\Filament\AclMixDecisionAction;
 use App\Support\Filament\AclMixOtpAction;
 use App\Support\Filament\LotteFinanceDecisionAction;
@@ -24,6 +26,7 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Support\Icons\Heroicon;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\FiltersLayout;
@@ -195,6 +198,15 @@ class ApplicationsTable
                     AclMixOtpAction::make(),
                     AclMixDecisionAction::make(),
                     LotteFinanceDecisionAction::make(),
+                    Action::make('requestFeolSync')
+                        ->label('Kiểm tra đối tác ngay')
+                        ->icon(Heroicon::OutlinedArrowPath)
+                        ->visible(fn (Application $record): bool => $projectSlug === 'fe-deeplink'
+                            && (auth()->user()?->can('update', $record) ?? false))
+                        ->action(function (Application $record): void {
+                            app(RequestFeolApplicationSync::class)->handle($record);
+                            Notification::make()->title('Đã đưa hồ sơ vào hàng đợi kiểm tra')->success()->send();
+                        }),
                     RecordAssignAction::make('assignApplicationProcessor'),
                     DeleteAction::make()
                         ->label('Xóa')
@@ -270,6 +282,14 @@ class ApplicationsTable
     private static function feDeeplinkColumns(): array
     {
         return [
+            TextColumn::make('feolIntegration.partner_lead_id')
+                ->label('Lead ID đối tác')
+                ->placeholder('-')
+                ->toggleable(),
+            TextColumn::make('feolIntegration.partner_app_id')
+                ->label('App ID')
+                ->placeholder('-')
+                ->toggleable(),
             TextColumn::make('fe_product')
                 ->label('Sản phẩm')
                 ->state(fn (Application $record): mixed => ApplicationFinancialData::product($record))
@@ -279,6 +299,33 @@ class ApplicationsTable
                 ->label('Số tiền duyệt')
                 ->state(fn (Application $record): mixed => ApplicationFinancialData::approvedAmount($record))
                 ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('feolIntegration.b1_url')
+                ->label('Landing Page B1')
+                ->formatStateUsing(fn (mixed $state): string => filled($state) ? 'Sao chép B1' : '-')
+                ->copyable()
+                ->copyMessage('Đã sao chép Landing Page B1')
+                ->icon(Heroicon::OutlinedClipboardDocument)
+                ->color('info')
+                ->placeholder('-'),
+            TextColumn::make('feolIntegration.deeplink_url')
+                ->label('Deeplink')
+                ->formatStateUsing(fn (mixed $state): string => filled($state) ? 'Sao chép Deeplink' : '-')
+                ->copyable()
+                ->copyMessage('Đã sao chép Deeplink')
+                ->icon(Heroicon::OutlinedLink)
+                ->color('success')
+                ->placeholder('Chờ Eligible'),
+            TextColumn::make('feolIntegration.sync_state')
+                ->label('Đồng bộ')
+                ->badge()
+                ->formatStateUsing(fn (mixed $state): string => $state instanceof FeolSyncState ? $state->label() : FeolSyncState::tryFrom((string) $state)?->label() ?? '-')
+                ->color(fn (mixed $state): string => match ($state instanceof FeolSyncState ? $state : FeolSyncState::tryFrom((string) $state)) {
+                    FeolSyncState::SYNCED => 'success',
+                    FeolSyncState::FAILED => 'danger',
+                    FeolSyncState::POLLING => 'info',
+                    default => 'warning',
+                })
                 ->placeholder('-'),
         ];
     }

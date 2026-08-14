@@ -95,7 +95,7 @@ class ApplicationResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
-            ->with(['salesProject', 'assignedSale', 'createdBy', 'team', 'teamLeader', 'am', 'zd', 'projectReport'])
+            ->with(['salesProject', 'assignedSale', 'createdBy', 'team', 'teamLeader', 'am', 'zd', 'projectReport', 'feolIntegration'])
             ->whereHas('salesProject', fn (Builder $query): Builder => $query->where('slug', static::projectSlug()));
 
         $user = Auth::user();
