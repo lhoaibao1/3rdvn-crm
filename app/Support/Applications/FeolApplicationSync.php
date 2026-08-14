@@ -92,6 +92,12 @@ class FeolApplicationSync
                 }
             }
 
+            // Financial approval is application data, not integration metadata.
+            // Keep one canonical value available to every Application presenter/report.
+            if (array_key_exists('offer_amount', $data) && $data['offer_amount'] !== null) {
+                data_set($payload, 'review.approved_amount', $data['offer_amount']);
+            }
+
             $application->forceFill([
                 'status' => $status?->value ?? $application->status,
                 'payload' => $payload,

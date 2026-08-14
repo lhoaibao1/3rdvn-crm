@@ -58,7 +58,7 @@ class ApplicationsTable
             ->recordUrl(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record]))
             ->searchable(false)
             ->striped()
-            ->defaultSort($projectSlug === 'fe-deeplink' ? 'id' : 'created_at', 'desc')
+            ->defaultSort($projectSlug === 'fe-deeplink' ? 'updated_at' : 'created_at', 'desc')
             ->columns(TableColumnPreferences::apply($columnTable, [
                 TextColumn::make('application_code')
                     ->label('Mã hồ sơ')
@@ -375,29 +375,10 @@ class ApplicationsTable
                 ->label('Disbursed Amt')
                 ->money('VND', locale: 'vi')
                 ->placeholder('-'),
-            TextColumn::make('payload.fields.topup_amount')
-                ->label('Topup Amt')
-                ->money('VND', locale: 'vi')
-                ->placeholder('-'),
-            TextColumn::make('payload.fields.insurance_amount')
-                ->label('Insurance Amt')
-                ->money('VND', locale: 'vi')
-                ->placeholder('-'),
-            TextColumn::make('payload.fields.fee_amount')
-                ->label('Fee Amt')
-                ->money('VND', locale: 'vi')
-                ->placeholder('-'),
             TextColumn::make('fe_disbursed_at')
                 ->label('Disbursed Date')
                 ->state(fn (Application $record): mixed => ApplicationFinancialData::disbursedAt($record))
                 ->date('d/m/Y')
-                ->placeholder('-'),
-            TextColumn::make('note')
-                ->label('Ghi chú')
-                ->limit(60)
-                ->placeholder('-'),
-            TextColumn::make('payload.fields.pic')
-                ->label('PIC')
                 ->placeholder('-'),
             TextColumn::make('feolIntegration.last_synced_at')
                 ->label('Thời gian cập nhật')
@@ -440,7 +421,7 @@ class ApplicationsTable
                 ->schema([
                     TextInput::make('value')
                         ->label('Đối tác')
-                        ->default('SaigonBPO')
+                        ->default('3RDVN Fintech')
                         ->disabled(),
                 ]),
             Filter::make('updated_period')

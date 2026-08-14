@@ -20,7 +20,9 @@ class ProcessTimeline
 
         $rows = $collection->map(function (object $log, int $index) use ($collection, $titleResolver, $bodyResolver, $toneResolver): string {
             $actor = $log->actor ?? null;
-            $actorName = (string) ($actor?->name ?: 'Hệ thống');
+            $isApiActivity = str_starts_with((string) ($log->action ?? ''), 'feol_')
+                || str_contains(mb_strtolower((string) ($log->user_agent ?? '')), 'feol bridge');
+            $actorName = (string) ($actor?->name ?: ($isApiActivity ? 'API Đồng bộ FEOL' : 'Hệ thống'));
             $actorCode = (string) ($actor?->uid ?: ($actor?->employee_code ?: $actor?->email ?: ''));
             $title = trim((string) $titleResolver($log)) ?: '-';
             $body = trim(strip_tags((string) $bodyResolver($log)));
