@@ -58,8 +58,7 @@ class LotteFinanceApplicationForm
                         ->searchable()->preload()->required(AdminWorkflowOverride::required()),
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
                     DatePicker::make('payload.fields.disbursed_at')
-                        ->label('Ngày giải ngân')
-                        ->native(false),
+                        ->label('Ngày giải ngân'),
                     TextInput::make('status')
                         ->label('Trạng thái')
                         ->formatStateUsing(fn (?string $state): string => LotteFinanceWorkflow::statusLabel($state))

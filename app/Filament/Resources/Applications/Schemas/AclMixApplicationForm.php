@@ -107,7 +107,6 @@ class AclMixApplicationForm
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
                     DatePicker::make('payload.fields.disbursed_at')
                         ->label('Ngày giải ngân')
-                        ->native(false)
                         ->disabled(fn (): bool => ! (auth()->user()?->hasRole('Admin') ?? false))
                         ->dehydrated(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
                     TextInput::make('status')->label('Trạng thái')->formatStateUsing(fn (?string $state): string => AclMixWorkflow::statusLabel($state))->disabled()->dehydrated(false),
