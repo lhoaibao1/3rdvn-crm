@@ -6,6 +6,7 @@ use App\Filament\Resources\Applications\ApplicationResource;
 use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
+use App\Support\Applications\ApplicationFinancialData;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Filament\AclMixDecisionAction;
 use App\Support\Filament\AclMixOtpAction;
@@ -54,6 +55,11 @@ class ApplicationsTable
                     ->searchable()
                     ->weight('bold')
                     ->color('gray'),
+                TextColumn::make('phone')
+                    ->label('SĐT')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->label('Trạng thái')
                     ->badge()
@@ -70,9 +76,15 @@ class ApplicationsTable
                     })
                     ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
                     ->sortable(),
+                TextColumn::make('disbursed_at')
+                    ->label('Ngày giải ngân')
+                    ->state(fn (Application $record): mixed => ApplicationFinancialData::disbursedAt($record))
+                    ->dateTime('d/m/Y')
+                    ->placeholder('-'),
                 ...match ($projectSlug) {
                     'acl-mix' => self::aclMixSummaryColumns(),
                     'lotte-finance' => self::lotteFinanceDataColumns(),
+                    'fe-deeplink' => self::feDeeplinkColumns(),
                     default => [],
                 },
                 TextColumn::make('assignedSale.name')
@@ -214,7 +226,7 @@ class ApplicationsTable
                     ->action(fn () => response()->streamDownload(function () use ($resourceClass): void {
                         $out = fopen('php://output', 'w');
                         fwrite($out, 'ï»¿');
-                        fputcsv($out, ['Mã hồ sơ', 'Khách hàng', 'SĐT', 'CCCD/CMND', 'Trạng thái', 'NVKD', 'Team', 'Team Leader', 'AM', 'ZD', 'Ngày tạo']);
+                        fputcsv($out, ['App ID', 'Khách hàng', 'SĐT', 'Trạng thái', 'Ngày giải ngân', 'Sản phẩm', 'Số tiền duyệt', 'Tạo bởi', 'Team', 'Team Leader', 'AM', 'ZD', 'Ngày tạo']);
 
                         $resourceClass::getEloquentQuery()
                             ->with(['assignedSale', 'team', 'teamLeader', 'am', 'zd'])
@@ -225,9 +237,11 @@ class ApplicationsTable
                                         $application->application_code,
                                         $application->applicant_name,
                                         $application->phone,
-                                        $application->identity_number,
                                         self::statusLabel($application->status),
-                                        $application->assignedSale?->name,
+                                        ApplicationFinancialData::disbursedAt($application)?->format('d/m/Y'),
+                                        ApplicationFinancialData::product($application),
+                                        ApplicationFinancialData::approvedAmount($application),
+                                        $application->createdBy?->name,
                                         $application->team?->name,
                                         $application->teamLeader?->name,
                                         $application->am?->name,
@@ -245,6 +259,23 @@ class ApplicationsTable
                 ])
                     ->visible(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
             ]);
+    }
+
+    /** @return array<int, TextColumn> */
+    private static function feDeeplinkColumns(): array
+    {
+        return [
+            TextColumn::make('fe_product')
+                ->label('Sản phẩm')
+                ->state(fn (Application $record): mixed => ApplicationFinancialData::product($record))
+                ->badge()
+                ->placeholder('-'),
+            TextColumn::make('fe_approved_amount')
+                ->label('Số tiền duyệt')
+                ->state(fn (Application $record): mixed => ApplicationFinancialData::approvedAmount($record))
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+        ];
     }
 
     /** @return array<int, TextColumn> */

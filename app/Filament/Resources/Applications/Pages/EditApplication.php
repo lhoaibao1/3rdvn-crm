@@ -6,6 +6,7 @@ use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\Applications\Schemas\AclMixApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationForm;
 use App\Filament\Resources\Applications\Schemas\LotteFinanceApplicationForm;
+use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationForm;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Applications\LotteFinanceWorkflow;
@@ -83,6 +84,7 @@ class EditApplication extends EditRecord
         return match ($this->record->salesProject?->slug) {
             'acl-mix' => AclMixApplicationForm::normalizeDataForSave($this->record, $data),
             'lotte-finance' => LotteFinanceApplicationForm::normalizeDataForSave($this->record, $data),
+            'fe-deeplink' => FeDeeplinkApplicationForm::normalizeDataForSave($this->record, $data),
             default => ApplicationForm::normalizeDataForSave($this->record, $data),
         };
     }

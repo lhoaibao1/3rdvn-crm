@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Applications\Schemas;
 use App\Models\Application;
 use App\Models\RecordChangeLog;
 use App\Support\Applications\AclMixWorkflow;
+use App\Support\Applications\ApplicationFinancialData;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Filament\ApplicationAuditLog;
 use App\Support\Filament\DocumentPreview;
@@ -162,6 +163,23 @@ class ApplicationInfolist
                                         ->label('Ngày tạo')
                                         ->dateTime('H:i d/m/Y')
                                         ->placeholder('-'),
+                                    TextEntry::make('disbursed_at')
+                                        ->label('Ngày giải ngân')
+                                        ->state(fn (Application $record): mixed => ApplicationFinancialData::disbursedAt($record))
+                                        ->dateTime('d/m/Y')
+                                        ->placeholder('-'),
+                                    TextEntry::make('fe_product')
+                                        ->label('Sản phẩm')
+                                        ->state(fn (Application $record): mixed => ApplicationFinancialData::product($record))
+                                        ->badge()
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('fe_approved_amount')
+                                        ->label('Số tiền duyệt')
+                                        ->state(fn (Application $record): mixed => ApplicationFinancialData::approvedAmount($record))
+                                        ->money('VND', locale: 'vi')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
                                     TextEntry::make('updated_at')
                                         ->label('Cập nhật')
                                         ->dateTime('H:i d/m/Y')

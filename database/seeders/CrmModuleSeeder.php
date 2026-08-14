@@ -193,15 +193,13 @@ Lỗi"],
                 'is_active' => true,
             ]);
 
-            if (blank($feDeeplink->lead_form_schema)) {
-                $feDeeplink->lead_form_schema = [
-                    ['field_key' => 'customer_name', 'label' => 'Họ tên khách hàng', 'type' => 'text', 'required' => true],
-                    ['field_key' => 'phone', 'label' => 'Số điện thoại', 'type' => 'phone', 'required' => true],
-                    ['field_key' => 'identity_number', 'label' => 'CCCD/CMND', 'type' => 'text', 'required' => false],
-                    ['field_key' => 'approved_amount', 'label' => 'Số tiền phê duyệt', 'type' => 'number', 'required' => false],
-                    ['field_key' => 'completed_at', 'label' => 'Ngày hoàn thành', 'type' => 'date', 'required' => false],
-                ];
-            }
+            $feDeeplink->lead_form_schema = [
+                ['field_key' => 'customer_name', 'label' => 'Họ tên', 'type' => 'text', 'required' => true],
+                ['field_key' => 'phone', 'label' => 'SĐT', 'type' => 'phone', 'required' => true],
+                ['field_key' => 'disbursed_at', 'label' => 'Ngày giải ngân', 'type' => 'date', 'required' => true],
+                ['field_key' => 'product', 'label' => 'Sản phẩm', 'type' => 'select', 'required' => true, 'options' => "NTB\nXsell\nTopup"],
+                ['field_key' => 'approved_amount', 'label' => 'Số tiền duyệt', 'type' => 'number', 'required' => true],
+            ];
 
             if (blank($feDeeplink->module_form_schema)) {
                 $feDeeplink->module_form_schema = [
