@@ -93,8 +93,9 @@ class FeDeeplinkApplicationForm
                         Toggle::make('payload.fields.customer_consent')
                             ->label('Tôi đồng ý cung cấp dữ liệu cá nhân đầy đủ, chính xác và cho phép chuyển dữ liệu phục vụ thẩm định, xét duyệt hồ sơ cấp tín dụng.')
                             ->accepted()
+                            ->required()
                             ->inline(false)
-                            ->hiddenOn('create')
+                            ->visibleOn('create')
                             ->columnSpanFull(),
                         Hidden::make('status')
                             ->default(FeDeeplinkStatus::PENDING_SUBMISSION->value)

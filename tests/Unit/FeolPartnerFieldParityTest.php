@@ -40,6 +40,8 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringContainsString("TextColumn::make('fe_customer_name')", $table);
         self::assertStringContainsString("TextColumn::make('fe_customer_phone')", $table);
         self::assertStringContainsString("->hiddenOn('create')", $form);
+        self::assertStringContainsString("Toggle::make('payload.fields.customer_consent')", $form);
+        self::assertStringContainsString("->accepted()\n                            ->required()", $form);
         self::assertStringNotContainsString('name="referral_code"', $landing);
         self::assertStringContainsString("data_get(auth()->user()->sales_codes, 'fe-deeplink')", $form);
 
