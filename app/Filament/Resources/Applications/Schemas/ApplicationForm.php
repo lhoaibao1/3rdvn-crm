@@ -78,8 +78,7 @@ class ApplicationForm
                         ->seconds(false)
                         ->required(AdminWorkflowOverride::required()),
                     DatePicker::make('payload.fields.disbursed_at')
-                        ->label('Ngày giải ngân')
-                        ->native(false),
+                        ->label('Ngày giải ngân'),
                     DateTimePicker::make('updated_at')
                         ->label('Ngày cập nhật')
                         ->seconds(false)

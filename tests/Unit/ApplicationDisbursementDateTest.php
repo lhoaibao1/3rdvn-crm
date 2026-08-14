@@ -48,6 +48,7 @@ class ApplicationDisbursementDateTest extends TestCase
             $source = file_get_contents($root.$form);
             self::assertStringContainsString("DatePicker::make('payload.fields.disbursed_at')", $source, $form);
             self::assertStringContainsString("->label('Ngày giải ngân')", $source, $form);
+            self::assertStringNotContainsString("DatePicker::make('payload.fields.disbursed_at')\n                        ->label('Ngày giải ngân')\n                        ->native(false)", $source, $form);
         }
     }
 }

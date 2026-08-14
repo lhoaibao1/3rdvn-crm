@@ -52,7 +52,6 @@ class FeDeeplinkApplicationForm
                             ->required(),
                         DatePicker::make('payload.fields.disbursed_at')
                             ->label('Ngày giải ngân')
-                            ->native(false)
                             ->required(),
                         NativeSelect::make('payload.fields.product')
                             ->label('Sản phẩm')
