@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\FeDeeplinkApplications\Schemas;
 
+use App\Enums\FeDeeplinkStatus;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Models\User;
@@ -53,6 +54,12 @@ class FeDeeplinkApplicationForm
                         DatePicker::make('payload.fields.disbursed_at')
                             ->label('Ngày giải ngân')
                             ->required(),
+                        NativeSelect::make('status')
+                            ->label('Trạng thái')
+                            ->options(FeDeeplinkStatus::options())
+                            ->default(FeDeeplinkStatus::END->value)
+                            ->required()
+                            ->native(false),
                         NativeSelect::make('payload.fields.product')
                             ->label('Sản phẩm')
                             ->options([
@@ -88,7 +95,7 @@ class FeDeeplinkApplicationForm
         $payload = array_replace_recursive($record->payload ?? [], $data['payload'] ?? []);
         $data['payload'] = self::normalizePayload($payload);
         $data['sales_project_id'] = $record->sales_project_id;
-        $data['status'] = 'approved';
+        $data['status'] = FeDeeplinkStatus::from((string) ($data['status'] ?? $record->status))->value;
         $data['assigned_sale_id'] = $data['created_by_id'] ?? $record->assigned_sale_id;
         $data = array_replace($data, SalesLineSnapshot::hierarchyForUserId($data['created_by_id'] ?? $record->created_by_id));
 

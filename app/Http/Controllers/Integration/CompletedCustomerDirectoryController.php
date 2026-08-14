@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Integration;
 
+use App\Enums\FeDeeplinkStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\SalesProject;
@@ -25,7 +26,7 @@ class CompletedCustomerDirectoryController extends Controller
             ->where(function ($query): void {
                 $query->whereIn('status', [AclMixWorkflow::COMPLETED, LotteFinanceWorkflow::DISBURSED])
                     ->orWhere(function ($feQuery): void {
-                        $feQuery->where('status', 'approved')
+                        $feQuery->where('status', FeDeeplinkStatus::END->value)
                             ->where(function ($dateQuery): void {
                                 $dateQuery->whereNotNull('payload->fields->disbursed_at')
                                     ->orWhereNotNull('payload->fields->completed_at');
