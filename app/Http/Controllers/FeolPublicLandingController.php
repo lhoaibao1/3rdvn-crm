@@ -169,14 +169,13 @@ class FeolPublicLandingController extends Controller
             : null;
 
         return response()->json([
-            'state' => $deeplink ? 'eligible' : ($isTerminal ? 'completed' : (filled($integration->last_error) ? 'error' : 'waiting')),
+            'state' => $deeplink ? 'eligible' : ($isTerminal ? 'completed' : 'waiting'),
             'status' => $status ?: null,
             'status_label' => $status ? FeDeeplinkStatus::labelFor($status) : null,
             'redirect_url' => $deeplink,
             'message' => match (true) {
                 filled($deeplink) => 'Bạn đủ điều kiện. Chúng tôi sẽ chuyển bạn đến app FEOL.',
                 $isTerminal => 'Rất tiếc bạn chưa đủ điều kiện :(',
-                filled($integration->last_error) => 'Hệ thống đang kiểm tra lại kết quả. Vui lòng chờ trong giây lát.',
                 default => 'Đang kiểm tra điều kiện hồ sơ với FEOL...',
             },
         ]);

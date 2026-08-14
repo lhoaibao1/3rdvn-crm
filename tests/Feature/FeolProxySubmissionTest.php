@@ -348,7 +348,8 @@ class FeolProxySubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Loading...')
             ->assertSee('trang-thai')
-            ->assertSee('Vui lòng chờ 5–10 giây');
+            ->assertSee('Vui lòng chờ 1–2 giây')
+            ->assertSee('bằng Deeplink');
 
         $application->feolIntegration()->update([
             'sub_status' => 'eligible',
@@ -377,6 +378,22 @@ class FeolProxySubmissionTest extends TestCase
             ->assertJsonPath('status', 'ineligible')
             ->assertJsonPath('redirect_url', null)
             ->assertJsonPath('message', 'Rất tiếc bạn chưa đủ điều kiện :(');
+    }
+
+    public function test_temporary_bridge_errors_stay_waiting_on_the_customer_page(): void
+    {
+        [$application, $token] = $this->application();
+        $application->feolIntegration()->update([
+            'last_error' => 'Node-RED: Không tìm thấy khách hàng trên CRM đối tác sau khi lọc chiến dịch FE - Cash Loan - Deeplink.',
+            'sub_status' => null,
+            'deeplink_url' => null,
+        ]);
+
+        $this->getJson(route('feol.landing.status', ['token' => $token]))
+            ->assertOk()
+            ->assertJsonPath('state', 'waiting')
+            ->assertJsonPath('redirect_url', null)
+            ->assertJsonPath('message', 'Đang kiểm tra điều kiện hồ sơ với FEOL...');
     }
 
     public function test_partner_sync_never_overwrites_internal_employee_or_manager_chain(): void
