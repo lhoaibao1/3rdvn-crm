@@ -8,10 +8,10 @@ use App\Models\Application;
 use App\Support\Applications\FeolConsent;
 use App\Support\SalesLineSnapshot;
 use Carbon\CarbonImmutable;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
@@ -106,11 +106,10 @@ class FeDeeplinkApplicationForm
                         Hidden::make('created_at')
                             ->default(now())
                             ->required(),
-                        Toggle::make('payload.fields.customer_consent')
+                        Checkbox::make('payload.fields.customer_consent')
                             ->label(FeolConsent::TEXT)
                             ->accepted()
                             ->required()
-                            ->inline(false)
                             ->columnSpanFull(),
                         Hidden::make('status')
                             ->default(FeDeeplinkStatus::PENDING_SUBMISSION->value)
