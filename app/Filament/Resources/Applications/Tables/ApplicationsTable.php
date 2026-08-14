@@ -262,7 +262,7 @@ class ApplicationsTable
                     ->color('gray')
                     ->outlined()
                     ->actionJs($publicRegistrationUrl
-                        ? 'navigator.clipboard.writeText('.json_encode($publicRegistrationUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).').then(() => new FilamentNotification().title(\'Đã sao chép link đăng ký\').success().send())'
+                        ? "navigator.clipboard.writeText('{$publicRegistrationUrl}').then(() => new FilamentNotification().title('Đã sao chép link đăng ký').success().send())"
                         : 'new FilamentNotification().title(\'Tài khoản chưa có mã bán hàng FE Deeplink hợp lệ\').warning().send()')
                     ->visible($projectSlug === 'fe-deeplink'),
                 Action::make('exportApplications')
