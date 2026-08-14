@@ -36,7 +36,8 @@ class FeolPartnerFieldParityTest extends TestCase
 
         self::assertStringContainsString('Thông tin đăng ký', $form);
         self::assertStringContainsString('applications.fe-deeplink.partner-v1', $resource);
-        self::assertStringContainsString("? 'Thêm KH' : 'Tạo hồ sơ'", $table);
+        self::assertStringContainsString("? 'Tạo khách hàng' : 'Tạo hồ sơ'", $table);
+        self::assertStringContainsString("->label('Copy link')", $table);
         self::assertStringContainsString("TextColumn::make('fe_customer_name')", $table);
         self::assertStringContainsString("TextColumn::make('fe_customer_phone')", $table);
         self::assertStringContainsString("Toggle::make('payload.fields.customer_consent')", $form);
