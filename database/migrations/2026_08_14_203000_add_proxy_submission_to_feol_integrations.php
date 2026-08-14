@@ -27,11 +27,14 @@ return new class extends Migration {
             ->whereNull('public_token')
             ->orderBy('id')
             ->eachById(function (object $integration): void {
+                $publicToken = Str::random(48);
+
                 DB::table('feol_application_integrations')
                     ->where('id', $integration->id)
                     ->update([
-                        'public_token' => Str::random(48),
+                        'public_token' => $publicToken,
                         'partner_request_id' => 'FEDL-'.$integration->application_id.'-'.Str::upper(Str::random(12)),
+                        'b1_url' => rtrim((string) config('app.url'), '/').'/fe-deeplink/b1/'.$publicToken,
                     ]);
             });
     }
