@@ -83,10 +83,14 @@ class ApplicationResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $tableKey = static::projectSlug() === 'fe-deeplink'
+            ? 'applications.fe-deeplink.partner-v1'
+            : 'applications.'.static::projectSlug();
+
         return ApplicationsTable::configure(
             $table,
             static::projectSlug(),
-            'applications.'.static::projectSlug(),
+            $tableKey,
             static::projectSlug(),
             static::class,
         );

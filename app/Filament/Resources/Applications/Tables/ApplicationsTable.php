@@ -240,7 +240,7 @@ class ApplicationsTable
             ])
             ->toolbarActions([
                 Action::make('createApplication')
-                    ->label('Tạo hồ sơ')
+                    ->label($projectSlug === 'fe-deeplink' ? 'Thêm KH' : 'Tạo hồ sơ')
                     ->icon(Heroicon::OutlinedDocumentPlus)
                     ->color('primary')
                     ->url(fn (): string => $resourceClass::getUrl('create'))
