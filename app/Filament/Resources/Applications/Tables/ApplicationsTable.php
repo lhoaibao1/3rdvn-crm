@@ -139,7 +139,7 @@ class ApplicationsTable
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->visible($projectSlug !== 'fe-deeplink'),
             ]))
-            ->filters([
+            ->filters($projectSlug === 'fe-deeplink' ? self::feDeeplinkFilters() : [
                 Filter::make('quick_lookup')
                     ->label('Tìm kiếm')
                     ->schema([
@@ -195,7 +195,7 @@ class ApplicationsTable
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when($data['date'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '<=', $date))),
-            ], layout: FiltersLayout::Modal)
+            ], layout: $projectSlug === 'fe-deeplink' ? FiltersLayout::AboveContent : FiltersLayout::Modal)
             ->filtersFormColumns(3)
             ->filtersFormWidth('4xl')
             ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
@@ -249,6 +249,9 @@ class ApplicationsTable
                     ->dropdownPlacement('bottom-end')
                     ->icon(Heroicon::EllipsisVertical),
             ])
+            ->recordActionsColumnLabel($projectSlug === 'fe-deeplink'
+                ? new \Illuminate\Support\HtmlString('&nbsp;')
+                : 'Hành động')
             ->toolbarActions([
                 Action::make('createApplication')
                     ->label($projectSlug === 'fe-deeplink' ? 'Tạo khách hàng' : 'Tạo hồ sơ')
@@ -397,6 +400,87 @@ class ApplicationsTable
                 ->label('Thời gian cập nhật')
                 ->dateTime('d/m/Y H:i:s')
                 ->placeholder('-'),
+        ];
+    }
+
+    /** @return array<int, Filter|SelectFilter> */
+    private static function feDeeplinkFilters(): array
+    {
+        return [
+            Filter::make('quick_lookup')
+                ->label('Tìm nhanh')
+                ->schema([
+                    TextInput::make('keyword')
+                        ->label('Tìm nhanh')
+                        ->placeholder('LeadID, AppID, Họ tên KH, SĐT'),
+                ])
+                ->query(fn (Builder $query, array $data): Builder => $query
+                    ->when($data['keyword'] ?? null, fn (Builder $query, string $keyword): Builder => $query
+                        ->where(function (Builder $query) use ($keyword): void {
+                            $query
+                                ->where('applicant_name', 'ilike', "%{$keyword}%")
+                                ->orWhere('phone', 'ilike', "%{$keyword}%")
+                                ->orWhereHas('feolIntegration', fn (Builder $query): Builder => $query
+                                    ->where('partner_lead_id', 'ilike', "%{$keyword}%")
+                                    ->orWhere('partner_app_id', 'ilike', "%{$keyword}%"));
+                        }))),
+            Filter::make('campaign')
+                ->label('Chiến dịch')
+                ->schema([
+                    TextInput::make('value')
+                        ->label('Chiến dịch')
+                        ->default((string) config('services.feol_bridge.partner_campaign_name', 'FE - Cash Loan - Deeplink'))
+                        ->disabled(),
+                ]),
+            Filter::make('updated_period')
+                ->label('Thời gian cập nhật')
+                ->schema([
+                    DatePicker::make('from')->label('Từ ngày')->displayFormat('d/m/Y')->native(false),
+                    DatePicker::make('until')->label('Đến ngày')->displayFormat('d/m/Y')->native(false),
+                ])
+                ->columns(2)
+                ->query(fn (Builder $query, array $data): Builder => $query
+                    ->when($data['from'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('updated_at', '>=', $date))
+                    ->when($data['until'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('updated_at', '<=', $date))),
+            SelectFilter::make('team_id')
+                ->label('Nhóm')
+                ->relationship('team', 'name')
+                ->searchable()
+                ->preload()
+                ->native(false),
+            SelectFilter::make('created_by_id')
+                ->label('Nhân viên')
+                ->relationship('createdBy', 'name')
+                ->searchable()
+                ->preload()
+                ->native(false),
+            SelectFilter::make('main_status')
+                ->label('Trạng thái chính')
+                ->options(fn (): array => \App\Models\FeolApplicationIntegration::query()
+                    ->whereNotNull('main_status')
+                    ->distinct()
+                    ->orderBy('main_status')
+                    ->pluck('main_status', 'main_status')
+                    ->all())
+                ->query(fn (Builder $query, array $data): Builder => $query
+                    ->when($data['value'] ?? null, fn (Builder $query, string $status): Builder => $query
+                        ->whereHas('feolIntegration', fn (Builder $query): Builder => $query->where('main_status', $status))))
+                ->searchable()
+                ->native(false),
+            SelectFilter::make('status')
+                ->label('Trạng thái phụ')
+                ->options(FeDeeplinkStatus::options())
+                ->native(false),
+            Filter::make('created_period')
+                ->label('Thời gian tạo')
+                ->schema([
+                    DatePicker::make('from')->label('Từ ngày')->displayFormat('d/m/Y')->native(false),
+                    DatePicker::make('until')->label('Đến ngày')->displayFormat('d/m/Y')->native(false),
+                ])
+                ->columns(2)
+                ->query(fn (Builder $query, array $data): Builder => $query
+                    ->when($data['from'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '>=', $date))
+                    ->when($data['until'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '<=', $date))),
         ];
     }
 

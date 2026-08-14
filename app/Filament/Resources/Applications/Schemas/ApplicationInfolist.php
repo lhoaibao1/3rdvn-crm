@@ -208,13 +208,6 @@ class ApplicationInfolist
                                         ->formatStateUsing(fn (mixed $state): string => $state?->label() ?? '-')
                                         ->placeholder('-')
                                         ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
-                                    TextEntry::make('feolIntegration.b1_url')
-                                        ->label('Landing Page B1')
-                                        ->copyable()
-                                        ->copyMessage('Đã sao chép Landing Page B1')
-                                        ->placeholder('Chờ đối tác tạo B1')
-                                        ->columnSpan(3)
-                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
                                     TextEntry::make('feolIntegration.deeplink_url')
                                         ->label('Deeplink')
                                         ->copyable()
@@ -273,6 +266,7 @@ class ApplicationInfolist
                                 ]),
                             Section::make('Thông tin hồ sơ')
                                 ->columnSpanFull()
+                                ->visible(fn (Application $record): bool => $record->salesProject?->slug !== 'fe-deeplink')
                                 ->schema([
                                     Section::make('Thông tin khách hàng')
                                         ->columns(3)
@@ -433,13 +427,28 @@ class ApplicationInfolist
                         ]),
                     Tab::make('Xử lý dự án')
                         ->icon(Heroicon::Briefcase)
-                        ->visible(fn (Application $record): bool => ! in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
+                        ->visible(fn (Application $record): bool => ! in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance', 'fe-deeplink'], true))
                         ->columns(12)
                         ->schema([
                             Section::make('Dữ liệu dự án')
                                 ->columnSpanFull()
                                 ->columns(2)
                                 ->schema(fn (Application $record): array => LeadFormFieldFactory::entriesForProject($record->sales_project_id, 'module', 'payload.module_fields')),
+                        ]),
+                    Tab::make('Lịch sử Node-RED')
+                        ->icon(Heroicon::OutlinedArrowPath)
+                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink')
+                        ->schema([
+                            Section::make('Quá trình đồng bộ CRM đối tác')
+                                ->description('Hiển thị từng lần Node-RED cập nhật trạng thái hoặc trả lỗi về CRM.')
+                                ->columnSpanFull()
+                                ->schema([
+                                    TextEntry::make('feol_bridge_history')
+                                        ->hiddenLabel()
+                                        ->state(fn (Application $record): HtmlString => self::renderFeolBridgeTimeline($record))
+                                        ->html()
+                                        ->columnSpanFull(),
+                                ]),
                         ]),
                     Tab::make('Lịch sử xử lý')
                         ->icon(Heroicon::Clock)
@@ -508,6 +517,40 @@ class ApplicationInfolist
             fn (RecordChangeLog $log): string => self::historyBody($log, $record),
             fn (RecordChangeLog $log): array => self::historyTone($log),
         );
+    }
+
+    private static function renderFeolBridgeTimeline(Application $record): HtmlString
+    {
+        $logs = $record->changeLogs()
+            ->whereIn('action', ['feol_synced', 'feol_sync_failed'])
+            ->latest()
+            ->limit(100)
+            ->get();
+
+        return ProcessTimeline::render(
+            $logs,
+            fn (RecordChangeLog $log): string => $log->action === 'feol_sync_failed'
+                ? 'Node-RED báo lỗi đồng bộ'
+                : 'Node-RED cập nhật CRM đối tác',
+            fn (RecordChangeLog $log): string => self::feolBridgeHistoryBody($log),
+            fn (RecordChangeLog $log): array => $log->action === 'feol_sync_failed'
+                ? ['label' => 'Lỗi', 'color' => '#b91c1c', 'bg' => '#fef2f2', 'soft' => '#fee2e2', 'border' => '#fecaca']
+                : ['label' => 'Đã đồng bộ', 'color' => '#047857', 'bg' => '#ecfdf5', 'soft' => '#d1fae5', 'border' => '#a7f3d0'],
+            'Chưa có lần đồng bộ Node-RED nào.',
+        );
+    }
+
+    private static function feolBridgeHistoryBody(RecordChangeLog $log): string
+    {
+        $changes = is_array($log->changes) ? $log->changes : [];
+
+        return collect([
+            filled(data_get($changes, 'partner_lead_id.new')) ? 'Lead ID: '.data_get($changes, 'partner_lead_id.new') : null,
+            filled(data_get($changes, 'main_status.new')) ? 'Trạng thái chính: '.data_get($changes, 'main_status.new') : null,
+            filled(data_get($changes, 'sub_status.new')) ? 'Trạng thái phụ: '.FeDeeplinkStatus::labelFor((string) data_get($changes, 'sub_status.new')) : null,
+            filled(data_get($changes, 'last_error.new')) ? 'Lỗi: '.data_get($changes, 'last_error.new') : null,
+            filled(data_get($changes, 'last_synced_at.new')) ? 'Thời điểm quét: '.data_get($changes, 'last_synced_at.new') : null,
+        ])->filter()->implode("\n") ?: 'Node-RED đã kiểm tra hồ sơ, không có dữ liệu thay đổi.';
     }
 
     private static function renderAuditLog(Application $record): HtmlString

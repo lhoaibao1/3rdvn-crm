@@ -323,6 +323,26 @@ class FeolProxySubmissionTest extends TestCase
         $this->assertSame('Nhân viên đối tác', data_get($application->feolIntegration->raw_payload, 'username'));
     }
 
+    public function test_partner_status_transition_writes_bridge_history_for_the_view(): void
+    {
+        [$application] = $this->application();
+
+        app(FeolApplicationSync::class)->sync($application, [
+            'partner_lead_id' => '504834',
+            'main_status' => 'Screening',
+            'sub_status' => 'Eligible',
+        ]);
+
+        $application->refresh();
+
+        $this->assertSame('eligible', $application->status);
+        $this->assertDatabaseHas('record_change_logs', [
+            'record_type' => Application::class,
+            'record_id' => $application->getKey(),
+            'action' => 'feol_synced',
+        ]);
+    }
+
     private function application(): array
     {
         $user = User::factory()->create([
