@@ -24,8 +24,8 @@ class FeDeeplinkApplicationForm
                 View::make('filament.feol.create-header')
                     ->columnSpanFull()
                     ->visibleOn('create'),
-                Section::make('Thông tin khởi tạo Landing Page B1')
-                    ->description('Sale nhập thông tin nhận diện ban đầu. Khách hàng sẽ bổ sung thông tin vay và xác nhận đồng ý trên Landing Page B1.')
+                Section::make('Thông tin đăng ký')
+                    ->description('Nhập đầy đủ thông tin theo biểu mẫu FE CREDIT. Hồ sơ được lưu CRM trước khi gửi đối tác.')
                     ->extraAttributes(['class' => 'feol-partner-form-card'])
                     ->columns(1)
                     ->schema([
@@ -50,25 +50,25 @@ class FeDeeplinkApplicationForm
                             ->label('Ngày tháng năm sinh')
                             ->displayFormat('d/m/Y')
                             ->native(false)
-                            ->hiddenOn('create'),
+                            ->required(),
                         TextInput::make('payload.fields.email')
                             ->label('Địa chỉ Email')
                             ->email()
                             ->maxLength(255)
-                            ->hiddenOn('create'),
+                            ->required(),
                         TextInput::make('payload.fields.loan_amount')
                             ->label('Số tiền vay')
                             ->numeric()
                             ->minValue(1000000)
                             ->prefix('₫')
-                            ->hiddenOn('create'),
+                            ->required(),
                         TextInput::make('payload.fields.loan_term_months')
                             ->label('Thời hạn vay (tháng)')
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(120)
                             ->suffix('tháng')
-                            ->hiddenOn('create'),
+                            ->required(),
                         TextInput::make('payload.fields.referral_code')
                             ->label('Mã giới thiệu')
                             ->default(fn (): ?string => auth()->user()
@@ -95,7 +95,6 @@ class FeDeeplinkApplicationForm
                             ->accepted()
                             ->required()
                             ->inline(false)
-                            ->visibleOn('create')
                             ->columnSpanFull(),
                         Hidden::make('status')
                             ->default(FeDeeplinkStatus::PENDING_SUBMISSION->value)
