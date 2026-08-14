@@ -10,6 +10,7 @@ use App\Support\AdminWorkflowOverride;
 use App\Support\Filament\LeadFormFieldFactory;
 use App\Support\SalesLineSnapshot;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -76,6 +77,9 @@ class ApplicationForm
                         ->label('Ngày tạo')
                         ->seconds(false)
                         ->required(AdminWorkflowOverride::required()),
+                    DatePicker::make('payload.fields.disbursed_at')
+                        ->label('Ngày giải ngân')
+                        ->native(false),
                     DateTimePicker::make('updated_at')
                         ->label('Ngày cập nhật')
                         ->seconds(false)
