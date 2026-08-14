@@ -77,6 +77,58 @@ class FeolProxySubmissionTest extends TestCase
         Queue::assertPushed(SubmitFeolApplicationToPartner::class, fn ($job): bool => $job->applicationId === $application->getKey());
     }
 
+    public function test_sales_code_registration_is_saved_then_automatically_sent_to_partner(): void
+    {
+        $key = '3MQSbZ3xuwbmSHpo';
+        $plain = '/landing?cam=fe-cashloan-deeplink&sale=SGBOCTV13765&rid=full-flow';
+
+        config()->set('queue.default', 'sync');
+        config()->set('services.feol_bridge.landing_encrypt_key', $key);
+        config()->set('services.feol_bridge.landing_campaign', 'fe-cashloan-deeplink');
+        config()->set('services.feol_bridge.landing_sale_code', 'SGBOCTV13765');
+        config()->set('services.feol_bridge.partner_landing_url', 'https://os.saigonbpo.vn/landing?data='.rawurlencode((string) openssl_encrypt($plain, 'AES-128-CBC', $key, 0, $key)));
+        config()->set('services.feol_bridge.partner_submit_url', 'https://partner.test/landingPageFE/createFEOL');
+
+        Http::fake([
+            'https://partner.test/*' => Http::response([
+                'code' => 200,
+                'message' => 'OK',
+                'data' => ['leadId' => 'PARTNER-LEAD-001'],
+            ]),
+        ]);
+
+        $user = User::factory()->create([
+            'employment_status' => User::STATUS_ACTIVE,
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
+        SalesProject::query()->create([
+            'name' => 'FE Deeplink',
+            'slug' => 'fe-deeplink',
+            'is_active' => true,
+        ]);
+
+        $response = $this->post(route('feol.registration.store', ['salesCode' => '26801']), [
+            'applicant_name' => 'Khach Hang Full Flow',
+            'phone' => '0901234567',
+            'identity_number' => '012345678901',
+            'date_of_birth' => '20/05/1995',
+            'email' => 'customer@example.com',
+            'loan_amount' => 50000000,
+            'loan_term_months' => 24,
+            'customer_consent' => '1',
+        ]);
+
+        $application = Application::query()->with('feolIntegration')->sole();
+
+        $response->assertRedirect(route('feol.landing.success', ['token' => $application->feolIntegration->public_token]));
+        $this->assertSame($user->getKey(), $application->created_by_id);
+        $this->assertSame(FeolSubmitState::SUBMITTED, $application->feolIntegration->submit_state);
+        $this->assertSame('PARTNER-LEAD-001', $application->feolIntegration->partner_lead_id);
+        $this->assertNotNull($application->feolIntegration->partner_submitted_at);
+        Http::assertSentCount(1);
+    }
+
     public function test_inactive_or_unknown_sales_code_cannot_open_public_registration(): void
     {
         User::factory()->create([
