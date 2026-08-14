@@ -239,11 +239,14 @@ class AdminPanelProvider extends PanelProvider
         border-bottom: 1px solid var(--crm-border);
     }
 
+    .fi-modal,
+    .fi-modal-close-overlay,
+    .fi-modal-window-ctn,
     .fi-modal-window,
     .fi-dropdown-panel,
     .fi-global-search-results-ctn,
     .fi-no-database {
-        z-index: 120 !important;
+        z-index: 1000 !important;
     }
 
 
@@ -1034,7 +1037,7 @@ class AdminPanelProvider extends PanelProvider
 
     .crm-feol-partner-table .fi-ta-filters-above-content-ctn {
         position: relative !important;
-        z-index: 8 !important;
+        z-index: 1 !important;
         width: 100% !important;
         margin: 0 0 12px !important;
         padding: 14px !important;
@@ -1064,6 +1067,21 @@ class AdminPanelProvider extends PanelProvider
         position: relative !important;
         z-index: 2 !important;
         clear: both !important;
+    }
+
+    .crm-feol-partner-table .fi-ta-content {
+        scrollbar-gutter: stable both-edges !important;
+    }
+
+    .crm-feol-partner-table .fi-ta-content::-webkit-scrollbar {
+        width: 10px !important;
+        height: 12px !important;
+    }
+
+    .crm-feol-partner-table .fi-ta-content::-webkit-scrollbar-thumb {
+        border: 2px solid #fff !important;
+        border-radius: 999px !important;
+        background: #94a3b8 !important;
     }
 
     .crm-users-table .fi-ta-filters-actions-ctn .fi-btn,

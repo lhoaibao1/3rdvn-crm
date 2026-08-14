@@ -79,7 +79,6 @@ class FeolApplicationSync
 
             $payload = $application->payload ?? [];
             foreach ([
-                'product' => 'product',
                 'offer_amount' => 'approved_amount',
                 'disbursed_amount' => 'disbursed_amount',
                 'topup_amount' => 'topup_amount',
@@ -89,6 +88,17 @@ class FeolApplicationSync
             ] as $source => $target) {
                 if (array_key_exists($source, $data) && $data[$source] !== null) {
                     data_set($payload, "fields.{$target}", $data[$source]);
+                }
+            }
+
+            if (array_key_exists('product', $data)) {
+                $product = collect(['NTB', 'Xsell', 'Topup'])
+                    ->first(fn (string $candidate): bool => strcasecmp($candidate, trim((string) ($data['product'] ?? ''))) === 0);
+
+                if ($product === null) {
+                    data_forget($payload, 'fields.product');
+                } else {
+                    data_set($payload, 'fields.product', $product);
                 }
             }
 

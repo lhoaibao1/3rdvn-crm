@@ -17,6 +17,7 @@ class TableColumnPreferenceController extends Controller
         'applications.acl-mix',
         'applications.cbp',
         'applications.lotte-finance',
+        'applications.fe-deeplink.partner-v1',
     ];
 
     public function store(Request $request): JsonResponse

@@ -44,6 +44,7 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringContainsString('applications.fe-deeplink.partner-v1', $resource);
         self::assertStringContainsString("? 'Tạo khách hàng' : 'Tạo hồ sơ'", $table);
         self::assertStringContainsString("->label('Copy link')", $table);
+        self::assertStringContainsString("->label('Copy Deeplink')", $table);
         self::assertStringContainsString("TextColumn::make('fe_customer_name')", $table);
         self::assertStringContainsString("TextColumn::make('fe_customer_phone')", $table);
         self::assertStringContainsString("Checkbox::make('payload.fields.customer_consent')", $form);
@@ -63,6 +64,7 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringContainsString("data_get(auth()->user()->sales_codes, 'fe-deeplink')", $form);
         self::assertStringNotContainsString("TextInput::make('payload.fields.salesman_code')", $form);
         self::assertStringNotContainsString("TextColumn::make('fe_action')", $table);
+        self::assertStringContainsString("collect(['NTB', 'Xsell', 'Topup'])", $sync);
 
         foreach (['fee_amount', 'note'] as $partnerField) {
             self::assertStringContainsString("'{$partnerField}'", $request);

@@ -219,6 +219,12 @@ class ApplicationsTable
                     ViewAction::make()
                         ->label('Xem')
                         ->url(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record])),
+                    Action::make('copyFeDeeplink')
+                        ->label('Copy Deeplink')
+                        ->icon(Heroicon::OutlinedClipboardDocument)
+                        ->visible(fn (Application $record): bool => $projectSlug === 'fe-deeplink'
+                            && filled($record->feolIntegration?->deeplink_url))
+                        ->actionJs(fn (Application $record): string => 'navigator.clipboard.writeText('.json_encode((string) $record->feolIntegration?->deeplink_url).').then(() => new FilamentNotification().title(\'Đã sao chép Deeplink\').success().send())'),
                     AclMixOtpAction::make(),
                     AclMixDecisionAction::make(),
                     LotteFinanceDecisionAction::make(),

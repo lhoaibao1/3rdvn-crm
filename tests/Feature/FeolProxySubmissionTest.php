@@ -431,6 +431,25 @@ class FeolProxySubmissionTest extends TestCase
         ]);
     }
 
+    public function test_partner_sync_clears_campaign_product_and_keeps_real_product(): void
+    {
+        [$application] = $this->application();
+
+        app(FeolApplicationSync::class)->sync($application, [
+            'sub_status' => 'Eligible',
+            'product' => 'CTV_FEC_DL',
+        ]);
+
+        $this->assertNull(data_get($application->fresh()->payload, 'fields.product'));
+
+        app(FeolApplicationSync::class)->sync($application->fresh(), [
+            'sub_status' => 'Start loan onboarding',
+            'product' => 'Xsell',
+        ]);
+
+        $this->assertSame('Xsell', data_get($application->fresh()->payload, 'fields.product'));
+    }
+
     private function application(): array
     {
         $user = User::factory()->create([
