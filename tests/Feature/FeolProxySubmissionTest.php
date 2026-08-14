@@ -359,7 +359,8 @@ class FeolProxySubmissionTest extends TestCase
             ->assertOk()
             ->assertJsonPath('state', 'eligible')
             ->assertJsonPath('status', 'eligible')
-            ->assertJsonPath('redirect_url', 'https://fecredit.example.test/onboarding/LEAD-001');
+            ->assertJsonPath('redirect_url', 'https://fecredit.example.test/onboarding/LEAD-001')
+            ->assertJsonPath('message', 'Bạn đủ điều kiện. Chúng tôi sẽ chuyển bạn đến app FEOL.');
     }
 
     public function test_terminal_ineligible_result_never_redirects_customer_to_deeplink(): void
@@ -374,7 +375,8 @@ class FeolProxySubmissionTest extends TestCase
             ->assertOk()
             ->assertJsonPath('state', 'completed')
             ->assertJsonPath('status', 'ineligible')
-            ->assertJsonPath('redirect_url', null);
+            ->assertJsonPath('redirect_url', null)
+            ->assertJsonPath('message', 'Rất tiếc bạn chưa đủ điều kiện :(');
     }
 
     public function test_partner_sync_never_overwrites_internal_employee_or_manager_chain(): void
