@@ -44,6 +44,7 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringContainsString("TextColumn::make('fe_customer_phone')", $table);
         self::assertStringContainsString("Checkbox::make('payload.fields.customer_consent')", $form);
         self::assertStringContainsString('class="consent-mark"', $landing);
+        self::assertStringContainsString('.consent{position:relative;display:flex;gap:10px;align-items:flex-start;margin:0;', $landing);
         self::assertStringContainsString("->accepted()\n                            ->required()", $form);
         foreach (['payload.fields.date_of_birth', 'payload.fields.email', 'payload.fields.loan_amount', 'payload.fields.loan_term_months'] as $requiredField) {
             self::assertStringContainsString("make('{$requiredField}')", $form);
