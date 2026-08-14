@@ -8,6 +8,7 @@ use App\Forms\Components\SearchableSelectFilter as SelectFilter;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Applications\ApplicationFinancialData;
+use App\Support\Applications\FeolSalesIdentity;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Applications\RequestFeolApplicationSync;
 use App\Support\Filament\AclMixDecisionAction;
@@ -38,6 +39,16 @@ class ApplicationsTable
 {
     public static function configure(Table $table, string $projectSlug = 'acl-mix', string $columnTable = 'applications.acl-mix', string $exportPrefix = 'acl-mix', string $resourceClass = ApplicationResource::class): Table
     {
+        $publicRegistrationUrl = null;
+
+        if ($projectSlug === 'fe-deeplink' && auth()->user()) {
+            try {
+                $publicRegistrationUrl = app(FeolSalesIdentity::class)->publicRegistrationUrl(auth()->user());
+            } catch (\Throwable) {
+                $publicRegistrationUrl = null;
+            }
+        }
+
         return $table
             ->extraAttributes(['class' => 'crm-users-table crm-applications-table', 'data-crm-column-table' => $columnTable], merge: true)
             ->recordAction(null)
@@ -240,11 +251,20 @@ class ApplicationsTable
             ])
             ->toolbarActions([
                 Action::make('createApplication')
-                    ->label($projectSlug === 'fe-deeplink' ? 'Thêm KH' : 'Tạo hồ sơ')
+                    ->label($projectSlug === 'fe-deeplink' ? 'Tạo khách hàng' : 'Tạo hồ sơ')
                     ->icon(Heroicon::OutlinedDocumentPlus)
                     ->color('primary')
                     ->url(fn (): string => $resourceClass::getUrl('create'))
                     ->visible(fn (): bool => $resourceClass::canCreate()),
+                Action::make('copyFeRegistrationLink')
+                    ->label('Copy link')
+                    ->icon(Heroicon::OutlinedClipboardDocument)
+                    ->color('gray')
+                    ->outlined()
+                    ->actionJs($publicRegistrationUrl
+                        ? 'navigator.clipboard.writeText('.json_encode($publicRegistrationUrl, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).').then(() => new FilamentNotification().title(\'Đã sao chép link đăng ký\').success().send())'
+                        : 'new FilamentNotification().title(\'Tài khoản chưa có mã bán hàng FE Deeplink hợp lệ\').warning().send()')
+                    ->visible($projectSlug === 'fe-deeplink'),
                 Action::make('exportApplications')
                     ->label('Xuất báo cáo')
                     ->icon(Heroicon::OutlinedArrowDownTray)

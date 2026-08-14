@@ -7,6 +7,8 @@ use App\Http\Requests\SubmitFeolLandingRequest;
 use App\Jobs\SubmitFeolApplicationToPartner;
 use App\Models\Application;
 use App\Models\FeolApplicationIntegration;
+use App\Support\Applications\CreateFeolPublicApplication;
+use App\Support\Applications\FeolSalesIdentity;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +25,47 @@ class FeolPublicLandingController extends Controller
             'application' => $integration->application,
             'integration' => $integration,
             'submitted' => $integration->submit_state === FeolSubmitState::SUBMITTED,
+            'referralCode' => data_get($integration->application->payload, 'fields.referral_code'),
+            'submitUrl' => route('feol.landing.store', ['token' => $integration->public_token]),
         ]);
+    }
+
+    public function showForSalesCode(string $salesCode, FeolSalesIdentity $identity): View
+    {
+        $identity->userForReferralCode($salesCode);
+
+        return view('feol.landing', [
+            'application' => null,
+            'integration' => null,
+            'submitted' => false,
+            'referralCode' => $salesCode,
+            'submitUrl' => route('feol.registration.store', ['salesCode' => $salesCode]),
+        ]);
+    }
+
+    public function storeForSalesCode(
+        SubmitFeolLandingRequest $request,
+        string $salesCode,
+        CreateFeolPublicApplication $creator,
+    ): JsonResponse|RedirectResponse {
+        $application = $creator->handle(
+            salesCode: $salesCode,
+            data: $request->validated(),
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+        );
+
+        $token = $application->feolIntegration->public_token;
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'application_id' => $application->getKey(),
+                'message' => 'CRM đã lưu hồ sơ. Dữ liệu đang được gửi sang FEOL.',
+            ], 202);
+        }
+
+        return redirect()->route('feol.landing.success', ['token' => $token]);
     }
 
     public function store(SubmitFeolLandingRequest $request, string $token): JsonResponse|RedirectResponse

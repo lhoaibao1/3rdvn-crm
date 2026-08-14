@@ -18,6 +18,77 @@ class FeolProxySubmissionTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_sales_code_link_opens_public_registration_without_login(): void
+    {
+        $user = User::factory()->create([
+            'employment_status' => User::STATUS_ACTIVE,
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
+
+        $response = $this->get(route('feol.registration.show', ['salesCode' => '26801']));
+
+        $response
+            ->assertOk()
+            ->assertSee('Đăng ký vay FE CREDIT')
+            ->assertSee('26801')
+            ->assertSee(route('feol.registration.store', ['salesCode' => '26801']), false);
+        $this->assertGuest();
+        $this->assertSame('26801', data_get($user->fresh()->sales_codes, 'fe-deeplink'));
+    }
+
+    public function test_sales_code_registration_creates_crm_application_and_queues_partner_submission(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create([
+            'employment_status' => User::STATUS_ACTIVE,
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
+        $project = SalesProject::query()->create([
+            'name' => 'FE Deeplink',
+            'slug' => 'fe-deeplink',
+            'is_active' => true,
+        ]);
+
+        $response = $this->post(route('feol.registration.store', ['salesCode' => '26801']), [
+            'applicant_name' => 'Nguyen Van Moi',
+            'phone' => '0901234567',
+            'identity_number' => '012345678901',
+            'date_of_birth' => '20/05/1995',
+            'email' => 'CUSTOMER@EXAMPLE.COM',
+            'loan_amount' => 50000000,
+            'loan_term_months' => 24,
+            'customer_consent' => '1',
+        ]);
+
+        $application = Application::query()->sole();
+        $integration = $application->feolIntegration;
+
+        $response->assertRedirect(route('feol.landing.success', ['token' => $integration->public_token]));
+        $this->assertSame($project->getKey(), $application->sales_project_id);
+        $this->assertSame($user->getKey(), $application->created_by_id);
+        $this->assertSame($user->getKey(), $application->assigned_sale_id);
+        $this->assertSame('Nguyen Van Moi', $application->applicant_name);
+        $this->assertSame('customer@example.com', data_get($application->payload, 'fields.email'));
+        $this->assertSame('26801', data_get($application->payload, 'fields.referral_code'));
+        $this->assertTrue((bool) data_get($application->payload, 'fields.customer_consent'));
+        $this->assertSame(FeolSubmitState::QUEUED, $integration->submit_state);
+        Queue::assertPushed(SubmitFeolApplicationToPartner::class, fn ($job): bool => $job->applicationId === $application->getKey());
+    }
+
+    public function test_inactive_or_unknown_sales_code_cannot_open_public_registration(): void
+    {
+        User::factory()->create([
+            'employment_status' => User::STATUS_DEACTIVE,
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
+
+        $this->get(route('feol.registration.show', ['salesCode' => '26801']))->assertNotFound();
+        $this->get(route('feol.registration.show', ['salesCode' => '99999']))->assertNotFound();
+    }
+
     public function test_public_form_saves_crm_before_queuing_partner_submission(): void
     {
         Queue::fake();

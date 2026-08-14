@@ -1,7 +1,12 @@
 <style>
     .fi-page:has(.feol-partner-form-card) .fi-page-content {
-        width: min(100%, 620px);
+        width: min(100%, 980px);
         margin-inline: auto;
+    }
+
+    .fi-page:has(.feol-partner-form-card) .crm-record-form-frame {
+        grid-template-columns: minmax(0, 1fr) !important;
+        width: 100%;
     }
 
     .feol-create-brand {
@@ -17,6 +22,8 @@
     }
 
     .feol-partner-form-card {
+        width: 100%;
+        min-width: 0;
         border: 1px solid #d9e1ec !important;
         border-radius: 8px !important;
         background: #fff !important;
@@ -25,6 +32,16 @@
 
     .feol-partner-form-card input {
         min-height: 40px;
+    }
+
+    @media (max-width: 767px) {
+        .fi-page:has(.feol-partner-form-card) .fi-page-content {
+            width: 100%;
+        }
+
+        .feol-create-brand img {
+            width: min(100%, 180px);
+        }
     }
 </style>
 

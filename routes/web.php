@@ -26,6 +26,15 @@ Route::prefix('fe-deeplink/b1')->middleware('throttle:30,1')->group(function ():
     Route::get('/{token}/hoan-tat', [FeolPublicLandingController::class, 'success'])->name('feol.landing.success');
 });
 
+Route::prefix('application/fe-deeplink/dang-ky')->middleware('throttle:10,1')->group(function (): void {
+    Route::get('/{salesCode}', [FeolPublicLandingController::class, 'showForSalesCode'])
+        ->where('salesCode', '[0-9]{5}')
+        ->name('feol.registration.show');
+    Route::post('/{salesCode}', [FeolPublicLandingController::class, 'storeForSalesCode'])
+        ->where('salesCode', '[0-9]{5}')
+        ->name('feol.registration.store');
+});
+
 Route::domain('los.3rdvn.io.vn')->group(function (): void {
     Route::get('/login', [LosAuthenticationController::class, 'create'])->name('los.login');
     Route::post('/login', [LosAuthenticationController::class, 'store'])

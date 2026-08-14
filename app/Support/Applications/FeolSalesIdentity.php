@@ -3,6 +3,7 @@
 namespace App\Support\Applications;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 
 final class FeolSalesIdentity
@@ -18,5 +19,37 @@ final class FeolSalesIdentity
         }
 
         return $code;
+    }
+
+    public function publicRegistrationUrl(User $user): string
+    {
+        return route('feol.registration.show', [
+            'salesCode' => $this->referralCode($user),
+        ]);
+    }
+
+    public function userForReferralCode(string $salesCode): User
+    {
+        if (! preg_match('/^\d{5}$/', $salesCode)) {
+            throw (new ModelNotFoundException)->setModel(User::class);
+        }
+
+        $users = User::query()
+            ->where('sales_codes->fe-deeplink', $salesCode)
+            ->whereJsonContains('sales_projects', 'fe-deeplink')
+            ->whereNotIn('employment_status', [
+                'inactive',
+                User::STATUS_DEACTIVE,
+                'resigned',
+                User::STATUS_DELETED,
+            ])
+            ->limit(2)
+            ->get();
+
+        if ($users->count() !== 1) {
+            throw (new ModelNotFoundException)->setModel(User::class);
+        }
+
+        return $users->first();
     }
 }

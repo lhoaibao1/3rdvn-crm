@@ -27,12 +27,17 @@ class FeDeeplinkApplicationForm
                 Section::make('Thông tin đăng ký')
                     ->description('Nhập đầy đủ thông tin theo biểu mẫu FE CREDIT. Hồ sơ được lưu CRM trước khi gửi đối tác.')
                     ->extraAttributes(['class' => 'feol-partner-form-card'])
-                    ->columns(1)
+                    ->columnSpanFull()
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ])
                     ->schema([
                         TextInput::make('applicant_name')
                             ->label('Họ và tên')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->columnSpanFull(),
                         TextInput::make('phone')
                             ->label('Số điện thoại')
                             ->tel()
