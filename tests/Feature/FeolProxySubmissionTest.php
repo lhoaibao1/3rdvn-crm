@@ -23,6 +23,11 @@ class FeolProxySubmissionTest extends TestCase
         Queue::fake();
         [$application, $token] = $this->application();
 
+        $this->get(route('feol.landing.show', ['token' => $token]))
+            ->assertOk()
+            ->assertSee('Đăng ký vay FE CREDIT')
+            ->assertSee('Khach hang cu');
+
         $response = $this->post(route('feol.landing.store', ['token' => $token]), [
             'applicant_name' => 'Nguyen Van A',
             'phone' => '0901234567',
