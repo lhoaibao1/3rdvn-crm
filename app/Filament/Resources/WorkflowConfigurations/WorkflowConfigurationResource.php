@@ -44,7 +44,7 @@ class WorkflowConfigurationResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Admin';
+        return \App\Support\Filament\AdminNavigation::GROUP;
     }
 
     public static function getNavigationSort(): ?int

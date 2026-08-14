@@ -81,6 +81,7 @@ class AdminPanelProvider extends PanelProvider
                 'logout' => fn (Action $action): Action => $action->label('Đăng xuất'),
             ])
             ->sidebarCollapsibleOnDesktop()
+            ->navigationGroups(\App\Support\Filament\AdminNavigation::groups())
             ->sidebarWidth($this->px(UiSetting::current()->sidebar_width ?: 260))
             ->collapsedSidebarWidth($this->px(UiSetting::current()->sidebar_collapsed_width ?: 76))
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->settingsStyles())

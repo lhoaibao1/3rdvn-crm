@@ -43,7 +43,7 @@ class CrmLookupResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Config Modules';
+        return \App\Support\Filament\AdminNavigation::GROUP;
     }
 
     public static function getNavigationSort(): ?int
