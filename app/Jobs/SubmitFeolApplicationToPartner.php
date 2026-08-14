@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\FeolSubmitState;
 use App\Models\Application;
+use App\Models\FeolApplicationIntegration;
 use App\Support\Applications\FeolPartnerSubmitter;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -14,7 +15,7 @@ class SubmitFeolApplicationToPartner implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 5;
+    public int $tries = 1;
 
     public int $timeout = 45;
 
@@ -24,34 +25,26 @@ class SubmitFeolApplicationToPartner implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function backoff(): array
-    {
-        return [5, 15, 30, 60];
-    }
-
     public function handle(FeolPartnerSubmitter $submitter): void
     {
-        $application = DB::transaction(function (): ?Application {
-            $application = Application::query()
-                ->with(['feolIntegration', 'createdBy'])
-                ->lockForUpdate()
-                ->find($this->applicationId);
-
-            $integration = $application?->feolIntegration;
-
-            if (! $application || ! $integration || $integration->submit_state === FeolSubmitState::SUBMITTED) {
-                return null;
-            }
-
-            $integration->update([
+        $claimed = FeolApplicationIntegration::query()
+            ->where('application_id', $this->applicationId)
+            ->where('submit_attempts', 0)
+            ->where('submit_state', FeolSubmitState::QUEUED->value)
+            ->update([
                 'submit_state' => FeolSubmitState::PROCESSING,
-                'submit_attempts' => $integration->submit_attempts + 1,
+                'submit_attempts' => 1,
                 'partner_last_attempt_at' => now(),
                 'submit_last_error' => null,
             ]);
 
-            return $application->fresh(['feolIntegration', 'createdBy']);
-        }, 3);
+        if ($claimed !== 1) {
+            return;
+        }
+
+        $application = Application::query()
+            ->with(['feolIntegration', 'createdBy'])
+            ->find($this->applicationId);
 
         if (! $application) {
             return;

@@ -73,6 +73,18 @@ class ApplicationNotificationSender
         );
     }
 
+    public static function integrationFailed(Application $application, string $error): void
+    {
+        self::send(
+            application: $application,
+            eventLabel: 'Node-RED đồng bộ thất bại',
+            detailLine: 'Lỗi: '.Str::limit($error, 500),
+            tone: 'danger',
+            icon: Heroicon::OutlinedExclamationTriangle,
+            actorId: null,
+        );
+    }
+
     private static function send(
         Application $application,
         string $eventLabel,

@@ -55,7 +55,7 @@ class ApplicationsTable
             ->recordUrl(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record]))
             ->searchable(false)
             ->striped()
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort($projectSlug === 'fe-deeplink' ? 'id' : 'created_at', 'desc')
             ->columns(TableColumnPreferences::apply($columnTable, [
                 TextColumn::make('application_code')
                     ->label('Mã hồ sơ')

@@ -289,6 +289,33 @@ class FeolProxySubmissionTest extends TestCase
         }
     }
 
+    public function test_duplicate_queue_jobs_can_submit_the_same_lead_only_once(): void
+    {
+        [$application] = $this->application();
+        $application->feolIntegration()->update([
+            'submit_state' => FeolSubmitState::QUEUED,
+            'submit_attempts' => 0,
+        ]);
+
+        $key = '3MQSbZ3xuwbmSHpo';
+        $plain = '/landing?cam=fe-cashloan-deeplink&sale=SGBOCTV13765&rid=one-shot';
+        config()->set('services.feol_bridge.landing_encrypt_key', $key);
+        config()->set('services.feol_bridge.landing_campaign', 'fe-cashloan-deeplink');
+        config()->set('services.feol_bridge.landing_sale_code', 'SGBOCTV13765');
+        config()->set('services.feol_bridge.partner_landing_url', 'https://os.saigonbpo.vn/landing?data='.rawurlencode((string) openssl_encrypt($plain, 'AES-128-CBC', $key, 0, $key)));
+        config()->set('services.feol_bridge.partner_submit_url', 'https://partner.test/landingPageFE/createFEOL');
+        Http::fake(['https://partner.test/*' => Http::response(['code' => 200, 'message' => 'OK', 'data' => ['leadId' => 'ONCE-001']])]);
+
+        $submitter = app(FeolPartnerSubmitter::class);
+        (new SubmitFeolApplicationToPartner($application->getKey()))->handle($submitter);
+        (new SubmitFeolApplicationToPartner($application->getKey()))->handle($submitter);
+
+        Http::assertSentCount(1);
+        $this->assertSame(1, $application->feolIntegration()->value('submit_attempts'));
+        $this->assertSame('ONCE-001', $application->feolIntegration()->value('partner_lead_id'));
+        $this->assertSame(1, (new SubmitFeolApplicationToPartner($application->getKey()))->tries);
+    }
+
     public function test_partner_sync_never_overwrites_internal_employee_or_manager_chain(): void
     {
         [$application] = $this->application();

@@ -6,6 +6,7 @@ use App\Enums\FeDeeplinkStatus;
 use App\Enums\FeolSyncState;
 use App\Models\Application;
 use App\Models\FeolApplicationIntegration;
+use App\Support\Notifications\ApplicationNotificationSender;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -14,7 +15,10 @@ class FeolApplicationSync
 {
     public function sync(Application $application, array $data): FeolApplicationIntegration
     {
-        return DB::transaction(function () use ($application, $data): FeolApplicationIntegration {
+        $incomingError = filled($data['error'] ?? null) ? (string) $data['error'] : null;
+        $previousError = $application->feolIntegration?->last_error;
+
+        $integration = DB::transaction(function () use ($application, $data): FeolApplicationIntegration {
             $application = Application::query()
                 ->with('salesProject')
                 ->lockForUpdate()
@@ -98,6 +102,12 @@ class FeolApplicationSync
 
             return $integration;
         }, 3);
+
+        if ($incomingError !== null && $incomingError !== $previousError) {
+            ApplicationNotificationSender::integrationFailed($application->fresh(), $incomingError);
+        }
+
+        return $integration;
     }
 
     private function audit(Application $application, string $action, array $before, array $after): void
