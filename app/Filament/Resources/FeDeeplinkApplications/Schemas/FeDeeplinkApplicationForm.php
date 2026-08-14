@@ -15,6 +15,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 
 class FeDeeplinkApplicationForm
 {
@@ -74,9 +75,11 @@ class FeDeeplinkApplicationForm
                             ->required(),
                         TextInput::make('payload.fields.loan_amount')
                             ->label('Số tiền vay')
-                            ->numeric()
+                            ->mask(RawJs::make('$money($input, ",", ".", 0)'))
+                            ->stripCharacters('.')
                             ->minValue(1000000)
                             ->prefix('₫')
+                            ->rules(['integer', 'max:1000000000'])
                             ->required(),
                         TextInput::make('payload.fields.loan_term_months')
                             ->label('Thời hạn vay (tháng)')

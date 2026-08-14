@@ -64,7 +64,7 @@ class FeolProxySubmissionTest extends TestCase
             'identity_number' => '012345678901',
             'date_of_birth' => '20/05/1995',
             'email' => 'CUSTOMER@EXAMPLE.COM',
-            'loan_amount' => 50000000,
+            'loan_amount' => '20.000.000',
             'loan_term_months' => 24,
             'customer_consent' => '1',
         ]);
@@ -79,6 +79,7 @@ class FeolProxySubmissionTest extends TestCase
         $this->assertSame('Nguyen Van Moi', $application->applicant_name);
         $this->assertSame('customer@example.com', data_get($application->payload, 'fields.email'));
         $this->assertSame('26801', data_get($application->payload, 'fields.referral_code'));
+        $this->assertSame(20000000, data_get($application->payload, 'fields.loan_amount'));
         $this->assertTrue((bool) data_get($application->payload, 'fields.customer_consent'));
         $this->assertSame(FeolSubmitState::QUEUED, $integration->submit_state);
         Queue::assertPushed(SubmitFeolApplicationToPartner::class, fn ($job): bool => $job->applicationId === $application->getKey());

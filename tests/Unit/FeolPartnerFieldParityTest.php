@@ -48,6 +48,9 @@ class FeolPartnerFieldParityTest extends TestCase
         self::assertStringContainsString('<h1 class="page-heading">Đăng ký khoản vay</h1>', $landing);
         self::assertStringContainsString('input:not([type="checkbox"]):not([type="radio"])', file_get_contents($root.'resources/views/filament/feol/create-header.blade.php'));
         self::assertStringContainsString('input[type="checkbox"]', file_get_contents($root.'resources/views/filament/feol/create-header.blade.php'));
+        self::assertStringContainsString('data-money-mask', $landing);
+        self::assertStringContainsString('RawJs::make(\'$money($input, ",", ".", 0)\')', $form);
+        self::assertStringContainsString("->stripCharacters('.')", $form);
         self::assertStringContainsString("->accepted()\n                            ->required()", $form);
         foreach (['payload.fields.date_of_birth', 'payload.fields.email', 'payload.fields.loan_amount', 'payload.fields.loan_term_months'] as $requiredField) {
             self::assertStringContainsString("make('{$requiredField}')", $form);

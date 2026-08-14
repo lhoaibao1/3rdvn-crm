@@ -25,6 +25,13 @@ class SubmitFeolLandingRequest extends FormRequest
         ];
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'loan_amount' => preg_replace('/\D+/', '', (string) $this->input('loan_amount')),
+        ]);
+    }
+
     public function messages(): array
     {
         return [

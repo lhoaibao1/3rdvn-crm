@@ -26,7 +26,7 @@
                 <div class="field"><label>Số CCCD <span class="req">*</span></label><input name="identity_number" value="{{ old('identity_number', $application?->identity_number) }}" required inputmode="numeric" maxlength="12">@error('identity_number')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Ngày tháng năm sinh <span class="req">*</span></label><input name="date_of_birth" type="text" inputmode="numeric" autocomplete="bday" maxlength="10" placeholder="dd/mm/yyyy" data-date-mask value="{{ old('date_of_birth', filled(data_get($application?->payload, 'fields.date_of_birth')) ? \Carbon\CarbonImmutable::parse(data_get($application?->payload, 'fields.date_of_birth'))->format('d/m/Y') : '') }}" required>@error('date_of_birth')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Địa chỉ Email <span class="req">*</span></label><input name="email" type="email" value="{{ old('email', data_get($application?->payload, 'fields.email')) }}" required>@error('email')<div class="error">{{ $message }}</div>@enderror</div>
-                <div class="field"><label>Số tiền vay <span class="req">*</span></label><input name="loan_amount" type="number" min="1000000" max="1000000000" value="{{ old('loan_amount', data_get($application?->payload, 'fields.loan_amount')) }}" required>@error('loan_amount')<div class="error">{{ $message }}</div>@enderror</div>
+                <div class="field"><label>Số tiền vay <span class="req">*</span></label><input name="loan_amount" type="text" inputmode="numeric" maxlength="13" data-money-mask value="{{ old('loan_amount', data_get($application?->payload, 'fields.loan_amount')) }}" required>@error('loan_amount')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Thời hạn vay (tháng) <span class="req">*</span></label><input name="loan_term_months" type="number" min="1" max="120" value="{{ old('loan_term_months', data_get($application?->payload, 'fields.loan_term_months')) }}" required>@error('loan_term_months')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Mã giới thiệu</label><input value="{{ $referralCode }}" readonly></div>
                 <div class="field"><label>Mã nhân viên</label><input value="{{ data_get($application?->payload, 'fields.salesman_code', config('services.feol_bridge.landing_sale_code')) }}" readonly></div>
@@ -52,6 +52,18 @@
     dateInput?.addEventListener('input', (event) => {
         event.currentTarget.value = formatDate(event.currentTarget.value);
     });
+
+    const moneyInput = document.querySelector('[data-money-mask]');
+    const formatMoney = (value) => value
+        .replace(/\D/g, '')
+        .slice(0, 10)
+        .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    if (moneyInput) {
+        moneyInput.value = formatMoney(moneyInput.value);
+        moneyInput.addEventListener('input', (event) => {
+            event.currentTarget.value = formatMoney(event.currentTarget.value);
+        });
+    }
 
     document.getElementById('feol-form')?.addEventListener('submit',()=>{const b=document.getElementById('submit-button');b.disabled=true;b.textContent='Đang tạo khách hàng...'});
 </script>
