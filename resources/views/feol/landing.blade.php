@@ -4,21 +4,23 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="robots" content="noindex,nofollow,noarchive">
-    <title>Đăng ký vay FE CREDIT</title>
+    <title>Tạo khách hàng - FE CREDIT</title>
     <style>
-        *{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#172033;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.page{min-height:100vh;padding:28px 16px 48px;background:linear-gradient(160deg,#edf4ff 0,#f7f9fc 42%,#fff6ed 100%)}.wrap{width:min(100%,620px);margin:auto}.brand{text-align:center;margin:4px 0 20px}.brand-mark{display:inline-grid;place-items:center;width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#1456b8,#2e6ff2);color:#fff;font-size:30px;font-weight:900;box-shadow:0 12px 28px #174ea633}.brand h1{font-size:24px;margin:12px 0 4px}.brand p{margin:0;color:#68758b}.card{background:#fff;border:1px solid #dfe6f0;border-radius:20px;padding:28px;box-shadow:0 18px 50px #20345114}.grid{display:grid;grid-template-columns:1fr 1fr;gap:17px}.field.full{grid-column:1/-1}label{display:block;font-size:14px;font-weight:700;margin:0 0 7px}.req{color:#e02727}input{width:100%;height:46px;border:1px solid #cfd8e6;border-radius:10px;padding:0 13px;font-size:15px;color:#172033;outline:0;background:#fff}input:focus{border-color:#2e6ff2;box-shadow:0 0 0 3px #2e6ff21a}.error{font-size:12px;color:#c92222;margin-top:5px}.consent{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid #dfe6f0;border-radius:12px;background:#f8fafc;font-size:13px;line-height:1.5}.consent input{width:19px;height:19px;margin-top:1px;flex:none}.submit{width:100%;height:50px;border:0;border-radius:11px;background:linear-gradient(90deg,#1556b7,#2f6ff0);color:#fff;font-weight:800;font-size:16px;cursor:pointer}.submit:disabled{opacity:.65;cursor:wait}.notice{padding:14px;border-radius:12px;background:#edf8f1;border:1px solid #b8e3c7;color:#17633a;margin-bottom:18px}.foot{text-align:center;color:#8290a6;font-size:12px;margin-top:18px}@media(max-width:620px){.page{padding:18px 12px 32px}.card{padding:20px 16px;border-radius:16px}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.brand h1{font-size:21px}}
+        *{box-sizing:border-box}body{margin:0;background:#f7f8fb;color:#101828;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.page{min-height:100vh;padding:34px 20px 48px}.wrap{width:min(100%,980px);margin:auto}.page-heading{margin:0 0 22px;font-size:28px;font-weight:800;line-height:1.2}.brand{display:flex;justify-content:center;padding:4px 16px 20px}.brand img{display:block;width:min(100%,220px);height:auto}.card{overflow:hidden;background:#fff;border:1px solid #d9e1ec;border-radius:8px}.section-head{padding:22px 24px 16px;border-bottom:1px solid #e5e7eb}.section-head h2{margin:0 0 5px;font-size:17px;line-height:1.35}.section-head p{margin:0;color:#667085;font-size:14px;line-height:1.5}.form-content{padding:24px}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px 24px}.field.full{grid-column:1/-1}label{display:block;margin:0 0 7px;font-size:14px;font-weight:650}.req{color:#e02727}input{width:100%;height:42px;border:1px solid #d0d5dd;border-radius:7px;padding:0 12px;background:#fff;color:#101828;font-size:14px;outline:0;transition:border-color .15s,box-shadow .15s}input:focus{border-color:#2563eb;box-shadow:0 0 0 3px #2563eb1f}input[readonly]{background:#f8fafc;color:#475467}.error{margin-top:5px;color:#c92222;font-size:12px}.consent{display:flex;gap:10px;align-items:flex-start;padding:13px 14px;border:1px solid #d9e1ec;border-radius:7px;background:#f8fafc;font-size:13px;line-height:1.5}.consent input{width:18px;height:18px;margin-top:1px;flex:none}.actions{display:flex;justify-content:flex-start;padding:20px 24px;border-top:1px solid #e5e7eb;background:#fff}.submit{min-width:170px;height:42px;border:0;border-radius:7px;padding:0 20px;background:#2563eb;color:#fff;font-size:14px;font-weight:750;cursor:pointer}.submit:hover{background:#1d4ed8}.submit:disabled{opacity:.65;cursor:wait}.notice{margin:24px;padding:14px;border:1px solid #b8e3c7;border-radius:7px;background:#edf8f1;color:#17633a}.foot{text-align:center;color:#8290a6;font-size:12px;margin-top:18px}@media(max-width:767px){.page{padding:20px 12px 32px}.page-heading{font-size:23px;margin-bottom:16px}.brand{padding-bottom:16px}.brand img{width:min(100%,180px)}.section-head,.form-content,.actions{padding-left:16px;padding-right:16px}.grid{grid-template-columns:1fr;gap:17px}.field.full{grid-column:auto}.submit{width:100%}}
     </style>
 </head>
 <body>
 <main class="page"><div class="wrap">
-    <header class="brand"><div class="brand-mark">FE</div><h1>Đăng ký vay FE CREDIT</h1><p>Hoàn tất thông tin để tiếp tục hồ sơ</p></header>
+    <h1 class="page-heading">Tạo khách hàng</h1>
+    <header class="brand" aria-label="FE CREDIT"><img src="{{ asset('images/fe-credit.svg') }}" alt="FE CREDIT"></header>
     <section class="card">
         @if($submitted)
             <div class="notice">Hồ sơ đã được tiếp nhận. Chúng tôi sẽ liên hệ với Quý khách trong thời gian sớm nhất.</div>
         @else
         <form method="post" action="{{ $submitUrl }}" id="feol-form">
             @csrf
-            <div class="grid">
+            <div class="section-head"><h2>Thông tin đăng ký</h2><p>Nhập đầy đủ thông tin theo biểu mẫu FE CREDIT. Hồ sơ được lưu CRM trước khi gửi đối tác.</p></div>
+            <div class="form-content"><div class="grid">
                 <div class="field full"><label>Họ và tên <span class="req">*</span></label><input name="applicant_name" value="{{ old('applicant_name', $application?->applicant_name) }}" required maxlength="255">@error('applicant_name')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Số điện thoại <span class="req">*</span></label><input name="phone" value="{{ old('phone', $application?->phone) }}" required inputmode="numeric" maxlength="10">@error('phone')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Số CCCD <span class="req">*</span></label><input name="identity_number" value="{{ old('identity_number', $application?->identity_number) }}" required inputmode="numeric" maxlength="12">@error('identity_number')<div class="error">{{ $message }}</div>@enderror</div>
@@ -29,8 +31,8 @@
                 <div class="field"><label>Mã giới thiệu</label><input value="{{ $referralCode }}" readonly></div>
                 <div class="field"><label>Mã nhân viên</label><input value="{{ data_get($application?->payload, 'fields.salesman_code', config('services.feol_bridge.landing_sale_code')) }}" readonly></div>
                 <div class="field full"><label class="consent"><input type="checkbox" name="customer_consent" value="1" required @checked(old('customer_consent'))><span>Tôi đồng ý cung cấp dữ liệu cá nhân đầy đủ, chính xác và cho phép chuyển dữ liệu phục vụ thẩm định, xét duyệt hồ sơ cấp tín dụng.</span></label>@error('customer_consent')<div class="error">{{ $message }}</div>@enderror</div>
-                <div class="field full"><button class="submit" id="submit-button" type="submit">Gửi đăng ký</button></div>
-            </div>
+            </div></div>
+            <div class="actions"><button class="submit" id="submit-button" type="submit">Tạo khách hàng</button></div>
         </form>
         @endif
     </section>
@@ -51,7 +53,7 @@
         event.currentTarget.value = formatDate(event.currentTarget.value);
     });
 
-    document.getElementById('feol-form')?.addEventListener('submit',()=>{const b=document.getElementById('submit-button');b.disabled=true;b.textContent='Đang lưu hồ sơ...'});
+    document.getElementById('feol-form')?.addEventListener('submit',()=>{const b=document.getElementById('submit-button');b.disabled=true;b.textContent='Đang tạo khách hàng...'});
 </script>
 </body>
 </html>

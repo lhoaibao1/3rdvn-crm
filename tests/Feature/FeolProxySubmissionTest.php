@@ -30,7 +30,8 @@ class FeolProxySubmissionTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Đăng ký vay FE CREDIT')
+            ->assertSee('Tạo khách hàng')
+            ->assertSee('images/fe-credit.svg', false)
             ->assertSee('data-date-mask', false)
             ->assertSee('placeholder="dd/mm/yyyy"', false)
             ->assertSee('inputmode="numeric"', false)

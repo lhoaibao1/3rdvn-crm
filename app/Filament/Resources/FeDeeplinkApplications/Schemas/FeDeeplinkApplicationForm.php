@@ -6,6 +6,7 @@ use App\Enums\FeDeeplinkStatus;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Support\SalesLineSnapshot;
+use Carbon\CarbonImmutable;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
@@ -51,10 +52,19 @@ class FeDeeplinkApplicationForm
                             ->rules(['regex:/^[0-9]{12}$/'])
                             ->required()
                             ->placeholder('Nhập số CCCD (bắt buộc), phải đủ 12 số'),
-                        DatePicker::make('payload.fields.date_of_birth')
+                        TextInput::make('payload.fields.date_of_birth')
                             ->label('Ngày tháng năm sinh')
-                            ->displayFormat('d/m/Y')
-                            ->native(false)
+                            ->mask('99/99/9999')
+                            ->placeholder('dd/mm/yyyy')
+                            ->extraInputAttributes(['inputmode' => 'numeric'])
+                            ->maxLength(10)
+                            ->rules(['date_format:d/m/Y', 'before_or_equal:today'])
+                            ->formatStateUsing(fn (?string $state): ?string => filled($state)
+                                ? CarbonImmutable::parse($state)->format('d/m/Y')
+                                : null)
+                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
+                                ? CarbonImmutable::createFromFormat('d/m/Y', $state)->format('Y-m-d')
+                                : null)
                             ->required(),
                         TextInput::make('payload.fields.email')
                             ->label('Địa chỉ Email')
