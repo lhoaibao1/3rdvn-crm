@@ -39,8 +39,17 @@ return new class extends Migration {
             }
         });
 
-        DB::table('crm_modules')->where('slug', 'chat')->delete();
-        DB::table('permissions')->whereIn('name', ['chat.view', 'chat.send'])->delete();
+        DB::table('users')->whereNull('employment_status')->update([
+            'employment_status' => 'active',
+        ]);
+
+        if (Schema::hasTable('crm_modules')) {
+            DB::table('crm_modules')->where('slug', 'chat')->delete();
+        }
+
+        if (Schema::hasTable('permissions')) {
+            DB::table('permissions')->whereIn('name', ['chat.view', 'chat.send'])->delete();
+        }
 
         Schema::dropIfExists('chat_conversation_user');
         Schema::dropIfExists('chat_messages');
