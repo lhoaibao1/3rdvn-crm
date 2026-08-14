@@ -57,6 +57,10 @@ return [
     'feol_bridge' => [
         'token' => env('FEOL_BRIDGE_API_TOKEN'),
         'poll_seconds' => (int) env('FEOL_BRIDGE_POLL_SECONDS', 5),
+        'landing_origin' => env('FEOL_LANDING_ORIGIN', 'https://os.saigonbpo.vn'),
+        'landing_campaign' => env('FEOL_LANDING_CAMPAIGN', 'fe-cashloan-deeplink'),
+        'landing_sale_code' => env('FEOL_LANDING_SALE_CODE'),
+        'landing_encrypt_key' => env('FEOL_LANDING_ENCRYPT_KEY'),
     ],
 
 ];

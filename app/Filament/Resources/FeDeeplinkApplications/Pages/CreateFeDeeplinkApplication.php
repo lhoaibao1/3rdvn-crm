@@ -8,6 +8,7 @@ use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationF
 use App\Models\Application;
 use App\Models\SalesProject;
 use App\Enums\FeolSyncState;
+use App\Support\Applications\FeolLandingPageUrl;
 use App\Support\SalesLineSnapshot;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -46,6 +47,7 @@ class CreateFeDeeplinkApplication extends CreateRecord
         $application->setCreatedAt(CarbonImmutable::parse((string) $data['created_at']));
         $application->save();
         $application->feolIntegration()->create([
+            'b1_url' => app(FeolLandingPageUrl::class)->generate(),
             'sync_state' => FeolSyncState::PENDING,
             'sync_requested_at' => now(),
             'next_sync_at' => now(),
