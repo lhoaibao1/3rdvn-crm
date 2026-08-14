@@ -3,40 +3,28 @@
 namespace App\Http\Controllers\Integration;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Integration\EmployeeDirectoryRequest;
+use App\Http\Resources\Integration\EmployeeDirectoryResource;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class VpnUserDirectoryController extends Controller
 {
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(EmployeeDirectoryRequest $request): AnonymousResourceCollection
     {
-        $expectedToken = (string) config('services.vpn_directory.token', '');
-        $providedToken = (string) $request->bearerToken();
-
-        abort_unless(
-            $expectedToken !== ''
-                && $providedToken !== ''
-                && hash_equals($expectedToken, $providedToken),
-            401,
-            'Invalid integration token.',
-        );
-
-        $validated = $request->validate([
-            'q' => ['nullable', 'string', 'max:100'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:50'],
-        ]);
+        $validated = $request->validated();
 
         $search = trim((string) ($validated['q'] ?? ''));
-        $limit = (int) ($validated['limit'] ?? 20);
+        $perPage = (int) ($validated['per_page'] ?? $validated['limit'] ?? 100);
 
         $users = User::query()
-            ->select([
-                'id', 'uid', 'employee_code', 'username', 'name', 'email', 'phone',
-                'position', 'department', 'company_name', 'branch_name', 'employment_status',
+            ->with([
+                'roles:id,name', 'team:id,name',
+                'teamLeader:id,uid,employee_code,name', 'courierManager:id,uid,employee_code,name',
+                'am:id,uid,employee_code,name', 'zd:id,uid,employee_code,name',
+                'creator:id,uid,employee_code,name',
             ])
-            ->with('roles:id,name')
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $query) use ($search): void {
                     $query
@@ -48,23 +36,11 @@ class VpnUserDirectoryController extends Controller
                         ->orWhere('phone', 'like', "%{$search}%");
                 });
             })
+            ->when(filled($validated['status'] ?? null), fn (Builder $query) => $query->where('employment_status', $validated['status']))
             ->orderBy('name')
-            ->limit($limit)
-            ->get()
-            ->map(fn (User $user): array => [
-                'uid' => $user->uid ?: $user->employee_code ?: (string) $user->id,
-                'employee_code' => $user->employee_code,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->roles->pluck('name')->first(),
-                'position' => $user->position,
-                'department' => $user->department,
-                'company' => $user->company_name,
-                'branch' => $user->branch_name,
-                'status' => $user->employment_status ?: User::STATUS_ACTIVE,
-            ]);
+            ->paginate($perPage)
+            ->withQueryString();
 
-        return response()->json(['data' => $users]);
+        return EmployeeDirectoryResource::collection($users);
     }
 }
