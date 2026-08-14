@@ -35,6 +35,10 @@ class FeDeeplinkStatusTest extends TestCase
         self::assertStringContainsString('FeDeeplinkStatus::options()', $form);
         self::assertStringContainsString('FeDeeplinkStatus::PENDING_SUBMISSION->value', $form);
         self::assertStringContainsString('FeDeeplinkStatus::PENDING_SUBMISSION->value', $create);
+        self::assertStringContainsString('FeolSubmitState::QUEUED', $create);
+        self::assertStringContainsString('SubmitFeolApplicationToPartner::dispatch', $create);
+        self::assertStringContainsString("data_set(\$payload, 'fields.customer_consent', true)", $create);
+        self::assertStringNotContainsString('FeolSubmitState::AWAITING_CUSTOMER', $create);
         self::assertStringContainsString("where('status', FeDeeplinkStatus::PL_DISBURSED->value)", $directory);
     }
 

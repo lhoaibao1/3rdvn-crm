@@ -23,9 +23,16 @@ class FeolPendingApplicationsController extends Controller
             ->where(function (Builder $query): void {
                 $query->whereDoesntHave('feolIntegration')
                     ->orWhereHas('feolIntegration', fn (Builder $query): Builder => $query
-                        ->whereNull('next_sync_at')
-                        ->orWhere('next_sync_at', '<=', now())
-                        ->orWhereColumn('sync_requested_at', '>', 'last_synced_at'));
+                        ->where(function (Builder $query): void {
+                            $query->where(fn (Builder $query): Builder => $query
+                                ->whereNotNull('next_sync_at')
+                                ->where('next_sync_at', '<=', now()))
+                                ->orWhere(fn (Builder $query): Builder => $query
+                                    ->whereNotNull('sync_requested_at')
+                                    ->where(fn (Builder $query): Builder => $query
+                                        ->whereNull('last_synced_at')
+                                        ->orWhereColumn('sync_requested_at', '>', 'last_synced_at')));
+                        }));
             })
             ->whereNotIn('status', collect(FeDeeplinkStatus::cases())->filter->isTerminal()->map->value->all())
             ->with(['createdBy:id,name,uid,employee_code', 'feolIntegration'])
@@ -51,6 +58,7 @@ class FeolPendingApplicationsController extends Controller
                 'has_b1_url' => filled($application->feolIntegration?->b1_url),
                 'has_deeplink_url' => filled($application->feolIntegration?->deeplink_url),
                 'partner_fingerprint' => data_get($application->feolIntegration?->raw_payload, '_bridge.fingerprint'),
+                'last_error' => $application->feolIntegration?->last_error,
                 'version' => $application->feolIntegration?->version ?? 0,
             ]);
 

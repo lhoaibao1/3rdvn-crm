@@ -36,7 +36,6 @@ final class CreateFeolPublicApplication
                 'loan_amount' => (int) $data['loan_amount'],
                 'loan_term_months' => (int) $data['loan_term_months'],
                 'referral_code' => $salesCode,
-                'salesman_code' => (string) config('services.feol_bridge.landing_sale_code'),
                 'customer_consent' => true,
             ]];
 

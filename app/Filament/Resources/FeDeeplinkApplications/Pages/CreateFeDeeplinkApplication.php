@@ -4,11 +4,12 @@ namespace App\Filament\Resources\FeDeeplinkApplications\Pages;
 
 use App\Enums\FeDeeplinkStatus;
 use App\Enums\FeolSubmitState;
+use App\Enums\FeolSyncState;
 use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
 use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationForm;
+use App\Jobs\SubmitFeolApplicationToPartner;
 use App\Models\Application;
 use App\Models\SalesProject;
-use App\Enums\FeolSyncState;
 use App\Support\Applications\FeolSalesIdentity;
 use App\Support\SalesLineSnapshot;
 use Carbon\CarbonImmutable;
@@ -37,7 +38,7 @@ class CreateFeDeeplinkApplication extends CreateRecord
         $creatorId = (int) $creator->getKey();
         $payload = FeDeeplinkApplicationForm::normalizePayload($data['payload'] ?? []);
         data_set($payload, 'fields.referral_code', app(FeolSalesIdentity::class)->referralCode($creator));
-        data_set($payload, 'fields.salesman_code', (string) config('services.feol_bridge.landing_sale_code'));
+        data_set($payload, 'fields.customer_consent', true);
         $application = new Application([
             'sales_project_id' => $project->getKey(),
             'application_code' => 'FEDL-'.Str::upper((string) Str::ulid()),
@@ -57,13 +58,21 @@ class CreateFeDeeplinkApplication extends CreateRecord
             'public_token' => $publicToken,
             'partner_request_id' => 'FEDL-'.$application->getKey().'-'.Str::upper(Str::random(12)),
             'b1_url' => route('feol.landing.show', ['token' => $publicToken]),
-            'submit_state' => FeolSubmitState::AWAITING_CUSTOMER,
+            'submit_state' => FeolSubmitState::QUEUED,
             'sync_state' => FeolSyncState::PENDING,
             'sync_requested_at' => now(),
             'next_sync_at' => now(),
+            'consented_at' => now(),
+            'submit_ip' => request()->ip(),
+            'submit_user_agent' => mb_substr((string) request()->userAgent(), 0, 2000),
         ]);
 
         return $application;
+    }
+
+    protected function afterCreate(): void
+    {
+        SubmitFeolApplicationToPartner::dispatch((int) $this->record->getKey());
     }
 
     protected function getCreateFormAction(): Action

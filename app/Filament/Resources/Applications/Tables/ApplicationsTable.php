@@ -332,7 +332,6 @@ class ApplicationsTable
             TextColumn::make('fe_employee')
                 ->label('Nhân viên')
                 ->state(fn (Application $record): ?string => $record->createdBy?->name)
-                ->description(fn (Application $record): ?string => data_get($record->payload, 'fields.salesman_code'))
                 ->placeholder('-'),
             TextColumn::make('fe_manager')
                 ->label('Quản lý')
@@ -397,21 +396,6 @@ class ApplicationsTable
             TextColumn::make('feolIntegration.last_synced_at')
                 ->label('Thời gian cập nhật')
                 ->dateTime('d/m/Y H:i:s')
-                ->placeholder('-'),
-            TextColumn::make('fe_action')
-                ->label('Hành động')
-                ->state(fn (Application $record): ?string => $record->feolIntegration?->deeplink_url ?: $record->feolIntegration?->b1_url)
-                ->formatStateUsing(fn (mixed $state, Application $record): string => blank($state)
-                    ? '-'
-                    : (filled($record->feolIntegration?->deeplink_url) ? 'Sao chép Deeplink' : 'Sao chép B1'))
-                ->copyable()
-                ->copyMessage(fn (Application $record): string => filled($record->feolIntegration?->deeplink_url)
-                    ? 'Đã sao chép Deeplink'
-                    : 'Đã sao chép Landing Page B1')
-                ->icon(fn (Application $record): Heroicon => filled($record->feolIntegration?->deeplink_url)
-                    ? Heroicon::OutlinedLink
-                    : Heroicon::OutlinedClipboardDocument)
-                ->color(fn (Application $record): string => filled($record->feolIntegration?->deeplink_url) ? 'success' : 'info')
                 ->placeholder('-'),
         ];
     }

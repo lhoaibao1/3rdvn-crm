@@ -98,11 +98,6 @@ class FeDeeplinkApplicationForm
                             ->readOnly()
                             ->dehydrated()
                             ->helperText('Tự động lấy từ mã bán hàng FE Deeplink của tài khoản đang đăng nhập.'),
-                        TextInput::make('payload.fields.salesman_code')
-                            ->label('Mã nhân viên')
-                            ->default(fn (): ?string => config('services.feol_bridge.landing_sale_code'))
-                            ->readOnly()
-                            ->dehydrated(),
                         Hidden::make('created_by_id')
                             ->default(fn (): ?int => auth()->id())
                             ->required(),

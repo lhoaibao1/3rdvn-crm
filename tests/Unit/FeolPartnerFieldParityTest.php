@@ -25,12 +25,12 @@ class FeolPartnerFieldParityTest extends TestCase
             'Số tiền vay',
             'Thời hạn vay (tháng)',
             'Mã giới thiệu',
-            'Mã nhân viên',
+            'Nhân viên phụ trách',
         ] as $title) {
             self::assertStringContainsString($title, $landing);
         }
 
-        foreach (['ID', 'Chiến dịch', 'Tên khách hàng', 'Số điện thoại', 'Nhân viên', 'Quản lý', 'Mã giới thiệu', 'Trạng thái chính', 'Trạng thái phụ', 'App id', 'App type', 'Offer Amt', 'Disbursed Amt', 'Topup Amt', 'Insurance Amt', 'Fee Amt', 'Disbursed Date', 'Ghi chú', 'PIC', 'Thời gian cập nhật', 'Hành động'] as $title) {
+        foreach (['ID', 'Chiến dịch', 'Tên khách hàng', 'Số điện thoại', 'Nhân viên', 'Quản lý', 'Mã giới thiệu', 'Trạng thái chính', 'Trạng thái phụ', 'App id', 'App type', 'Offer Amt', 'Disbursed Amt', 'Topup Amt', 'Insurance Amt', 'Fee Amt', 'Disbursed Date', 'Ghi chú', 'PIC', 'Thời gian cập nhật'] as $title) {
             self::assertStringContainsString($title, $table);
         }
 
@@ -57,6 +57,8 @@ class FeolPartnerFieldParityTest extends TestCase
         }
         self::assertStringNotContainsString('name="referral_code"', $landing);
         self::assertStringContainsString("data_get(auth()->user()->sales_codes, 'fe-deeplink')", $form);
+        self::assertStringNotContainsString("TextInput::make('payload.fields.salesman_code')", $form);
+        self::assertStringNotContainsString("TextColumn::make('fe_action')", $table);
 
         foreach (['fee_amount', 'note'] as $partnerField) {
             self::assertStringContainsString("'{$partnerField}'", $request);

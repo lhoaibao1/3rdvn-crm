@@ -159,6 +159,7 @@ class FeolProxySubmissionTest extends TestCase
         $application->feolIntegration()->update([
             'raw_payload' => ['_bridge' => ['fingerprint' => 'fp-previous']],
             'next_sync_at' => now()->subSecond(),
+            'last_error' => 'Không tìm thấy hồ sơ ở CRM đối tác.',
         ]);
 
         $response = $this
@@ -171,7 +172,26 @@ class FeolProxySubmissionTest extends TestCase
             ->assertJsonPath('data.0.name', 'Khach hang cu')
             ->assertJsonPath('data.0.phone', '0900000000')
             ->assertJsonPath('data.0.referral_code', '26801')
-            ->assertJsonPath('data.0.partner_fingerprint', 'fp-previous');
+            ->assertJsonPath('data.0.partner_fingerprint', 'fp-previous')
+            ->assertJsonPath('data.0.last_error', 'Không tìm thấy hồ sơ ở CRM đối tác.');
+    }
+
+    public function test_synced_historical_record_without_next_poll_is_not_returned_to_bridge(): void
+    {
+        config()->set('services.feol_bridge.token', 'bridge-test-token');
+        [$application] = $this->application();
+        $application->feolIntegration()->update([
+            'sync_state' => 'synced',
+            'last_synced_at' => now(),
+            'next_sync_at' => null,
+            'sync_requested_at' => null,
+        ]);
+
+        $this
+            ->withToken('bridge-test-token')
+            ->getJson(route('api.integration.feol.pending'))
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_public_form_saves_crm_before_queuing_partner_submission(): void
@@ -250,6 +270,25 @@ class FeolProxySubmissionTest extends TestCase
             && $request['consent_tickbox'] === 'YES');
     }
 
+    public function test_partner_submission_is_blocked_without_customer_consent(): void
+    {
+        [$application] = $this->application();
+        $payload = $application->payload;
+        data_forget($payload, 'fields.customer_consent');
+        $application->forceFill(['payload' => $payload])->save();
+
+        Http::fake();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Hồ sơ chưa có xác nhận đồng ý cung cấp dữ liệu cá nhân.');
+
+        try {
+            app(FeolPartnerSubmitter::class)->submit($application);
+        } finally {
+            Http::assertNothingSent();
+        }
+    }
+
     public function test_partner_sync_never_overwrites_internal_employee_or_manager_chain(): void
     {
         [$application] = $this->application();
@@ -306,7 +345,7 @@ class FeolProxySubmissionTest extends TestCase
             'assigned_sale_id' => $user->getKey(),
             'payload' => ['fields' => [
                 'referral_code' => '26801',
-                'salesman_code' => 'SGBOCTV13765',
+                'customer_consent' => true,
             ]],
         ]);
         $token = Str::random(48);

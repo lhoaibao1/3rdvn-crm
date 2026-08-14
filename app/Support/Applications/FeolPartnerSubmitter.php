@@ -25,6 +25,15 @@ final class FeolPartnerSubmitter
         }
 
         $fields = data_get($application->payload, 'fields', []);
+        if (! filter_var(data_get($fields, 'customer_consent'), FILTER_VALIDATE_BOOL)) {
+            throw new RuntimeException('Hồ sơ chưa có xác nhận đồng ý cung cấp dữ liệu cá nhân.');
+        }
+
+        $partnerSalesman = trim((string) config('services.feol_bridge.landing_sale_code'));
+        if ($partnerSalesman === '') {
+            throw new RuntimeException('Chưa cấu hình tài khoản kỹ thuật gửi FEOL.');
+        }
+
         $response = Http::asJson()
             ->acceptJson()
             ->timeout((int) config('services.feol_bridge.partner_timeout_seconds', 20))
@@ -33,7 +42,7 @@ final class FeolPartnerSubmitter
                 'customer_name' => $application->applicant_name,
                 'customer_phone' => $application->phone,
                 'id_card_no' => $application->identity_number,
-                'salesman' => (string) (data_get($fields, 'salesman_code') ?: config('services.feol_bridge.landing_sale_code')),
+                'salesman' => $partnerSalesman,
                 'request_id' => $integration->partner_request_id,
                 'request_time' => now()->toIso8601String(),
                 'referralCode' => data_get($fields, 'referral_code'),

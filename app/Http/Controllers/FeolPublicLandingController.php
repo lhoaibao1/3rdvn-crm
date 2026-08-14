@@ -28,13 +28,14 @@ class FeolPublicLandingController extends Controller
             'submitted' => $integration->submit_state === FeolSubmitState::SUBMITTED,
             'consentText' => FeolConsent::TEXT,
             'referralCode' => data_get($integration->application->payload, 'fields.referral_code'),
+            'employeeName' => $integration->application->createdBy?->name,
             'submitUrl' => route('feol.landing.store', ['token' => $integration->public_token]),
         ]);
     }
 
     public function showForSalesCode(string $salesCode, FeolSalesIdentity $identity): View
     {
-        $identity->userForReferralCode($salesCode);
+        $sale = $identity->userForReferralCode($salesCode);
 
         return view('feol.landing', [
             'application' => null,
@@ -42,6 +43,7 @@ class FeolPublicLandingController extends Controller
             'submitted' => false,
             'consentText' => FeolConsent::TEXT,
             'referralCode' => $salesCode,
+            'employeeName' => $sale->name,
             'submitUrl' => route('feol.registration.store', ['salesCode' => $salesCode]),
         ]);
     }
@@ -151,7 +153,7 @@ class FeolPublicLandingController extends Controller
     private function integration(string $token): FeolApplicationIntegration
     {
         return FeolApplicationIntegration::query()
-            ->with(['application.salesProject'])
+            ->with(['application.salesProject', 'application.createdBy'])
             ->where('public_token', $token)
             ->whereHas('application.salesProject', fn ($query) => $query->where('slug', 'fe-deeplink'))
             ->firstOrFail();

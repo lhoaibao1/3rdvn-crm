@@ -29,7 +29,7 @@
                 <div class="field"><label>Số tiền vay <span class="req">*</span></label><input name="loan_amount" type="text" inputmode="numeric" maxlength="13" data-money-mask value="{{ old('loan_amount', data_get($application?->payload, 'fields.loan_amount')) }}" required>@error('loan_amount')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Thời hạn vay (tháng) <span class="req">*</span></label><input name="loan_term_months" type="number" min="1" max="120" value="{{ old('loan_term_months', data_get($application?->payload, 'fields.loan_term_months')) }}" required>@error('loan_term_months')<div class="error">{{ $message }}</div>@enderror</div>
                 <div class="field"><label>Mã giới thiệu</label><input value="{{ $referralCode }}" readonly></div>
-                <div class="field"><label>Mã nhân viên</label><input value="{{ data_get($application?->payload, 'fields.salesman_code', config('services.feol_bridge.landing_sale_code')) }}" readonly></div>
+                <div class="field"><label>Nhân viên phụ trách</label><input value="{{ $employeeName }}" readonly></div>
                 <div class="field full"><label class="consent"><input type="checkbox" name="customer_consent" value="1" required @checked(old('customer_consent'))><span class="consent-mark" aria-hidden="true"></span><span>{{ $consentText }}</span></label>@error('customer_consent')<div class="error">{{ $message }}</div>@enderror</div>
             </div></div>
             <div class="actions"><button class="submit" id="submit-button" type="submit">Tạo khách hàng</button></div>
