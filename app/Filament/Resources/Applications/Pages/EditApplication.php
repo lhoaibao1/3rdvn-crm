@@ -9,6 +9,7 @@ use App\Filament\Resources\Applications\Schemas\LotteFinanceApplicationForm;
 use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationForm;
 use App\Models\Application;
 use App\Support\Applications\AclMixWorkflow;
+use App\Support\Applications\ApplicationFinancialData;
 use App\Support\Applications\LotteFinanceWorkflow;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -93,6 +94,14 @@ class EditApplication extends EditRecord
     {
         if (! $this->record instanceof Application) {
             return $data;
+        }
+
+        if (blank(data_get($data, 'payload.fields.disbursed_at'))) {
+            $resolved = ApplicationFinancialData::disbursedAt($this->record);
+
+            if ($resolved) {
+                data_set($data, 'payload.fields.disbursed_at', $resolved->format('Y-m-d'));
+            }
         }
 
         return match ($this->record->salesProject?->slug) {

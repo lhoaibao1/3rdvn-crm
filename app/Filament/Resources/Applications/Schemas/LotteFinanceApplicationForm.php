@@ -12,6 +12,7 @@ use App\Support\Filament\LeadCreate\CreateLotteFinanceLeadAction;
 use App\Support\LotteFinanceDocuments;
 use App\Support\SalesLineSnapshot;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -56,6 +57,9 @@ class LotteFinanceApplicationForm
                         ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()->preload()->required(AdminWorkflowOverride::required()),
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
+                    DatePicker::make('payload.fields.disbursed_at')
+                        ->label('Ngày giải ngân')
+                        ->native(false),
                     TextInput::make('status')
                         ->label('Trạng thái')
                         ->formatStateUsing(fn (?string $state): string => LotteFinanceWorkflow::statusLabel($state))
@@ -136,6 +140,10 @@ class LotteFinanceApplicationForm
             $data['payload'] = self::normalizeReviewData($data['payload']);
         } else {
             $data['payload']['review'] = $existingPayload['review'] ?? [];
+        }
+
+        if ((auth()->user()?->hasRole('Admin') ?? false) && data_has($incomingPayload, 'fields.disbursed_at')) {
+            data_set($data, 'payload.fields.disbursed_at', data_get($incomingPayload, 'fields.disbursed_at'));
         }
 
         if (! auth()->user()?->hasRole('Admin')) {

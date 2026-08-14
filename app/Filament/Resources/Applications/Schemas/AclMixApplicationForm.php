@@ -12,6 +12,7 @@ use App\Support\CustomerName;
 use App\Support\SalesLineSnapshot;
 use App\Support\VietnamAddressCatalog;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Textarea;
@@ -104,6 +105,11 @@ class AclMixApplicationForm
                         ->label('Người tạo')->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()->preload()->required(AdminWorkflowOverride::required()),
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
+                    DatePicker::make('payload.fields.disbursed_at')
+                        ->label('Ngày giải ngân')
+                        ->native(false)
+                        ->disabled(fn (): bool => ! (auth()->user()?->hasRole('Admin') ?? false))
+                        ->dehydrated(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
                     TextInput::make('status')->label('Trạng thái')->formatStateUsing(fn (?string $state): string => AclMixWorkflow::statusLabel($state))->disabled()->dehydrated(false),
                 ]),
             self::approvalSection(),
@@ -158,6 +164,10 @@ class AclMixApplicationForm
         $data['payload'] = AclMixWorkflow::canEditData(auth()->user(), $record)
             ? AclMixFields::normalize(array_replace_recursive($existingPayload, $incomingPayload))
             : $existingPayload;
+
+        if ((auth()->user()?->hasRole('Admin') ?? false) && data_has($incomingPayload, 'fields.disbursed_at')) {
+            data_set($data, 'payload.fields.disbursed_at', data_get($incomingPayload, 'fields.disbursed_at'));
+        }
 
         if (! (auth()->user()?->hasAnyRole(['Admin', 'Sales Admin']) ?? false)) {
             foreach (['application_code', 'assigned_sale_id', 'created_by_id', 'created_at', 'status'] as $field) {
