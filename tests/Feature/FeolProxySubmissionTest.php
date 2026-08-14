@@ -340,6 +340,43 @@ class FeolProxySubmissionTest extends TestCase
         $this->assertSame(1, $application->feolIntegration()->value('submit_attempts'));
     }
 
+    public function test_waiting_page_polls_status_and_eligible_customer_receives_deeplink(): void
+    {
+        [$application, $token] = $this->application();
+
+        $this->get(route('feol.landing.success', ['token' => $token]))
+            ->assertOk()
+            ->assertSee('Loading...')
+            ->assertSee('trang-thai')
+            ->assertSee('Vui lòng chờ 5–10 giây');
+
+        $application->feolIntegration()->update([
+            'sub_status' => 'eligible',
+            'deeplink_url' => 'https://fecredit.example.test/onboarding/LEAD-001',
+        ]);
+
+        $this->getJson(route('feol.landing.status', ['token' => $token]))
+            ->assertOk()
+            ->assertJsonPath('state', 'eligible')
+            ->assertJsonPath('status', 'eligible')
+            ->assertJsonPath('redirect_url', 'https://fecredit.example.test/onboarding/LEAD-001');
+    }
+
+    public function test_terminal_ineligible_result_never_redirects_customer_to_deeplink(): void
+    {
+        [$application, $token] = $this->application();
+        $application->feolIntegration()->update([
+            'sub_status' => 'ineligible',
+            'deeplink_url' => null,
+        ]);
+
+        $this->getJson(route('feol.landing.status', ['token' => $token]))
+            ->assertOk()
+            ->assertJsonPath('state', 'completed')
+            ->assertJsonPath('status', 'ineligible')
+            ->assertJsonPath('redirect_url', null);
+    }
+
     public function test_partner_sync_never_overwrites_internal_employee_or_manager_chain(): void
     {
         [$application] = $this->application();

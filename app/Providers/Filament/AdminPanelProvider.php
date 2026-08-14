@@ -1030,6 +1030,40 @@ class AdminPanelProvider extends PanelProvider
         margin-left: auto !important;
     }
 
+    .crm-feol-partner-table .fi-ta-filters-above-content-ctn {
+        position: relative !important;
+        z-index: 8 !important;
+        width: 100% !important;
+        margin: 0 0 12px !important;
+        padding: 14px !important;
+        border: 1px solid #dbe3ee !important;
+        border-radius: 10px !important;
+        background: #fff !important;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, .04) !important;
+    }
+
+    .crm-feol-partner-table .fi-ta-filters > .fi-sc,
+    .crm-feol-partner-table .fi-ta-filters > .fi-sc > .fi-grid {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .crm-feol-partner-table .fi-ta-filters-actions-ctn,
+    .crm-feol-partner-table .fi-ta-filters-actions {
+        position: static !important;
+        clear: both !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding-top: 10px !important;
+        border-top: 1px solid #edf1f6 !important;
+    }
+
+    .crm-feol-partner-table .fi-ta-header-toolbar {
+        position: relative !important;
+        z-index: 2 !important;
+        clear: both !important;
+    }
+
     .crm-users-table .fi-ta-filters-actions-ctn .fi-btn,
     .crm-users-table .fi-ta-filters-actions .fi-btn,
     .crm-user-filter-toggle {
@@ -2273,7 +2307,8 @@ HTML);
                 form.querySelectorAll('.crm-filter-extra-field')
                     .forEach((field) => field.classList.remove('crm-filter-extra-field'));
 
-                fields.forEach((field, index) => field.classList.toggle('crm-filter-extra-field', index >= 3));
+                const primaryFieldCount = table.classList.contains('crm-feol-partner-table') ? 4 : 3;
+                fields.forEach((field, index) => field.classList.toggle('crm-filter-extra-field', index >= primaryFieldCount));
 
                 let button = actions.querySelector('.crm-user-filter-toggle');
 

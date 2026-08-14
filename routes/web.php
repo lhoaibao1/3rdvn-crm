@@ -20,6 +20,10 @@ use App\Support\Permissions\DataCenterAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::get('fe-deeplink/b1/{token}/trang-thai', [FeolPublicLandingController::class, 'status'])
+    ->middleware('throttle:120,1')
+    ->name('feol.landing.status');
+
 Route::prefix('fe-deeplink/b1')->middleware('throttle:30,1')->group(function (): void {
     Route::get('/{token}', [FeolPublicLandingController::class, 'show'])->name('feol.landing.show');
     Route::post('/{token}', [FeolPublicLandingController::class, 'store'])->name('feol.landing.store');

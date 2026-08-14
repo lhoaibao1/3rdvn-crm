@@ -50,7 +50,10 @@ class ApplicationsTable
         }
 
         return $table
-            ->extraAttributes(['class' => 'crm-users-table crm-applications-table', 'data-crm-column-table' => $columnTable], merge: true)
+            ->extraAttributes([
+                'class' => 'crm-users-table crm-applications-table'.($projectSlug === 'fe-deeplink' ? ' crm-feol-partner-table' : ''),
+                'data-crm-column-table' => $columnTable,
+            ], merge: true)
             ->recordAction(null)
             ->recordUrl(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record]))
             ->searchable(false)
@@ -432,6 +435,14 @@ class ApplicationsTable
                         ->default((string) config('services.feol_bridge.partner_campaign_name', 'FE - Cash Loan - Deeplink'))
                         ->disabled(),
                 ]),
+            Filter::make('partner')
+                ->label('Đối tác')
+                ->schema([
+                    TextInput::make('value')
+                        ->label('Đối tác')
+                        ->default('SaigonBPO')
+                        ->disabled(),
+                ]),
             Filter::make('updated_period')
                 ->label('Thời gian cập nhật')
                 ->schema([
@@ -474,8 +485,8 @@ class ApplicationsTable
             Filter::make('created_period')
                 ->label('Thời gian tạo')
                 ->schema([
-                    DatePicker::make('from')->label('Từ ngày')->displayFormat('d/m/Y')->native(false),
-                    DatePicker::make('until')->label('Đến ngày')->displayFormat('d/m/Y')->native(false),
+                    DatePicker::make('from')->label('Thời gian tạo từ')->displayFormat('d/m/Y')->native(false),
+                    DatePicker::make('until')->label('Thời gian tạo đến')->displayFormat('d/m/Y')->native(false),
                 ])
                 ->columns(2)
                 ->query(fn (Builder $query, array $data): Builder => $query

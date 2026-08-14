@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\FeDeeplinkStatus;
 use App\Enums\FeolSubmitState;
 use App\Http\Requests\SubmitFeolLandingRequest;
 use App\Jobs\SubmitFeolApplicationToPartner;
@@ -148,7 +149,37 @@ class FeolPublicLandingController extends Controller
     {
         $integration = $this->integration($token);
 
-        return view('feol.success', compact('integration'));
+        return view('feol.success', [
+            'integration' => $integration,
+            'statusUrl' => route('feol.landing.status', ['token' => $token]),
+        ]);
+    }
+
+    public function status(string $token): JsonResponse
+    {
+        $integration = $this->integration($token);
+        $status = $integration->sub_status instanceof FeDeeplinkStatus
+            ? $integration->sub_status->value
+            : (string) $integration->sub_status;
+        $statusEnum = FeDeeplinkStatus::tryFrom($status);
+        $isEligible = $statusEnum === FeDeeplinkStatus::ELIGIBLE;
+        $isTerminal = $statusEnum?->isTerminal() ?? false;
+        $deeplink = $isEligible && filled($integration->deeplink_url)
+            ? $integration->deeplink_url
+            : null;
+
+        return response()->json([
+            'state' => $deeplink ? 'eligible' : ($isTerminal ? 'completed' : (filled($integration->last_error) ? 'error' : 'waiting')),
+            'status' => $status ?: null,
+            'status_label' => $status ? FeDeeplinkStatus::labelFor($status) : null,
+            'redirect_url' => $deeplink,
+            'message' => match (true) {
+                filled($deeplink) => 'Hồ sơ đủ điều kiện. Đang chuyển sang FE CREDIT...',
+                $isTerminal => 'Hồ sơ hiện chưa đủ điều kiện để tiếp tục.',
+                filled($integration->last_error) => 'Hệ thống đang kiểm tra lại kết quả. Vui lòng chờ trong giây lát.',
+                default => 'Đang kiểm tra điều kiện hồ sơ với FE CREDIT...',
+            },
+        ]);
     }
 
     private function integration(string $token): FeolApplicationIntegration
