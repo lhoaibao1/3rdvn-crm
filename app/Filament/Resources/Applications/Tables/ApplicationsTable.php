@@ -301,13 +301,13 @@ class ApplicationsTable
                 ->state(fn (): string => (string) config('services.feol_bridge.partner_campaign_code', 'CTV_FEC_DL'))
                 ->badge()
                 ->toggleable(),
-            TextColumn::make('applicant_name')
+            TextColumn::make('fe_customer_name')
                 ->label('Tên khách hàng')
-                ->searchable()
+                ->state(fn (Application $record): string => $record->applicant_name)
                 ->weight('bold'),
-            TextColumn::make('phone')
+            TextColumn::make('fe_customer_phone')
                 ->label('Số điện thoại')
-                ->searchable()
+                ->state(fn (Application $record): ?string => $record->phone)
                 ->placeholder('-'),
             TextColumn::make('fe_employee')
                 ->label('Nhân viên')
