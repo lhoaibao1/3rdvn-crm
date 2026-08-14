@@ -35,6 +35,7 @@ use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Js;
 
 class ApplicationsTable
 {
@@ -219,6 +220,27 @@ class ApplicationsTable
                     ViewAction::make()
                         ->label('Xem')
                         ->url(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record])),
+                    Action::make('copyFeDeeplink')
+                        ->label('Copy Deeplink')
+                        ->icon(Heroicon::OutlinedClipboardDocument)
+                        ->visible(fn (Application $record): bool => $projectSlug === 'fe-deeplink'
+                            && filled($record->feolIntegration?->deeplink_url))
+                        ->action(function (Application $record, mixed $livewire): void {
+                            $deeplink = (string) $record->feolIntegration?->deeplink_url;
+
+                            if (blank($deeplink)) {
+                                Notification::make()
+                                    ->title('Chưa có Deeplink')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $livewire->js(
+                                'navigator.clipboard.writeText('.Js::from($deeplink).").then(() => new FilamentNotification().title('Đã sao chép Deeplink').success().send())",
+                            );
+                        }),
                     AclMixOtpAction::make(),
                     AclMixDecisionAction::make(),
                     LotteFinanceDecisionAction::make(),
