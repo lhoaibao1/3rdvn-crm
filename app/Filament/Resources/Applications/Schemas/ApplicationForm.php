@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\SalesProject;
 use App\Models\User;
 use App\Support\AdminWorkflowOverride;
+use App\Support\Filament\ApplicationDateInput;
 use App\Support\Filament\LeadFormFieldFactory;
 use App\Support\SalesLineSnapshot;
 use Filament\Forms\Components\DateTimePicker;
@@ -77,8 +78,7 @@ class ApplicationForm
                         ->label('Ngày tạo')
                         ->seconds(false)
                         ->required(AdminWorkflowOverride::required()),
-                    DatePicker::make('payload.fields.disbursed_at')
-                        ->label('Ngày giải ngân'),
+                    ApplicationDateInput::make('payload.fields.disbursed_at'),
                     DateTimePicker::make('updated_at')
                         ->label('Ngày cập nhật')
                         ->seconds(false)
@@ -122,21 +122,6 @@ class ApplicationForm
                                 ->columnSpanFull()
                                 ->columns(2)
                                 ->schema(fn (Get $get): array => LeadFormFieldFactory::componentsForProject($get('sales_project_id'), 'lead', 'payload.fields', self::disabledForNonAdmin())),
-                        ]),
-                    Tab::make('Thông tin phê duyệt')
-                        ->icon(Heroicon::ClipboardDocumentCheck)
-                        ->columns(12)
-                        ->schema([
-                            Section::make('Quyết định sơ bộ')
-                                ->columnSpanFull()
-                                ->columns(2)
-                                ->schema([
-                                    TextInput::make('payload.review.product')->label('Sản phẩm')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->maxLength(255),
-                                    TextInput::make('payload.review.pre_approved_amount')->label('Số tiền phê duyệt sơ bộ')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->maxLength(255),
-                                    TextInput::make('payload.review.pre_approved_months')->label('Số tháng phê duyệt')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->maxLength(255),
-                                    TextInput::make('payload.review.pre_approved_interest_rate')->label('Lãi suất phê duyệt')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->maxLength(255),
-                                    Textarea::make('payload.review.review_note')->label('Ghi chú kiểm tra')->disabled(fn (): bool => self::disabledForNonAdmin())->dehydrated(fn (): bool => self::dehydratedForAdmin())->rows(3)->columnSpanFull(),
-                                ]),
                         ]),
                     Tab::make('Xử lý dự án')
                         ->icon(Heroicon::Briefcase)

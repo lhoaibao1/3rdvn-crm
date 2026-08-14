@@ -30,8 +30,12 @@ class FeolPartnerFieldParityTest extends TestCase
             self::assertStringContainsString($title, $landing);
         }
 
-        foreach (['ID', 'Chiến dịch', 'Tên khách hàng', 'Số điện thoại', 'Nhân viên', 'Quản lý', 'Mã giới thiệu', 'Trạng thái chính', 'Trạng thái phụ', 'App id', 'App type', 'Offer Amt', 'Disbursed Amt', 'Topup Amt', 'Insurance Amt', 'Fee Amt', 'Disbursed Date', 'Ghi chú', 'PIC', 'Thời gian cập nhật'] as $title) {
+        foreach (['ID', 'Chiến dịch', 'Tên khách hàng', 'Số điện thoại', 'Nhân viên', 'Quản lý', 'Mã giới thiệu', 'Trạng thái chính', 'Trạng thái phụ', 'App id', 'App type', 'Offer Amt', 'Disbursed Amt', 'Disbursed Date', 'Thời gian cập nhật'] as $title) {
             self::assertStringContainsString($title, $table);
+        }
+
+        foreach (['Topup Amt', 'Insurance Amt', 'Fee Amt', "->label('PIC')"] as $irrelevantTitle) {
+            self::assertStringNotContainsString($irrelevantTitle, $table);
         }
 
         self::assertStringContainsString('Thông tin đăng ký', $form);

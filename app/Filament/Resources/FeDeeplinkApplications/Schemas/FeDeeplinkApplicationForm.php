@@ -6,6 +6,7 @@ use App\Enums\FeDeeplinkStatus;
 use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Support\Applications\FeolConsent;
+use App\Support\Filament\ApplicationDateInput;
 use App\Support\SalesLineSnapshot;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\Checkbox;
@@ -137,10 +138,7 @@ class FeDeeplinkApplicationForm
                     ->columns(2)
                     ->hiddenOn('create')
                     ->schema([
-                        DatePicker::make('payload.fields.disbursed_at')
-                            ->label('Ngày giải ngân')
-                            ->displayFormat('d/m/Y')
-                            ->native(false),
+                        ApplicationDateInput::make('payload.fields.disbursed_at'),
                         Select::make('payload.fields.product')
                             ->label('Sản phẩm')
                             ->options([

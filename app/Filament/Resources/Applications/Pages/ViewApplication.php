@@ -44,7 +44,7 @@ class ViewApplication extends ViewRecord
                 ->icon(Heroicon::OutlinedArrowPath)
                 ->color('info')
                 ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'
-                    && (auth()->user()?->can('update', $record) ?? false))
+                    && (auth()->user()?->hasRole('Admin') ?? false))
                 ->action(function (Application $record): void {
                     app(RequestFeolApplicationSync::class)->handle($record);
                     Notification::make()->title('Đã đưa hồ sơ vào hàng đợi kiểm tra')->success()->send();
@@ -54,7 +54,7 @@ class ViewApplication extends ViewRecord
                 ->visible(fn (Application $record): bool => match ($record->salesProject?->slug) {
                     'acl-mix' => AclMixWorkflow::canEditData(auth()->user(), $record),
                     'lotte-finance' => LotteFinanceWorkflow::canEditData(auth()->user(), $record),
-                    default => true,
+                    default => auth()->user()?->hasRole('Admin') ?? false,
                 }),
             DeleteAction::make()
                 ->label('Xóa')

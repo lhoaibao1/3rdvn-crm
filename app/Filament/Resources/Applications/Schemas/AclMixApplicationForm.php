@@ -6,6 +6,7 @@ use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Models\User;
 use App\Support\AdminWorkflowOverride;
+use App\Support\Filament\ApplicationDateInput;
 use App\Support\Applications\AclMixWorkflow;
 use App\Support\Assignments\RecordAssignment;
 use App\Support\CustomerName;
@@ -105,10 +106,7 @@ class AclMixApplicationForm
                         ->label('Người tạo')->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()->preload()->required(AdminWorkflowOverride::required()),
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
-                    DatePicker::make('payload.fields.disbursed_at')
-                        ->label('Ngày giải ngân')
-                        ->disabled(fn (): bool => ! (auth()->user()?->hasRole('Admin') ?? false))
-                        ->dehydrated(fn (): bool => (bool) auth()->user()?->hasRole('Admin')),
+                    ApplicationDateInput::make('payload.fields.disbursed_at'),
                     TextInput::make('status')->label('Trạng thái')->formatStateUsing(fn (?string $state): string => AclMixWorkflow::statusLabel($state))->disabled()->dehydrated(false),
                 ]),
             self::approvalSection(),

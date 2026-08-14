@@ -6,6 +6,7 @@ use App\Forms\Components\SearchableSelect as Select;
 use App\Models\Application;
 use App\Models\User;
 use App\Support\AdminWorkflowOverride;
+use App\Support\Filament\ApplicationDateInput;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Assignments\RecordAssignment;
 use App\Support\Filament\LeadCreate\CreateLotteFinanceLeadAction;
@@ -57,8 +58,7 @@ class LotteFinanceApplicationForm
                         ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()->preload()->required(AdminWorkflowOverride::required()),
                     DateTimePicker::make('created_at')->label('Ngày tạo')->seconds(false)->required(AdminWorkflowOverride::required()),
-                    DatePicker::make('payload.fields.disbursed_at')
-                        ->label('Ngày giải ngân'),
+                    ApplicationDateInput::make('payload.fields.disbursed_at'),
                     TextInput::make('status')
                         ->label('Trạng thái')
                         ->formatStateUsing(fn (?string $state): string => LotteFinanceWorkflow::statusLabel($state))

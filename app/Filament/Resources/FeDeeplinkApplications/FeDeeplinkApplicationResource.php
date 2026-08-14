@@ -45,7 +45,7 @@ class FeDeeplinkApplicationResource extends ApplicationResource
 
     public static function canEdit(mixed $record): bool
     {
-        return $record instanceof Application && (auth()->user()?->can('update', $record) ?? false);
+        return $record instanceof Application && (auth()->user()?->hasRole('Admin') ?? false);
     }
 
     protected static function projectSlug(): string

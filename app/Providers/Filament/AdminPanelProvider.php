@@ -13,6 +13,7 @@ use App\Filament\Resources\CrmModules\CrmModuleResource;
 use App\Filament\Resources\CrmTeams\CrmTeamResource;
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
 use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
+use App\Filament\Resources\FeolBridgeLogs\FeolBridgeLogResource;
 use App\Filament\Resources\HotLeads\HotLeadResource;
 use App\Filament\Resources\JobVacancies\JobVacancyResource;
 use App\Filament\Resources\Leads\LeadResource;
@@ -113,6 +114,7 @@ class AdminPanelProvider extends PanelProvider
                 CbpApplicationResource::class,
                 LotteFinanceApplicationResource::class,
                 FeDeeplinkApplicationResource::class,
+                FeolBridgeLogResource::class,
                 ProjectReportResource::class,
                 SaleProfileResource::class,
                 JobVacancyResource::class,

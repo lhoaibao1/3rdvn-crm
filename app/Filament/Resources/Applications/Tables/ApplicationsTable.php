@@ -12,6 +12,7 @@ use App\Support\Applications\FeolSalesIdentity;
 use App\Support\Applications\LotteFinanceWorkflow;
 use App\Support\Applications\RequestFeolApplicationSync;
 use App\Support\Filament\AclMixDecisionAction;
+use App\Support\Filament\ApplicationDateInput;
 use App\Support\Filament\AclMixOtpAction;
 use App\Support\Filament\LotteFinanceDecisionAction;
 use App\Support\Filament\RecordAssignAction;
@@ -58,7 +59,7 @@ class ApplicationsTable
             ->recordUrl(fn (Application $record): string => $resourceClass::getUrl('view', ['record' => $record]))
             ->searchable(false)
             ->striped()
-            ->defaultSort($projectSlug === 'fe-deeplink' ? 'updated_at' : 'created_at', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->columns(TableColumnPreferences::apply($columnTable, [
                 TextColumn::make('application_code')
                     ->label('Mã hồ sơ')
@@ -187,14 +188,14 @@ class ApplicationsTable
                 Filter::make('created_from')
                     ->label('Từ ngày')
                     ->schema([
-                        DatePicker::make('date')->label('Từ ngày')->displayFormat('d/m/Y')->native(false),
+                        ApplicationDateInput::make('date', 'Từ ngày'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when($data['date'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '>=', $date))),
                 Filter::make('created_until')
                     ->label('Đến ngày')
                     ->schema([
-                        DatePicker::make('date')->label('Đến ngày')->displayFormat('d/m/Y')->native(false),
+                        ApplicationDateInput::make('date', 'Đến ngày'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when($data['date'] ?? null, fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '<=', $date))),
@@ -225,7 +226,7 @@ class ApplicationsTable
                         ->label('Kiểm tra đối tác ngay')
                         ->icon(Heroicon::OutlinedArrowPath)
                         ->visible(fn (Application $record): bool => $projectSlug === 'fe-deeplink'
-                            && (auth()->user()?->can('update', $record) ?? false))
+                            && (auth()->user()?->hasRole('Admin') ?? false))
                         ->action(function (Application $record): void {
                             app(RequestFeolApplicationSync::class)->handle($record);
                             Notification::make()->title('Đã đưa hồ sơ vào hàng đợi kiểm tra')->success()->send();
@@ -240,7 +241,7 @@ class ApplicationsTable
                         ->visible(fn (Application $record): bool => match ($projectSlug) {
                             'acl-mix' => AclMixWorkflow::canEditData(auth()->user(), $record),
                             'lotte-finance' => LotteFinanceWorkflow::canEditData(auth()->user(), $record),
-                            default => true,
+                            default => auth()->user()?->hasRole('Admin') ?? false,
                         })
                         ->url(fn (Application $record): string => $resourceClass::getUrl('edit', ['record' => $record])),
                 ])
@@ -427,8 +428,8 @@ class ApplicationsTable
             Filter::make('updated_period')
                 ->label('Thời gian cập nhật')
                 ->schema([
-                    DatePicker::make('from')->label('Từ ngày')->displayFormat('d/m/Y')->native(false),
-                    DatePicker::make('until')->label('Đến ngày')->displayFormat('d/m/Y')->native(false),
+                    ApplicationDateInput::make('from', 'Từ ngày'),
+                    ApplicationDateInput::make('until', 'Đến ngày'),
                 ])
                 ->columns(2)
                 ->query(fn (Builder $query, array $data): Builder => $query
@@ -466,8 +467,8 @@ class ApplicationsTable
             Filter::make('created_period')
                 ->label('Thời gian tạo')
                 ->schema([
-                    DatePicker::make('from')->label('Thời gian tạo từ')->displayFormat('d/m/Y')->native(false),
-                    DatePicker::make('until')->label('Thời gian tạo đến')->displayFormat('d/m/Y')->native(false),
+                    ApplicationDateInput::make('from', 'Thời gian tạo từ'),
+                    ApplicationDateInput::make('until', 'Thời gian tạo đến'),
                 ])
                 ->columns(2)
                 ->query(fn (Builder $query, array $data): Builder => $query

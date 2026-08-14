@@ -409,22 +409,6 @@ class ApplicationInfolist
                                 ]),
                         ]),
 
-                    Tab::make('Thông tin phê duyệt')
-                        ->icon(Heroicon::ClipboardDocumentCheck)
-                        ->visible(fn (Application $record): bool => ! in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance'], true))
-                        ->columns(12)
-                        ->schema([
-                            Section::make('Thông tin phê duyệt')
-                                ->columnSpanFull()
-                                ->columns(2)
-                                ->schema([
-                                    TextEntry::make('payload.review.product')->label('Sản phẩm')->placeholder('-'),
-                                    TextEntry::make('payload.review.pre_approved_amount')->label('Số tiền phê duyệt sơ bộ')->formatStateUsing(fn (mixed $state): string => filled($state) ? number_format((int) preg_replace('/\D+/', '', (string) $state), 0, ',', '.').' VNĐ' : '-')->placeholder('-'),
-                                    TextEntry::make('payload.review.pre_approved_months')->label('Số tháng phê duyệt')->placeholder('-'),
-                                    TextEntry::make('payload.review.pre_approved_interest_rate')->label('Lãi suất phê duyệt')->formatStateUsing(fn (mixed $state): string => filled($state) ? rtrim(rtrim((string) $state, '0'), '.').'%' : '-')->placeholder('-'),
-                                    TextEntry::make('payload.review.review_note')->label('Ghi chú kiểm tra')->placeholder('-')->columnSpanFull(),
-                                ]),
-                        ]),
                     Tab::make('Xử lý dự án')
                         ->icon(Heroicon::Briefcase)
                         ->visible(fn (Application $record): bool => ! in_array($record->salesProject?->slug, ['acl-mix', 'lotte-finance', 'fe-deeplink'], true))
@@ -437,7 +421,8 @@ class ApplicationInfolist
                         ]),
                     Tab::make('Lịch sử Node-RED')
                         ->icon(Heroicon::OutlinedArrowPath)
-                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink')
+                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'
+                            && (auth()->user()?->hasRole('Admin') ?? false))
                         ->schema([
                             Section::make('Quá trình đồng bộ CRM đối tác')
                                 ->description('Hiển thị từng lần Node-RED cập nhật trạng thái hoặc trả lỗi về CRM.')

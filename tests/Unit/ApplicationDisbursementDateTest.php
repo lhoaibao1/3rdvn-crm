@@ -46,9 +46,13 @@ class ApplicationDisbursementDateTest extends TestCase
 
         foreach (['ApplicationForm.php', 'AclMixApplicationForm.php', 'LotteFinanceApplicationForm.php'] as $form) {
             $source = file_get_contents($root.$form);
-            self::assertStringContainsString("DatePicker::make('payload.fields.disbursed_at')", $source, $form);
-            self::assertStringContainsString("->label('Ngày giải ngân')", $source, $form);
-            self::assertStringNotContainsString("DatePicker::make('payload.fields.disbursed_at')\n                        ->label('Ngày giải ngân')\n                        ->native(false)", $source, $form);
+            self::assertStringContainsString("ApplicationDateInput::make('payload.fields.disbursed_at')", $source, $form);
+            self::assertStringNotContainsString("DatePicker::make('payload.fields.disbursed_at')", $source, $form);
         }
+
+        $component = file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/ApplicationDateInput.php');
+        self::assertStringContainsString("->mask('99/99/9999')", $component);
+        self::assertStringContainsString("->placeholder('dd/mm/yyyy')", $component);
+        self::assertStringContainsString("->rule('date_format:d/m/Y')", $component);
     }
 }
