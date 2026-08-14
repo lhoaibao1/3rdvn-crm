@@ -30,8 +30,8 @@ class FeDeeplinkStatusTest extends TestCase
         self::assertStringContainsString("Select::make('status')", $form);
         self::assertStringContainsString("Select::make('payload.fields.product')", $form);
         self::assertStringNotContainsString('NativeSelect', $form);
-        self::assertSame(3, substr_count($form, '->searchable()'));
-        self::assertSame(3, substr_count($form, '->preload()'));
+        self::assertSame(2, substr_count($form, '->searchable()'));
+        self::assertSame(2, substr_count($form, '->preload()'));
         self::assertStringContainsString('FeDeeplinkStatus::options()', $form);
         self::assertStringContainsString('FeDeeplinkStatus::PENDING_SUBMISSION->value', $form);
         self::assertStringContainsString('FeDeeplinkStatus::PENDING_SUBMISSION->value', $create);

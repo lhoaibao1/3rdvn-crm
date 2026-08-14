@@ -5,7 +5,7 @@ namespace Tests\Unit;
 use App\Models\User;
 use App\Support\Applications\FeolSalesIdentity;
 use Illuminate\Validation\ValidationException;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class FeolSalesIdentityTest extends TestCase
 {
