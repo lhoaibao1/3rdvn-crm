@@ -57,6 +57,11 @@ class FeDeeplinkApplicationForm
                             ->minValue(1)
                             ->maxValue(120)
                             ->suffix('tháng'),
+                        TextInput::make('payload.fields.referral_code')
+                            ->label('Mã giới thiệu')
+                            ->numeric()
+                            ->length(5)
+                            ->helperText('Mã bán hàng 5 số truyền sang FEOL.'),
                         Select::make('created_by_id')
                             ->label('Tên nhân viên / Tạo bởi')
                             ->options(fn (): array => auth()->user()?->hasRole('Admin')

@@ -5,6 +5,7 @@ use App\Http\Controllers\CandidateApplicationController;
 use App\Http\Controllers\CorporateWebsiteController;
 use App\Http\Controllers\Crm\LatestNotificationController;
 use App\Http\Controllers\Crm\TableColumnPreferenceController;
+use App\Http\Controllers\FeolPublicLandingController;
 use App\Http\Controllers\Integration\EssAuthenticationController;
 use App\Http\Controllers\Integration\CompletedCustomerDirectoryController;
 use App\Http\Controllers\Integration\FeolApplicationSyncController;
@@ -18,6 +19,12 @@ use App\Support\DataCenter\LeadReferralImportTemplate;
 use App\Support\Permissions\DataCenterAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+Route::prefix('fe-deeplink/b1')->middleware('throttle:30,1')->group(function (): void {
+    Route::get('/{token}', [FeolPublicLandingController::class, 'show'])->name('feol.landing.show');
+    Route::post('/{token}', [FeolPublicLandingController::class, 'store'])->name('feol.landing.store');
+    Route::get('/{token}/hoan-tat', [FeolPublicLandingController::class, 'success'])->name('feol.landing.success');
+});
 
 Route::domain('los.3rdvn.io.vn')->group(function (): void {
     Route::get('/login', [LosAuthenticationController::class, 'create'])->name('los.login');

@@ -202,6 +202,12 @@ class ApplicationInfolist
                                         ->formatStateUsing(fn (mixed $state): string => $state instanceof FeolSyncState ? $state->label() : FeolSyncState::tryFrom((string) $state)?->label() ?? '-')
                                         ->placeholder('-')
                                         ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
+                                    TextEntry::make('feolIntegration.submit_state')
+                                        ->label('Trạng thái gửi FEOL')
+                                        ->badge()
+                                        ->formatStateUsing(fn (mixed $state): string => $state?->label() ?? '-')
+                                        ->placeholder('-')
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
                                     TextEntry::make('feolIntegration.b1_url')
                                         ->label('Landing Page B1')
                                         ->copyable()
@@ -228,6 +234,13 @@ class ApplicationInfolist
                                         ->columnSpanFull()
                                         ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'
                                             && filled($record->feolIntegration?->last_error)),
+                                    TextEntry::make('feolIntegration.submit_last_error')
+                                        ->label('Lỗi gửi hồ sơ FEOL')
+                                        ->color('danger')
+                                        ->placeholder('-')
+                                        ->columnSpanFull()
+                                        ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'
+                                            && filled($record->feolIntegration?->submit_last_error)),
                                     TextEntry::make('updated_at')
                                         ->label('Cập nhật')
                                         ->dateTime('H:i d/m/Y')

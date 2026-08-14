@@ -61,6 +61,9 @@ return [
         'landing_campaign' => env('FEOL_LANDING_CAMPAIGN', 'fe-cashloan-deeplink'),
         'landing_sale_code' => env('FEOL_LANDING_SALE_CODE'),
         'landing_encrypt_key' => env('FEOL_LANDING_ENCRYPT_KEY'),
+        'partner_landing_url' => env('FEOL_PARTNER_LANDING_URL'),
+        'partner_submit_url' => env('FEOL_PARTNER_SUBMIT_URL', 'https://backend-ws.saigonbpo.vn/os_ws_lio_and_fe/landingPageFE/createFEOL'),
+        'partner_timeout_seconds' => (int) env('FEOL_PARTNER_TIMEOUT_SECONDS', 20),
     ],
 
 ];

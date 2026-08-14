@@ -3,12 +3,12 @@
 namespace App\Filament\Resources\FeDeeplinkApplications\Pages;
 
 use App\Enums\FeDeeplinkStatus;
+use App\Enums\FeolSubmitState;
 use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
 use App\Filament\Resources\FeDeeplinkApplications\Schemas\FeDeeplinkApplicationForm;
 use App\Models\Application;
 use App\Models\SalesProject;
 use App\Enums\FeolSyncState;
-use App\Support\Applications\FeolLandingPageUrl;
 use App\Support\SalesLineSnapshot;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -46,8 +46,12 @@ class CreateFeDeeplinkApplication extends CreateRecord
         ]);
         $application->setCreatedAt(CarbonImmutable::parse((string) $data['created_at']));
         $application->save();
+        $publicToken = Str::random(48);
         $application->feolIntegration()->create([
-            'b1_url' => app(FeolLandingPageUrl::class)->generate(),
+            'public_token' => $publicToken,
+            'partner_request_id' => 'FEDL-'.$application->getKey().'-'.Str::upper(Str::random(12)),
+            'b1_url' => route('feol.landing.show', ['token' => $publicToken]),
+            'submit_state' => FeolSubmitState::AWAITING_CUSTOMER,
             'sync_state' => FeolSyncState::PENDING,
             'sync_requested_at' => now(),
             'next_sync_at' => now(),
