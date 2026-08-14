@@ -47,7 +47,7 @@ class UatPanelProvider extends AdminPanelProvider
             ->path('')
             ->login(Login::class)
             ->loginRouteSlug('authen/login')
-            ->brandName(fn () => 'UAT · '.(UiSetting::current()->app_name ?: '3RDVN CRM'))
+            ->brandName(fn () => UiSetting::current()->app_name ?: '3RDVN CRM')
             ->brandLogo(fn () => ($path = UiSetting::current()->logo_path)
                 ? $this->versionedPublicAsset($path)
                 : new HtmlString('<div style="height:2rem;width:2rem;border-radius:.65rem;background:#2563eb;color:#fff;display:grid;place-items:center;font-weight:800;line-height:1">3</div>'))
