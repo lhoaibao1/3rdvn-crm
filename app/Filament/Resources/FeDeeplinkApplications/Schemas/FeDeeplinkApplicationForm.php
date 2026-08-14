@@ -106,6 +106,10 @@ class FeDeeplinkApplicationForm
                     ->columns(2)
                     ->hiddenOn('create')
                     ->schema([
+                        DatePicker::make('payload.fields.disbursed_at')
+                            ->label('Ngày giải ngân')
+                            ->displayFormat('d/m/Y')
+                            ->native(false),
                         Select::make('payload.fields.product')
                             ->label('Sản phẩm')
                             ->options([

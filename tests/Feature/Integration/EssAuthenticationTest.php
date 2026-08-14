@@ -3,14 +3,14 @@
 namespace Tests\Feature\Integration;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class EssAuthenticationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -26,7 +26,7 @@ class EssAuthenticationTest extends TestCase
             'password' => Hash::make('Secret@123'),
             'employment_status' => User::STATUS_ACTIVE,
         ]);
-        $user->assignRole(Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']));
+        $user->assignRole(Role::create(['name' => 'Admin', 'guard_name' => 'web']));
 
         $response = $this->withToken('test-integration-token')->postJson(
             '/api/integration/v1/authenticate',
