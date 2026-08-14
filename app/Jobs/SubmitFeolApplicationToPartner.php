@@ -21,7 +21,7 @@ class SubmitFeolApplicationToPartner implements ShouldQueue
     public function __construct(public readonly int $applicationId)
     {
         $this->afterCommit();
-        $this->onQueue('integrations');
+        $this->onQueue('default');
     }
 
     public function backoff(): array
