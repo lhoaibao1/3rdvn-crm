@@ -24,7 +24,7 @@ class WorkflowConfigurationResourceTest extends TestCase
         self::assertStringNotContainsString('WorkflowConfigurationResource::class', $uatProvider);
         self::assertStringContainsString("return 'Workflow';", $resource);
         self::assertStringContainsString('protected static ?string $slug = \'admin/workflow-configurations\';', $resource);
-        self::assertStringContainsString("return 'Admin';", $resource);
+        self::assertStringContainsString('return \\App\\Support\\Filament\\AdminNavigation::GROUP;', $resource);
         self::assertStringContainsString('use AdminOnlyResource;', $resource);
         self::assertStringContainsString("str_starts_with(\$appHost, 'uat-')", $adminOnlyResource);
         self::assertStringContainsString('CreateWorkflowConfiguration::route', $resource);

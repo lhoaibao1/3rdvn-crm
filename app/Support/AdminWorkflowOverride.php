@@ -20,7 +20,7 @@ class AdminWorkflowOverride
             $user = $container->make(AuthFactory::class)->guard()->user();
         }
 
-        return $user instanceof User && $user->hasAnyRole(['Admin', 'Sales Admin']);
+        return $user instanceof User && $user->hasRole('Admin');
     }
 
     public static function required(?User $user = null): bool
