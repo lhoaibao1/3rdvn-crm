@@ -32,7 +32,7 @@ class FeolApplicationSync
                 ->lockForUpdate()
                 ->firstOrNew(['application_id' => $application->getKey()]);
             $before = $integration->exists ? $integration->toArray() : [];
-            $pollSeconds = max(5, (int) config('services.feol_bridge.poll_seconds', 5));
+            $pollSeconds = max(1, (int) config('services.feol_bridge.poll_seconds', 1));
 
             if (filled($data['error'] ?? null)) {
                 $integration->fill([
