@@ -14,6 +14,28 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("push", (event) => {
+  let payload = {};
+
+  try {
+    payload = event.data?.json() || {};
+  } catch (error) {
+    payload = { title: "3RDVN CRM", body: event.data?.text() || "Bạn có thông báo mới." };
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "3RDVN CRM", {
+      body: payload.body || "Bạn có thông báo mới.",
+      icon: "/icons/3rdvn-icon-192.png",
+      badge: "/icons/3rdvn-icon-192.png",
+      tag: payload.tag || `3rdvn-crm-${Date.now()}`,
+      renotify: true,
+      vibrate: [180, 90, 180],
+      data: { url: payload.url || "/" },
+    })
+  );
+});
+
 self.addEventListener("notificationclick", (event) => {
   if (!event.notification.tag?.startsWith("3rdvn-crm-")) {
     return;

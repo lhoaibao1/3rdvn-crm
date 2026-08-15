@@ -2,6 +2,7 @@
 
 namespace App\Support\Notifications;
 
+use App\Jobs\SendWebPushNotification;
 use App\Models\Application;
 use App\Models\User;
 use App\Support\Applications\ProjectWorkflowConfiguration;
@@ -161,6 +162,19 @@ class ApplicationNotificationSender
                 $recipient->notifyNow($notification->toDatabase());
                 DatabaseNotificationsSent::dispatch($recipient);
             });
+
+            $plainBody = html_entity_decode(
+                strip_tags(preg_replace('/<br\s*\/?\s*>/i', "\n", (string) $body) ?: (string) $body),
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8',
+            );
+
+            SendWebPushNotification::dispatch($recipients->modelKeys(), [
+                'title' => $title,
+                'body' => trim($plainBody),
+                'url' => $url,
+                'tag' => '3rdvn-crm-application-'.$application->getKey().'-'.sha1($eventLabel.$occurredAt),
+            ]);
         } catch (Throwable $exception) {
             report($exception);
         }

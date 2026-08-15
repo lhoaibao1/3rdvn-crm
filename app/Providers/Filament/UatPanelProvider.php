@@ -89,6 +89,7 @@ class UatPanelProvider extends AdminPanelProvider
             ->renderHook(PanelsRenderHook::TOPBAR_END, fn () => $this->topbarUserMeta())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->chatAssets())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.form-drafts'))
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.web-push'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->pwaServiceWorkerScript())
             ->colors([
                 'primary' => Color::Blue,

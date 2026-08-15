@@ -429,6 +429,11 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
         return $this->hasMany(UserChangeLog::class)->latest();
     }
 
+    public function webPushSubscriptions(): HasMany
+    {
+        return $this->hasMany(WebPushSubscription::class);
+    }
+
     public function team(): BelongsTo
     {
         return $this->belongsTo(CrmTeam::class, 'team_id');
