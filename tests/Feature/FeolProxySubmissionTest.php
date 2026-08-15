@@ -446,10 +446,11 @@ class FeolProxySubmissionTest extends TestCase
 
         $this->get(route('feol.landing.success', ['token' => $token]))
             ->assertOk()
-            ->assertSee('Loading...')
+            ->assertSee('Đang kiểm tra')
             ->assertSee('trang-thai')
-            ->assertSee('Vui lòng chờ 1–2 giây')
-            ->assertSee('bằng Deeplink');
+            ->assertSee('Vui lòng đợi trong giây lát...')
+            ->assertSee('Bạn sẽ được chuyển sang FE Online 2.0 sau 1–2 giây.')
+            ->assertDontSee('bằng Deeplink');
 
         $application->feolIntegration()->update([
             'sub_status' => 'eligible',
