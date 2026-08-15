@@ -1930,6 +1930,9 @@ button {
 }
 
 
+/* Runtime error pages show only the active HTTP status. */
+.selector{display:none!important}
+
 /* Runtime mapping for HTTP 419; original visual system preserved. */
 #e401:checked ~ .page .error-code::before{content:"419"!important}
 #e401:checked ~ .page .error-title::before{content:"Phiên làm việc đã hết hạn"!important}
@@ -2046,7 +2049,7 @@ button {
         </h1>
 
         <p>
-            Select an error code to preview the system response.
+            Hệ thống đã ghi nhận trạng thái lỗi hiện tại.
         </p>
 
     </header>
