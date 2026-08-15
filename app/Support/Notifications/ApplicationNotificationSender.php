@@ -85,6 +85,32 @@ class ApplicationNotificationSender
         );
     }
 
+    public static function feolEligibilityResult(Application $application, bool $eligible): void
+    {
+        $application->loadMissing('feolIntegration');
+        $integration = $application->feolIntegration;
+        $customer = $application->applicant_name ?: 'Khách hàng';
+        $title = $eligible
+            ? 'FEOL - Khách hàng "'.$customer.'" thoả mãn điều kiện đăng ký hồ sơ vay.'
+            : 'FEOL - Rất tiếc hồ sơ Khách hàng "'.$customer.'" không thoả mãn điều kiện kiểm tra sơ bộ.';
+
+        self::send(
+            application: $application,
+            eventLabel: $eligible ? 'Kết quả kiểm tra đủ điều kiện' : 'Kết quả kiểm tra không đủ điều kiện',
+            detailLine: implode(' · ', array_filter([
+                'Mã hồ sơ: '.$application->application_code,
+                'ID đối tác: '.($integration?->partner_lead_id ?: '-'),
+                'Trạng thái: '.self::statusLabel($application, $application->status),
+                'Khách hàng: '.$customer,
+                'SĐT: '.($application->phone ?: '-'),
+            ])),
+            tone: $eligible ? 'success' : 'danger',
+            icon: $eligible ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedExclamationTriangle,
+            actorId: null,
+            notificationTitle: $title,
+        );
+    }
+
     private static function send(
         Application $application,
         string $eventLabel,
@@ -93,6 +119,7 @@ class ApplicationNotificationSender
         Heroicon $icon,
         ?int $actorId,
         array $extraRecipientIds = [],
+        ?string $notificationTitle = null,
     ): void {
         try {
             $application->loadMissing([
@@ -122,7 +149,7 @@ class ApplicationNotificationSender
                 $actor ?: 'Hệ thống',
                 $occurredAt,
             );
-            $title = self::title($application);
+            $title = $notificationTitle ?: self::title($application);
             $url = self::url($application);
 
             $recipients->each(function (User $recipient) use ($title, $body, $occurredAt, $icon, $tone, $url): void {

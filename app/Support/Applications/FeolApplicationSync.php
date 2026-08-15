@@ -17,8 +17,9 @@ class FeolApplicationSync
     {
         $incomingError = filled($data['error'] ?? null) ? (string) $data['error'] : null;
         $previousError = $application->feolIntegration?->last_error;
+        $eligibilityNotification = null;
 
-        $integration = DB::transaction(function () use ($application, $data): FeolApplicationIntegration {
+        $integration = DB::transaction(function () use ($application, $data, &$eligibilityNotification): FeolApplicationIntegration {
             $application = Application::query()
                 ->with('salesProject')
                 ->lockForUpdate()
@@ -114,6 +115,14 @@ class FeolApplicationSync
                 'note' => array_key_exists('note', $data) ? $data['note'] : $application->note,
             ])->save();
 
+            if ($status !== null && $status->value !== $application->getOriginal('status') && in_array($status, [
+                FeDeeplinkStatus::ELIGIBLE,
+                FeDeeplinkStatus::INELIGIBLE,
+                FeDeeplinkStatus::PRE_SCREENING_FAILURE,
+            ], true)) {
+                $eligibilityNotification = $status === FeDeeplinkStatus::ELIGIBLE;
+            }
+
             $this->audit($application, 'feol_synced', $before, $integration->fresh()->toArray());
 
             return $integration;
@@ -121,6 +130,10 @@ class FeolApplicationSync
 
         if ($incomingError !== null && $incomingError !== $previousError) {
             ApplicationNotificationSender::integrationFailed($application->fresh(), $incomingError);
+        }
+
+        if ($eligibilityNotification !== null) {
+            ApplicationNotificationSender::feolEligibilityResult($application->fresh(), $eligibilityNotification);
         }
 
         return $integration;
