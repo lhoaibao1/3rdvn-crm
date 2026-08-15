@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\Applications\FeolApplicationSync;
 use App\Support\Applications\FeolPartnerSubmitter;
 use App\Support\Applications\FeolConsent;
+use App\Support\Applications\FeolSalesIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -42,6 +43,73 @@ class FeolProxySubmissionTest extends TestCase
             ->assertSee(route('feol.registration.store', ['salesCode' => '26801']), false);
         $this->assertGuest();
         $this->assertSame('26801', data_get($user->fresh()->sales_codes, 'fe-deeplink'));
+    }
+
+    public function test_ref_query_link_opens_the_same_public_registration_and_is_used_for_copy(): void
+    {
+        $user = User::factory()->create([
+            'employment_status' => User::STATUS_ACTIVE,
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
+        config()->set('services.feol_bridge.public_registration_url', 'https://3rdvn.io.vn/feol/dangky');
+
+        $response = $this->get('/feol/dangky?ref=26801');
+
+        $response
+            ->assertOk()
+            ->assertSee('Đăng ký khoản vay')
+            ->assertSee('26801')
+            ->assertSee('http://localhost/feol/dangky?ref=26801', false);
+        $this->assertSame(
+            'https://3rdvn.io.vn/feol/dangky?ref=26801',
+            app(FeolSalesIdentity::class)->publicRegistrationUrl($user),
+        );
+    }
+
+    public function test_ref_query_link_rejects_missing_unknown_and_inactive_sales_codes(): void
+    {
+        User::factory()->create([
+            'employment_status' => User::STATUS_DEACTIVE,
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
+
+        $this->get('/feol/dangky')->assertNotFound();
+        $this->get('/feol/dangky?ref=99999')->assertNotFound();
+        $this->get('/feol/dangky?ref=26801')->assertNotFound();
+    }
+
+    public function test_ref_query_registration_creates_application_for_the_matching_salesperson(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create([
+            'employment_status' => User::STATUS_ACTIVE,
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
+        SalesProject::query()->create([
+            'name' => 'FE Deeplink',
+            'slug' => 'fe-deeplink',
+            'is_active' => true,
+        ]);
+
+        $response = $this->post('/feol/dangky?ref=26801', [
+            'applicant_name' => 'Khach Hang Ref Query',
+            'phone' => '0901234567',
+            'identity_number' => '012345678901',
+            'date_of_birth' => '20/05/1995',
+            'email' => 'customer@example.com',
+            'loan_amount' => '20.000.000',
+            'loan_term_months' => 24,
+            'customer_consent' => '1',
+        ]);
+
+        $application = Application::query()->sole();
+        $response->assertRedirect(route('feol.landing.success', ['token' => $application->feolIntegration->public_token]));
+        $this->assertSame($user->getKey(), $application->created_by_id);
+        $this->assertSame('26801', data_get($application->payload, 'fields.referral_code'));
+        Queue::assertPushed(SubmitFeolApplicationToPartner::class);
     }
 
     public function test_sales_code_registration_creates_crm_application_and_queues_partner_submission(): void

@@ -14,6 +14,7 @@ use App\Support\Applications\FeolSalesIdentity;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -49,6 +50,23 @@ class FeolPublicLandingController extends Controller
         ]);
     }
 
+    public function showForReferral(Request $request, FeolSalesIdentity $identity): View
+    {
+        $salesCode = trim((string) $request->query('ref'));
+        abort_unless(preg_match('/^\d{5}$/', $salesCode) === 1, 404);
+        $sale = $identity->userForReferralCode($salesCode);
+
+        return view('feol.landing', [
+            'application' => null,
+            'integration' => null,
+            'submitted' => false,
+            'consentText' => FeolConsent::TEXT,
+            'referralCode' => $salesCode,
+            'employeeName' => $sale->name,
+            'submitUrl' => $request->fullUrlWithQuery(['ref' => $salesCode]),
+        ]);
+    }
+
     public function storeForSalesCode(
         SubmitFeolLandingRequest $request,
         string $salesCode,
@@ -72,6 +90,16 @@ class FeolPublicLandingController extends Controller
         }
 
         return redirect()->route('feol.landing.success', ['token' => $token]);
+    }
+
+    public function storeForReferral(
+        SubmitFeolLandingRequest $request,
+        CreateFeolPublicApplication $creator,
+    ): JsonResponse|RedirectResponse {
+        $salesCode = trim((string) $request->query('ref'));
+        abort_unless(preg_match('/^\d{5}$/', $salesCode) === 1, 404);
+
+        return $this->storeForSalesCode($request, $salesCode, $creator);
     }
 
     public function store(SubmitFeolLandingRequest $request, string $token): JsonResponse|RedirectResponse
