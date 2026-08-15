@@ -1930,6 +1930,9 @@ button {
 }
 
 
+/* Runtime error pages show only the active HTTP status. */
+.selector{display:none!important}
+
 /* Runtime mapping for HTTP 422; original visual system preserved. */
 #e400:checked ~ .page .error-code::before{content:"422"!important}
 #e400:checked ~ .page .error-title::before{content:"Dữ liệu chưa hợp lệ"!important}
@@ -2046,7 +2049,7 @@ button {
         </h1>
 
         <p>
-            Select an error code to preview the system response.
+            Hệ thống đã ghi nhận trạng thái lỗi hiện tại.
         </p>
 
     </header>

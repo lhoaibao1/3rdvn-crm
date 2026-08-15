@@ -1929,6 +1929,9 @@ button {
     }
 }
 
+
+/* Runtime error pages show only the active HTTP status. */
+.selector{display:none!important}
 </style>
 </head>
 
@@ -2041,7 +2044,7 @@ button {
         </h1>
 
         <p>
-            Select an error code to preview the system response.
+            Hệ thống đã ghi nhận trạng thái lỗi hiện tại.
         </p>
 
     </header>
