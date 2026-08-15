@@ -1931,7 +1931,7 @@ button {
 
 
 /* Runtime error pages show only the active HTTP status. */
-.selector{display:none!important}
+.state,.selector{display:none!important}
 
 /* Runtime mapping for HTTP 505; original visual system preserved. */
 #e501:checked ~ .page .error-code::before{content:"505"!important}

@@ -1931,7 +1931,7 @@ button {
 
 
 /* Runtime error pages show only the active HTTP status. */
-.selector{display:none!important}
+.state,.selector{display:none!important}
 
 /* Runtime mapping for HTTP 451; original visual system preserved. */
 #e403:checked ~ .page .error-code::before{content:"451"!important}
