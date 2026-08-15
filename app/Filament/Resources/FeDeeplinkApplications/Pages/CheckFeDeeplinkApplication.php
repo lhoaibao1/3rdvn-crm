@@ -26,7 +26,7 @@ class CheckFeDeeplinkApplication extends ViewRecord
 
     public function outcome(): string
     {
-        $status = $this->record->feolIntegration?->sub_status;
+        $status = FeDeeplinkStatus::tryFrom((string) $this->record->feolIntegration?->sub_status);
         if ($status === FeDeeplinkStatus::ELIGIBLE && filled($this->record->feolIntegration?->deeplink_url)) return 'eligible';
         if (in_array($status, [FeDeeplinkStatus::INELIGIBLE, FeDeeplinkStatus::PRE_SCREENING_FAILURE], true)) return 'failed';
         return 'processing';
