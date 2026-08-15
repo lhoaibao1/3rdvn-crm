@@ -4,7 +4,6 @@ namespace App\Filament\Resources\FeDeeplinkApplications;
 
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\FeDeeplinkApplications\Pages\CreateFeDeeplinkApplication;
-use App\Filament\Resources\FeDeeplinkApplications\Pages\CheckFeDeeplinkApplication;
 use App\Filament\Resources\FeDeeplinkApplications\Pages\EditFeDeeplinkApplication;
 use App\Filament\Resources\FeDeeplinkApplications\Pages\ListFeDeeplinkApplications;
 use App\Filament\Resources\FeDeeplinkApplications\Pages\ViewFeDeeplinkApplication;
@@ -26,7 +25,6 @@ class FeDeeplinkApplicationResource extends ApplicationResource
         return [
             'index' => ListFeDeeplinkApplications::route('/'),
             'create' => CreateFeDeeplinkApplication::route('/create'),
-            'checking' => CheckFeDeeplinkApplication::route('/{record}/kiem-tra'),
             'view' => ViewFeDeeplinkApplication::route('/{record}'),
             'edit' => EditFeDeeplinkApplication::route('/{record}/edit'),
         ];
