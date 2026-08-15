@@ -9,6 +9,7 @@ use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\CandidateApplications\CandidateApplicationResource;
 use App\Filament\Resources\CbpApplications\CbpApplicationResource;
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
+use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
 use App\Filament\Resources\HotLeads\HotLeadResource;
 use App\Filament\Resources\JobVacancies\JobVacancyResource;
 use App\Filament\Resources\Leads\LeadResource;
@@ -46,7 +47,7 @@ class UatPanelProvider extends AdminPanelProvider
             ->path('')
             ->login(Login::class)
             ->loginRouteSlug('authen/login')
-            ->brandName(fn () => 'UAT · '.(UiSetting::current()->app_name ?: '3RDVN CRM'))
+            ->brandName(fn () => UiSetting::current()->app_name ?: '3RDVN CRM')
             ->brandLogo(fn () => ($path = UiSetting::current()->logo_path)
                 ? $this->versionedPublicAsset($path)
                 : new HtmlString('<div style="height:2rem;width:2rem;border-radius:.65rem;background:#2563eb;color:#fff;display:grid;place-items:center;font-weight:800;line-height:1">3</div>'))
@@ -69,6 +70,7 @@ class UatPanelProvider extends AdminPanelProvider
                 'logout' => fn (Action $action): Action => $action->label('Đăng xuất'),
             ])
             ->sidebarCollapsibleOnDesktop()
+            ->navigationGroups(\App\Support\Filament\AdminNavigation::groups())
             ->sidebarWidth($this->px(UiSetting::current()->sidebar_width ?: 260))
             ->collapsedSidebarWidth($this->px(UiSetting::current()->sidebar_collapsed_width ?: 76))
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->settingsStyles())
@@ -88,6 +90,7 @@ class UatPanelProvider extends AdminPanelProvider
             ->renderHook(PanelsRenderHook::TOPBAR_END, fn () => $this->topbarUserMeta())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->chatAssets())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.form-drafts'))
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.web-push'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->pwaServiceWorkerScript())
             ->colors([
                 'primary' => Color::Blue,
@@ -100,6 +103,7 @@ class UatPanelProvider extends AdminPanelProvider
                 ApplicationResource::class,
                 CbpApplicationResource::class,
                 LotteFinanceApplicationResource::class,
+                FeDeeplinkApplicationResource::class,
                 ProjectReportResource::class,
                 SaleProfileResource::class,
                 JobVacancyResource::class,
