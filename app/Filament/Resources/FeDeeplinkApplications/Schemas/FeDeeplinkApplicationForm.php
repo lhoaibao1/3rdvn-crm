@@ -78,9 +78,14 @@ class FeDeeplinkApplicationForm
                             ->label('Số tiền vay')
                             ->mask(RawJs::make("\$money(\$input, ',', '.', 0)"))
                             ->stripCharacters('.')
-                            ->minValue(1000000)
+                            ->minValue((int) config('services.feol_bridge.loan_amount_min'))
+                            ->maxValue((int) config('services.feol_bridge.loan_amount_max'))
                             ->prefix('₫')
-                            ->rules(['integer', 'max:1000000000'])
+                            ->rules([
+                                'integer',
+                                'min:'.config('services.feol_bridge.loan_amount_min'),
+                                'max:'.config('services.feol_bridge.loan_amount_max'),
+                            ])
                             ->required(fn (string $operation): bool => $operation === 'create'),
                         TextInput::make('payload.fields.loan_term_months')
                             ->label('Thời hạn vay (tháng)')

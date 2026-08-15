@@ -65,6 +65,8 @@ return [
         'partner_landing_url' => env('FEOL_PARTNER_LANDING_URL'),
         'partner_submit_url' => env('FEOL_PARTNER_SUBMIT_URL', 'https://backend-ws.saigonbpo.vn/os_ws_lio_and_fe/landingPageFE/createFEOL'),
         'partner_timeout_seconds' => (int) env('FEOL_PARTNER_TIMEOUT_SECONDS', 20),
+        'loan_amount_min' => (int) env('FEOL_LOAN_AMOUNT_MIN', 10000000),
+        'loan_amount_max' => (int) env('FEOL_LOAN_AMOUNT_MAX', 100000000),
     ],
 
 ];

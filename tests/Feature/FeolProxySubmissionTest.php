@@ -85,6 +85,38 @@ class FeolProxySubmissionTest extends TestCase
         Queue::assertPushed(SubmitFeolApplicationToPartner::class, fn ($job): bool => $job->applicationId === $application->getKey());
     }
 
+    public function test_public_registration_rejects_loan_amount_outside_partner_range(): void
+    {
+        Queue::fake();
+        User::factory()->create([
+            'employment_status' => User::STATUS_ACTIVE,
+            'sales_projects' => ['fe-deeplink'],
+            'sales_codes' => ['fe-deeplink' => '26801'],
+        ]);
+        SalesProject::query()->create([
+            'name' => 'FE Deeplink',
+            'slug' => 'fe-deeplink',
+            'is_active' => true,
+        ]);
+
+        $payload = [
+            'applicant_name' => 'Khach Hang Sai Han Muc',
+            'phone' => '0901234567',
+            'identity_number' => '012345678901',
+            'date_of_birth' => '20/05/1995',
+            'email' => 'customer@example.com',
+            'loan_amount' => '9.999.999',
+            'loan_term_months' => 24,
+            'customer_consent' => '1',
+        ];
+
+        $this->post(route('feol.registration.store', ['salesCode' => '26801']), $payload)
+            ->assertSessionHasErrors(['loan_amount']);
+
+        $this->assertDatabaseCount('applications', 0);
+        Queue::assertNothingPushed();
+    }
+
     public function test_sales_code_registration_is_saved_then_automatically_sent_to_partner(): void
     {
         $key = '3MQSbZ3xuwbmSHpo';
@@ -364,6 +396,23 @@ class FeolProxySubmissionTest extends TestCase
             ->assertJsonPath('message', 'Bạn đủ điều kiện. Chúng tôi sẽ chuyển bạn đến app FEOL.');
     }
 
+    public function test_failed_partner_submission_ends_public_waiting_state(): void
+    {
+        [$application, $token] = $this->application();
+        $application->feolIntegration()->update([
+            'submit_state' => FeolSubmitState::FAILED,
+            'submit_last_error' => 'Loan amount is invalid.',
+        ]);
+
+        $this->getJson(route('feol.landing.status', ['token' => $token]))
+            ->assertOk()
+            ->assertJson([
+                'state' => 'completed',
+                'redirect_url' => null,
+                'message' => 'Không thể gửi hồ sơ. Vui lòng kiểm tra lại thông tin đã nhập.',
+            ]);
+    }
+
     public function test_terminal_ineligible_result_never_redirects_customer_to_deeplink(): void
     {
         [$application, $token] = $this->application();
@@ -492,6 +541,8 @@ class FeolProxySubmissionTest extends TestCase
             'payload' => ['fields' => [
                 'referral_code' => '26801',
                 'customer_consent' => true,
+                'loan_amount' => 50000000,
+                'loan_term_months' => 24,
             ]],
         ]);
         $token = Str::random(48);

@@ -19,7 +19,12 @@ class SubmitFeolLandingRequest extends FormRequest
             'identity_number' => ['required', 'regex:/^\d{12}$/'],
             'date_of_birth' => ['required', 'date_format:d/m/Y', 'before_or_equal:today'],
             'email' => ['required', 'email:rfc', 'max:255'],
-            'loan_amount' => ['required', 'integer', 'min:1000000', 'max:1000000000'],
+            'loan_amount' => [
+                'required',
+                'integer',
+                'min:'.config('services.feol_bridge.loan_amount_min'),
+                'max:'.config('services.feol_bridge.loan_amount_max'),
+            ],
             'loan_term_months' => ['required', 'integer', 'min:1', 'max:120'],
             'customer_consent' => ['accepted'],
         ];
@@ -38,6 +43,8 @@ class SubmitFeolLandingRequest extends FormRequest
             'phone.regex' => 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0.',
             'identity_number.regex' => 'Số CCCD phải gồm đúng 12 số.',
             'date_of_birth.date_format' => 'Ngày sinh phải theo định dạng ngày/tháng/năm.',
+            'loan_amount.min' => 'Số tiền vay tối thiểu là 10.000.000 VNĐ.',
+            'loan_amount.max' => 'Số tiền vay tối đa là 100.000.000 VNĐ.',
             'customer_consent.accepted' => 'Khách hàng phải đồng ý trước khi gửi đăng ký.',
         ];
     }
