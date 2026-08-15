@@ -56,6 +56,7 @@ return [
 
     'feol_bridge' => [
         'token' => env('FEOL_BRIDGE_API_TOKEN'),
+        'public_registration_url' => env('FEOL_PUBLIC_REGISTRATION_URL', 'https://3rdvn.io.vn/feol/dangky'),
         'poll_seconds' => (int) env('FEOL_BRIDGE_POLL_SECONDS', 5),
         'landing_origin' => env('FEOL_LANDING_ORIGIN', 'https://os.saigonbpo.vn'),
         'landing_campaign' => env('FEOL_LANDING_CAMPAIGN', 'fe-cashloan-deeplink'),

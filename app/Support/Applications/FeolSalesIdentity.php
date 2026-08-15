@@ -23,8 +23,10 @@ final class FeolSalesIdentity
 
     public function publicRegistrationUrl(User $user): string
     {
-        return route('feol.registration.show', [
-            'salesCode' => $this->referralCode($user),
+        $baseUrl = rtrim((string) config('services.feol_bridge.public_registration_url'), '?&');
+
+        return $baseUrl.'?'.http_build_query([
+            'ref' => $this->referralCode($user),
         ]);
     }
 

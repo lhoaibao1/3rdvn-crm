@@ -40,6 +40,13 @@ Route::prefix('application/fe-deeplink/dang-ky')->middleware('throttle:10,1')->g
         ->name('feol.registration.store');
 });
 
+Route::prefix('feol')->middleware('throttle:10,1')->group(function (): void {
+    Route::get('/dangky', [FeolPublicLandingController::class, 'showForReferral'])
+        ->name('feol.referral.show');
+    Route::post('/dangky', [FeolPublicLandingController::class, 'storeForReferral'])
+        ->name('feol.referral.store');
+});
+
 Route::domain('los.3rdvn.io.vn')->group(function (): void {
     Route::get('/login', [LosAuthenticationController::class, 'create'])->name('los.login');
     Route::post('/login', [LosAuthenticationController::class, 'store'])
