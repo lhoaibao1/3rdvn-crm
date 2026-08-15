@@ -30,7 +30,7 @@ class CompletedCustomerDirectoryController extends Controller
             ->where(function ($query): void {
                 $query->whereIn('status', [AclMixWorkflow::COMPLETED, LotteFinanceWorkflow::DISBURSED])
                     ->orWhere(function ($feQuery): void {
-                        $feQuery->where('status', FeDeeplinkStatus::END->value)
+                        $feQuery->where('status', FeDeeplinkStatus::PL_DISBURSED->value)
                             ->where(function ($dateQuery): void {
                                 $dateQuery->whereNotNull('payload->fields->disbursed_at')
                                     ->orWhereNotNull('payload->fields->completed_at');
