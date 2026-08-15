@@ -64,7 +64,10 @@ class CompletedCustomerDirectoryController extends Controller
                 'project_slug' => $application->salesProject?->slug,
                 'customer_name' => $application->applicant_name ?: data_get($payload, 'fields.customer_name'),
                 'phone' => $application->phone ?: data_get($payload, 'fields.phone'),
-                'status' => $application->status === LotteFinanceWorkflow::DISBURSED ? 'Đã giải ngân' : 'Hoàn thành',
+                'status' => in_array($application->status, [
+                    LotteFinanceWorkflow::DISBURSED,
+                    FeDeeplinkStatus::PL_DISBURSED->value,
+                ], true) ? 'Đã giải ngân' : 'Hoàn thành',
                 'approved_amount' => (int) preg_replace('/[^0-9]/', '', (string) $approved),
                 'completed_at' => filled($completedAt) ?
                     \Illuminate\Support\Carbon::parse((string) $completedAt)->toIso8601String() : null,
