@@ -203,10 +203,10 @@ class FeolPublicLandingController extends Controller
             'status_label' => $status ? FeDeeplinkStatus::labelFor($status) : null,
             'redirect_url' => $deeplink,
             'message' => match (true) {
-                filled($deeplink) => 'Bạn đủ điều kiện. Chúng tôi sẽ chuyển bạn đến app FEOL.',
+                filled($deeplink) => 'Hồ sơ của bạn đủ điều kiện. Bạn sẽ được chuyển sang FE Online 2.0 sau 1–2 giây.',
                 $submissionFailed => 'Không thể gửi hồ sơ. Vui lòng kiểm tra lại thông tin đã nhập.',
                 $isTerminal => 'Rất tiếc bạn chưa đủ điều kiện :(',
-                default => 'Đang kiểm tra điều kiện hồ sơ với FEOL...',
+                default => 'Đang kiểm tra, vui lòng đợi...',
             },
         ]);
     }

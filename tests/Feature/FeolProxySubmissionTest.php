@@ -461,7 +461,7 @@ class FeolProxySubmissionTest extends TestCase
             ->assertJsonPath('state', 'eligible')
             ->assertJsonPath('status', 'eligible')
             ->assertJsonPath('redirect_url', 'https://fecredit.example.test/onboarding/LEAD-001')
-            ->assertJsonPath('message', 'Bạn đủ điều kiện. Chúng tôi sẽ chuyển bạn đến app FEOL.');
+            ->assertJsonPath('message', 'Hồ sơ của bạn đủ điều kiện. Bạn sẽ được chuyển sang FE Online 2.0 sau 1–2 giây.');
     }
 
     public function test_failed_partner_submission_ends_public_waiting_state(): void
@@ -510,7 +510,7 @@ class FeolProxySubmissionTest extends TestCase
             ->assertOk()
             ->assertJsonPath('state', 'waiting')
             ->assertJsonPath('redirect_url', null)
-            ->assertJsonPath('message', 'Đang kiểm tra điều kiện hồ sơ với FEOL...');
+            ->assertJsonPath('message', 'Đang kiểm tra, vui lòng đợi...');
     }
 
     public function test_partner_sync_never_overwrites_internal_employee_or_manager_chain(): void
