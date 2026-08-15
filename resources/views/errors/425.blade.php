@@ -1931,7 +1931,7 @@ button {
 
 
 /* Runtime error pages show only the active HTTP status. */
-.selector{display:none!important}
+.state,.selector{display:none!important}
 
 /* Runtime mapping for HTTP 425; original visual system preserved. */
 #e429:checked ~ .page .error-code::before{content:"425"!important}

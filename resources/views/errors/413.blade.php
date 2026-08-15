@@ -1931,7 +1931,7 @@ button {
 
 
 /* Runtime error pages show only the active HTTP status. */
-.selector{display:none!important}
+.state,.selector{display:none!important}
 
 /* Runtime mapping for HTTP 413; original visual system preserved. */
 #e400:checked ~ .page .error-code::before{content:"413"!important}

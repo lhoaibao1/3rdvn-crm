@@ -1931,7 +1931,7 @@ button {
 
 
 /* Runtime error pages show only the active HTTP status. */
-.selector{display:none!important}
+.state,.selector{display:none!important}
 
 /* Runtime mapping for HTTP 511; original visual system preserved. */
 #e401:checked ~ .page .error-code::before{content:"511"!important}
