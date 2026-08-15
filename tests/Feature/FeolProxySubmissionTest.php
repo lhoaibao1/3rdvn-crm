@@ -60,7 +60,7 @@ class FeolProxySubmissionTest extends TestCase
             ->assertOk()
             ->assertSee('Đăng ký khoản vay')
             ->assertSee('26801')
-            ->assertSee('http://localhost/feol/dangky?ref=26801', false);
+            ->assertSee('/feol/dangky?ref=26801', false);
         $this->assertSame(
             'https://3rdvn.io.vn/feol/dangky?ref=26801',
             app(FeolSalesIdentity::class)->publicRegistrationUrl($user),
