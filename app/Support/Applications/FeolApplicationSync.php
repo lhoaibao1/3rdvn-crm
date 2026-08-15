@@ -17,8 +17,10 @@ class FeolApplicationSync
     {
         $incomingError = filled($data['error'] ?? null) ? (string) $data['error'] : null;
         $previousError = $application->feolIntegration?->last_error;
+        $previousStatus = null;
+        $newStatus = null;
 
-        $integration = DB::transaction(function () use ($application, $data): FeolApplicationIntegration {
+        $integration = DB::transaction(function () use ($application, $data, &$previousStatus, &$newStatus): FeolApplicationIntegration {
             $application = Application::query()
                 ->with('salesProject')
                 ->lockForUpdate()
@@ -50,6 +52,7 @@ class FeolApplicationSync
             }
 
             $status = FeDeeplinkStatus::fromPartnerLabel($data['sub_status'] ?? null);
+            $previousStatus = $application->status;
 
             if (filled($data['sub_status'] ?? null) && ! $status) {
                 throw ValidationException::withMessages(['sub_status' => 'Trạng thái FEOL không được hỗ trợ.']);
@@ -113,6 +116,7 @@ class FeolApplicationSync
                 'payload' => $payload,
                 'note' => array_key_exists('note', $data) ? $data['note'] : $application->note,
             ])->save();
+            $newStatus = $application->status;
 
             $this->audit($application, 'feol_synced', $before, $integration->fresh()->toArray());
 
@@ -121,6 +125,16 @@ class FeolApplicationSync
 
         if ($incomingError !== null && $incomingError !== $previousError) {
             ApplicationNotificationSender::integrationFailed($application->fresh(), $incomingError);
+        }
+
+        if ($previousStatus !== null && $newStatus !== null && $previousStatus !== $newStatus) {
+            $fresh = $application->fresh();
+            $status = FeDeeplinkStatus::tryFrom($newStatus);
+            if (in_array($status, [FeDeeplinkStatus::ELIGIBLE, FeDeeplinkStatus::INELIGIBLE, FeDeeplinkStatus::PRE_SCREENING_FAILURE], true)) {
+                ApplicationNotificationSender::feolEligibilityResult($fresh, $status === FeDeeplinkStatus::ELIGIBLE);
+            } else {
+                ApplicationNotificationSender::statusChanged($fresh, $previousStatus, $newStatus);
+            }
         }
 
         return $integration;
