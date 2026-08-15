@@ -398,6 +398,18 @@ class ApplicationsTable
                 ->label('Disbursed Amt')
                 ->money('VND', locale: 'vi')
                 ->placeholder('-'),
+            TextColumn::make('payload.fields.topup_amount')
+                ->label('Topup Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.insurance_amount')
+                ->label('Insurance Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.fee_amount')
+                ->label('Fee Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
             TextColumn::make('fe_disbursed_at')
                 ->label('Disbursed Date')
                 ->state(fn (Application $record): mixed => ApplicationFinancialData::disbursedAt($record))
