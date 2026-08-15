@@ -86,6 +86,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarWidth($this->px(UiSetting::current()->sidebar_width ?: 260))
             ->collapsedSidebarWidth($this->px(UiSetting::current()->sidebar_collapsed_width ?: 76))
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->settingsStyles())
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('partials.identity-watermark'))
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => $this->pwaHead())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.hooks.searchable-select-assets'))
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->notificationPanelStyles())
