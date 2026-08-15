@@ -163,7 +163,8 @@ class FeolPublicLandingController extends Controller
             : (string) $integration->sub_status;
         $statusEnum = FeDeeplinkStatus::tryFrom($status);
         $isEligible = $statusEnum === FeDeeplinkStatus::ELIGIBLE;
-        $isTerminal = $statusEnum?->isTerminal() ?? false;
+        $submissionFailed = $integration->submit_state === FeolSubmitState::FAILED;
+        $isTerminal = ($statusEnum?->isTerminal() ?? false) || $submissionFailed;
         $deeplink = $isEligible && filled($integration->deeplink_url)
             ? $integration->deeplink_url
             : null;
@@ -175,6 +176,7 @@ class FeolPublicLandingController extends Controller
             'redirect_url' => $deeplink,
             'message' => match (true) {
                 filled($deeplink) => 'Bạn đủ điều kiện. Chúng tôi sẽ chuyển bạn đến app FEOL.',
+                $submissionFailed => 'Không thể gửi hồ sơ. Vui lòng kiểm tra lại thông tin đã nhập.',
                 $isTerminal => 'Rất tiếc bạn chưa đủ điều kiện :(',
                 default => 'Đang kiểm tra điều kiện hồ sơ với FEOL...',
             },

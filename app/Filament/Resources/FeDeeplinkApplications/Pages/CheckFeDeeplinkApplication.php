@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\FeDeeplinkApplications\Pages;
 
 use App\Enums\FeDeeplinkStatus;
+use App\Enums\FeolSubmitState;
 use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
 use App\Models\Application;
 use Filament\Actions\Action;
@@ -26,6 +27,7 @@ class CheckFeDeeplinkApplication extends ViewRecord
 
     public function outcome(): string
     {
+        if ($this->record->feolIntegration?->submit_state === FeolSubmitState::FAILED) return 'submission_failed';
         $status = FeDeeplinkStatus::tryFrom((string) $this->record->feolIntegration?->sub_status);
         if ($status === FeDeeplinkStatus::ELIGIBLE && filled($this->record->feolIntegration?->deeplink_url)) return 'eligible';
         if (in_array($status, [FeDeeplinkStatus::INELIGIBLE, FeDeeplinkStatus::PRE_SCREENING_FAILURE], true)) return 'failed';

@@ -29,6 +29,17 @@ final class FeolPartnerSubmitter
             throw new RuntimeException('Hồ sơ chưa có xác nhận đồng ý cung cấp dữ liệu cá nhân.');
         }
 
+        $loanAmount = filter_var(data_get($fields, 'loan_amount'), FILTER_VALIDATE_INT);
+        $minimumLoanAmount = (int) config('services.feol_bridge.loan_amount_min');
+        $maximumLoanAmount = (int) config('services.feol_bridge.loan_amount_max');
+        if ($loanAmount === false || $loanAmount < $minimumLoanAmount || $loanAmount > $maximumLoanAmount) {
+            throw new RuntimeException(sprintf(
+                'Số tiền vay phải từ %s đến %s VNĐ.',
+                number_format($minimumLoanAmount, 0, ',', '.'),
+                number_format($maximumLoanAmount, 0, ',', '.'),
+            ));
+        }
+
         $partnerSalesman = trim((string) config('services.feol_bridge.landing_sale_code'));
         if ($partnerSalesman === '') {
             throw new RuntimeException('Chưa cấu hình tài khoản kỹ thuật gửi FEOL.');
@@ -53,7 +64,7 @@ final class FeolPartnerSubmitter
                 'encrypt_unique_url' => $this->landing->encryptedUrl(),
                 'dob' => data_get($fields, 'date_of_birth'),
                 'customer_email' => data_get($fields, 'email'),
-                'loan_amount' => (int) data_get($fields, 'loan_amount'),
+                'loan_amount' => $loanAmount,
                 'tenor' => (int) data_get($fields, 'loan_term_months'),
             ]);
 
