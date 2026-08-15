@@ -85,6 +85,23 @@ class ApplicationNotificationSender
         );
     }
 
+    public static function feolEligibilityResult(Application $application, bool $eligible): void
+    {
+        $application->loadMissing('feolIntegration');
+        $customer = $application->applicant_name ?: 'Khách hàng';
+        $integration = $application->feolIntegration;
+        self::send(
+            application: $application,
+            eventLabel: $eligible
+                ? 'FEOL - Khách hàng "'.$customer.'" thoả mãn điều kiện đăng ký hồ sơ vay. Vui lòng hướng dẫn Khách hàng thao tác app FE Online 2.0.'
+                : 'FEOL - Rất tiếc hồ sơ Khách hàng "'.$customer.'" không thoả mãn điều kiện kiểm tra sơ bộ.',
+            detailLine: 'Mã hồ sơ: '.$application->application_code.' · ID đối tác: '.($integration?->partner_lead_id ?: '-').' · Trạng thái: '.self::statusLabel($application, $application->status).' · Khách hàng: '.$customer.' · SĐT: '.($application->phone ?: '-'),
+            tone: $eligible ? 'success' : 'danger',
+            icon: $eligible ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedExclamationTriangle,
+            actorId: null,
+        );
+    }
+
     private static function send(
         Application $application,
         string $eventLabel,
