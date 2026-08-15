@@ -5,6 +5,7 @@ use App\Http\Controllers\CandidateApplicationController;
 use App\Http\Controllers\CorporateWebsiteController;
 use App\Http\Controllers\Crm\LatestNotificationController;
 use App\Http\Controllers\Crm\TableColumnPreferenceController;
+use App\Http\Controllers\Crm\WebPushSubscriptionController;
 use App\Http\Controllers\FeolPublicLandingController;
 use App\Http\Controllers\Integration\EssAuthenticationController;
 use App\Http\Controllers\Integration\CompletedCustomerDirectoryController;
@@ -117,6 +118,13 @@ Route::get('/mail/sso', MailSsoController::class)
 Route::get('/crm/notifications/latest', LatestNotificationController::class)
     ->middleware(['auth', 'throttle:60,1'])
     ->name('crm.notifications.latest');
+
+Route::middleware(['auth', 'throttle:30,1'])->group(function (): void {
+    Route::post('/crm/push-subscriptions', [WebPushSubscriptionController::class, 'store'])
+        ->name('crm.push-subscriptions.store');
+    Route::delete('/crm/push-subscriptions', [WebPushSubscriptionController::class, 'destroy'])
+        ->name('crm.push-subscriptions.destroy');
+});
 
 Route::get('/authen/forgot-username', function () {
     return view('auth.forgot-username-crm');

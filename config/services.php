@@ -69,4 +69,9 @@ return [
         'loan_amount_max' => (int) env('FEOL_LOAN_AMOUNT_MAX', 100000000),
     ],
 
+    'web_push' => [
+        'subject' => env('WEB_PUSH_SUBJECT', env('APP_URL')),
+        'ttl' => (int) env('WEB_PUSH_TTL', 300),
+    ],
+
 ];
