@@ -35,7 +35,6 @@ use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Js;
 
 class ApplicationsTable
 {
@@ -225,22 +224,7 @@ class ApplicationsTable
                         ->icon(Heroicon::OutlinedClipboardDocument)
                         ->visible(fn (Application $record): bool => $projectSlug === 'fe-deeplink'
                             && filled($record->feolIntegration?->deeplink_url))
-                        ->action(function (Application $record, mixed $livewire): void {
-                            $deeplink = (string) $record->feolIntegration?->deeplink_url;
-
-                            if (blank($deeplink)) {
-                                Notification::make()
-                                    ->title('Chưa có Deeplink')
-                                    ->warning()
-                                    ->send();
-
-                                return;
-                            }
-
-                            $livewire->js(
-                                'navigator.clipboard.writeText('.Js::from($deeplink).").then(() => new FilamentNotification().title('Đã sao chép Deeplink').success().send())",
-                            );
-                        }),
+                        ->actionJs(fn (Application $record): string => 'navigator.clipboard.writeText('.json_encode((string) $record->feolIntegration?->deeplink_url).').then(() => new FilamentNotification().title(\'Đã sao chép Deeplink\').success().send())'),
                     AclMixOtpAction::make(),
                     AclMixDecisionAction::make(),
                     LotteFinanceDecisionAction::make(),
@@ -396,6 +380,18 @@ class ApplicationsTable
                 ->placeholder('-'),
             TextColumn::make('payload.fields.disbursed_amount')
                 ->label('Disbursed Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.topup_amount')
+                ->label('Topup Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.insurance_amount')
+                ->label('Insurance Amt')
+                ->money('VND', locale: 'vi')
+                ->placeholder('-'),
+            TextColumn::make('payload.fields.fee_amount')
+                ->label('Fee Amt')
                 ->money('VND', locale: 'vi')
                 ->placeholder('-'),
             TextColumn::make('fe_disbursed_at')
