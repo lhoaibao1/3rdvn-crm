@@ -19,6 +19,7 @@
     @include('partials.theme-vars', ['settings' => $settings])
 </head>
 <body class="crm-body" x-data="{ sidebarOpen: false, collapsed: {{ $settings->sidebar_default_collapsed ? 'true' : 'false' }} }" :class="{ 'sidebar-collapsed': collapsed }">
+    @include('partials.identity-watermark')
     @include('partials.topbar', ['title' => $title ?? 'Dashboard', 'settings' => $settings])
     <div class="crm-shell">
         @include('partials.sidebar', ['settings' => $settings])

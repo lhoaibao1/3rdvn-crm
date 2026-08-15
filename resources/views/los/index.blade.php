@@ -456,6 +456,7 @@
     </style>
 </head>
 <body>
+    @include('partials.identity-watermark')
     <header class="los-topbar">
         <div class="los-brand">
             <div class="los-brand-mark">

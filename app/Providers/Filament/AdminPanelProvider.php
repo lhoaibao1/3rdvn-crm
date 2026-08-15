@@ -12,8 +12,6 @@ use App\Filament\Resources\CrmLookups\CrmLookupResource;
 use App\Filament\Resources\CrmModules\CrmModuleResource;
 use App\Filament\Resources\CrmTeams\CrmTeamResource;
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
-use App\Filament\Resources\FeDeeplinkApplications\FeDeeplinkApplicationResource;
-use App\Filament\Resources\FeolBridgeLogs\FeolBridgeLogResource;
 use App\Filament\Resources\HotLeads\HotLeadResource;
 use App\Filament\Resources\JobVacancies\JobVacancyResource;
 use App\Filament\Resources\Leads\LeadResource;
@@ -82,10 +80,10 @@ class AdminPanelProvider extends PanelProvider
                 'logout' => fn (Action $action): Action => $action->label('Đăng xuất'),
             ])
             ->sidebarCollapsibleOnDesktop()
-            ->navigationGroups(\App\Support\Filament\AdminNavigation::groups())
             ->sidebarWidth($this->px(UiSetting::current()->sidebar_width ?: 260))
             ->collapsedSidebarWidth($this->px(UiSetting::current()->sidebar_collapsed_width ?: 76))
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->settingsStyles())
+            ->renderHook(PanelsRenderHook::BODY_START, fn () => view('partials.identity-watermark'))
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => $this->pwaHead())
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.hooks.searchable-select-assets'))
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->notificationPanelStyles())
@@ -101,7 +99,6 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::TOPBAR_END, fn () => $this->topbarUserMeta())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->chatAssets())
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.form-drafts'))
-            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.hooks.web-push'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => $this->pwaServiceWorkerScript())
             ->colors([
                 'primary' => Color::Blue,
@@ -114,8 +111,6 @@ class AdminPanelProvider extends PanelProvider
                 ApplicationResource::class,
                 CbpApplicationResource::class,
                 LotteFinanceApplicationResource::class,
-                FeDeeplinkApplicationResource::class,
-                FeolBridgeLogResource::class,
                 ProjectReportResource::class,
                 SaleProfileResource::class,
                 JobVacancyResource::class,
@@ -240,14 +235,11 @@ class AdminPanelProvider extends PanelProvider
         border-bottom: 1px solid var(--crm-border);
     }
 
-    .fi-modal,
-    .fi-modal-close-overlay,
-    .fi-modal-window-ctn,
     .fi-modal-window,
     .fi-dropdown-panel,
     .fi-global-search-results-ctn,
     .fi-no-database {
-        z-index: 1000 !important;
+        z-index: 120 !important;
     }
 
 
@@ -1034,55 +1026,6 @@ class AdminPanelProvider extends PanelProvider
         width: 100% !important;
         padding-top: 4px !important;
         margin-left: auto !important;
-    }
-
-    .crm-feol-partner-table .fi-ta-filters-above-content-ctn {
-        position: relative !important;
-        z-index: 1 !important;
-        width: 100% !important;
-        margin: 0 0 12px !important;
-        padding: 14px !important;
-        border: 1px solid #dbe3ee !important;
-        border-radius: 10px !important;
-        background: #fff !important;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, .04) !important;
-    }
-
-    .crm-feol-partner-table .fi-ta-filters > .fi-sc,
-    .crm-feol-partner-table .fi-ta-filters > .fi-sc > .fi-grid {
-        width: 100% !important;
-        min-width: 0 !important;
-    }
-
-    .crm-feol-partner-table .fi-ta-filters-actions-ctn,
-    .crm-feol-partner-table .fi-ta-filters-actions {
-        position: static !important;
-        clear: both !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding-top: 10px !important;
-        border-top: 1px solid #edf1f6 !important;
-    }
-
-    .crm-feol-partner-table .fi-ta-header-toolbar {
-        position: relative !important;
-        z-index: 2 !important;
-        clear: both !important;
-    }
-
-    .crm-feol-partner-table .fi-ta-content {
-        scrollbar-gutter: stable both-edges !important;
-    }
-
-    .crm-feol-partner-table .fi-ta-content::-webkit-scrollbar {
-        width: 10px !important;
-        height: 12px !important;
-    }
-
-    .crm-feol-partner-table .fi-ta-content::-webkit-scrollbar-thumb {
-        border: 2px solid #fff !important;
-        border-radius: 999px !important;
-        background: #94a3b8 !important;
     }
 
     .crm-users-table .fi-ta-filters-actions-ctn .fi-btn,
@@ -2328,8 +2271,7 @@ HTML);
                 form.querySelectorAll('.crm-filter-extra-field')
                     .forEach((field) => field.classList.remove('crm-filter-extra-field'));
 
-                const primaryFieldCount = table.classList.contains('crm-feol-partner-table') ? 4 : 3;
-                fields.forEach((field, index) => field.classList.toggle('crm-filter-extra-field', index >= primaryFieldCount));
+                fields.forEach((field, index) => field.classList.toggle('crm-filter-extra-field', index >= 3));
 
                 let button = actions.querySelector('.crm-user-filter-toggle');
 
