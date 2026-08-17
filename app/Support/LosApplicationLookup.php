@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Application;
+use App\Models\AffiliateConversion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -17,7 +18,7 @@ class LosApplicationLookup
             return collect();
         }
 
-        return Application::query()
+        $applications = Application::query()
             ->with([
                 'salesProject:id,name,slug,lead_form_schema,module_form_schema',
                 'createdBy:id,name,uid,employee_code',
@@ -44,5 +45,25 @@ class LosApplicationLookup
             ->limit(20)
             ->get()
             ->map(fn (Application $application): array => LosApplicationPresenter::make($application));
+
+        if ($applicationCode === '') {
+            return $applications;
+        }
+
+        $affiliateConversions = AffiliateConversion::query()
+            ->with('createdBy:id,name,uid,employee_code')
+            ->where(function (Builder $query) use ($applicationCode): void {
+                $query->whereRaw('LOWER(TRIM(conversion_id)) = ?', [$applicationCode])
+                    ->orWhereRaw('LOWER(TRIM(transaction_id)) = ?', [$applicationCode]);
+            })
+            ->latest('updated_at')
+            ->limit(20)
+            ->get()
+            ->map(fn (AffiliateConversion $conversion): array => LosAffiliateConversionPresenter::make($conversion));
+
+        return $applications->concat($affiliateConversions)
+            ->sortByDesc('updated_timestamp')
+            ->take(20)
+            ->values();
     }
 }
