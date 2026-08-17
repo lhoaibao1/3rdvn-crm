@@ -6,7 +6,7 @@
         </header>
         <div class="affiliate-campaigns__grid">
             @forelse ($campaigns as $campaign)
-                @php($ownedLink = url('/aff/'.$campaign->slug).'?ref='.rawurlencode($employeeCode))
+                @php($ownedLink = 'https://3rdvn.io.vn/affiliate/'.$campaign->slug.'?ref='.rawurlencode($employeeCode))
                 <article class="affiliate-card">
                     <button type="button" class="affiliate-card__body" @click="open = open === {{ $campaign->id }} ? null : {{ $campaign->id }}">
                         <div class="affiliate-card__logo">@if($campaign->logo_url)<img src="{{ $campaign->logo_url }}" alt="Logo {{ $campaign->name }}">@else<span>{{ mb_substr($campaign->name, 0, 2) }}</span>@endif</div>

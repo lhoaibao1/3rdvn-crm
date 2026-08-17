@@ -14,12 +14,12 @@ class AffiliateCampaignRedirectTest extends TestCase
     {
         User::factory()->create(['employee_code' => 'RD260001', 'employment_status' => User::STATUS_ACTIVE]);
 
-        $this->get('/aff/shb-finance?ref=RD260001')
+        $this->get('/affiliate/shb-finance?ref=RD260001')
             ->assertRedirect('https://riofin.asia/v2/h6ZUoKMr6OVLqyCgJ9UNQkEnUZFMnjA2D_Pt6iQOrjw?lp=shbfinance&aff_sub1=RD260001');
     }
 
     public function test_owned_campaign_link_rejects_unknown_employee(): void
     {
-        $this->get('/aff/shb-finance?ref=UNKNOWN')->assertNotFound();
+        $this->get('/affiliate/shb-finance?ref=UNKNOWN')->assertNotFound();
     }
 }

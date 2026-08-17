@@ -26,6 +26,9 @@ use App\Http\Controllers\AffiliateCampaignRedirectController;
 Route::get('/aff/{campaign:slug}', AffiliateCampaignRedirectController::class)
     ->middleware('throttle:120,1')
     ->name('affiliate.campaign.redirect');
+Route::get('/affiliate/{campaign:slug}', AffiliateCampaignRedirectController::class)
+    ->middleware('throttle:120,1')
+    ->name('affiliate.campaign.public');
 
 Route::get('fe-deeplink/b1/{token}/trang-thai', [FeolPublicLandingController::class, 'status'])
     ->middleware('throttle:120,1')
