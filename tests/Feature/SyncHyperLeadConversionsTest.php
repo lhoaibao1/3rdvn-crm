@@ -29,5 +29,7 @@ class SyncHyperLeadConversionsTest extends TestCase
         $this->assertSame('Đã nhận postback', $conversion->status_message);
         $this->assertSame($user->id, $conversion->created_by_id);
         $this->assertSame('SHB Finance', $conversion->raw_payload['product_name']);
+        $this->assertSame('2026-08-17 18:37:30', $conversion->conversion_time?->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-08-17 18:50:50', $conversion->conversion_modified_time?->format('Y-m-d H:i:s'));
     }
 }

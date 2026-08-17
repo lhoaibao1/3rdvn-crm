@@ -5,6 +5,7 @@ namespace App\Support\Affiliate;
 use App\Models\AffiliateConversion;
 use App\Models\User;
 use App\Support\Notifications\AffiliateConversionNotificationSender;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
@@ -32,10 +33,10 @@ class UpsertAffiliateConversion
                 'conversion_status_code' => $payload['conversion_status_code'] ?? null,
                 'sale_amount' => $payload['conversion_sale_amount'] ?? null,
                 'publisher_payout' => $payload['conversion_publisher_payout'] ?? null,
-                'click_time' => $payload['click_time'] ?? null,
-                'conversion_time' => $payload['conversion_time'] ?? null,
-                'conversion_modified_time' => $payload['conversion_modified_time'] ?? null,
-                'conversion_status_updated_time' => $payload['conversion_status_updated_time'] ?? null,
+                'click_time' => $this->normalizePartnerTime($payload['click_time'] ?? null),
+                'conversion_time' => $this->normalizePartnerTime($payload['conversion_time'] ?? null),
+                'conversion_modified_time' => $this->normalizePartnerTime($payload['conversion_modified_time'] ?? null),
+                'conversion_status_updated_time' => $this->normalizePartnerTime($payload['conversion_status_updated_time'] ?? null),
                 'product_name' => $payload['product_name'] ?? null,
                 'product_url' => $payload['product_url'] ?? null,
                 'product_sku' => $payload['product_sku'] ?? null,
@@ -75,5 +76,16 @@ class UpsertAffiliateConversion
         }
 
         return $conversion;
+    }
+
+    private function normalizePartnerTime(mixed $value): mixed
+    {
+        if (is_numeric($value) && (int) $value > 10_000_000_000) {
+            return CarbonImmutable::createFromTimestampMs((int) $value)
+                ->setTimezone((string) config('app.timezone', 'Asia/Ho_Chi_Minh'))
+                ->toDateTimeString();
+        }
+
+        return $value;
     }
 }
