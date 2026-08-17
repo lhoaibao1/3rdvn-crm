@@ -20,6 +20,7 @@ use App\Support\DataCenter\LeadReferralImportTemplate;
 use App\Support\Permissions\DataCenterAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AffiliatePostbackController;
 
 Route::get('fe-deeplink/b1/{token}/trang-thai', [FeolPublicLandingController::class, 'status'])
     ->middleware('throttle:120,1')
@@ -193,3 +194,5 @@ Route::get('/api/integration/v1/feol/pending', FeolPendingApplicationsController
 Route::post('/api/integration/v1/feol/applications/{application}/sync', FeolApplicationSyncController::class)
     ->middleware('throttle:240,1')
     ->name('api.integration.feol.sync');
+Route::match(['get', 'post'], '/api/integration/v1/affiliate/postback', AffiliatePostbackController::class)
+    ->name('api.integration.affiliate.postback');
