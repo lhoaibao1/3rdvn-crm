@@ -4,6 +4,7 @@ namespace App\Support\Affiliate;
 
 use App\Models\AffiliateConversion;
 use App\Models\User;
+use App\Support\Notifications\AffiliateConversionNotificationSender;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
@@ -11,7 +12,7 @@ class UpsertAffiliateConversion
 {
     public function handle(array $payload, string $partner = 'accesstrade'): AffiliateConversion
     {
-        return DB::transaction(function () use ($payload, $partner): AffiliateConversion {
+        $conversion = DB::transaction(function () use ($payload, $partner): AffiliateConversion {
             $employeeCode = trim((string) ($payload['aff_sub1'] ?? ''));
             $user = $employeeCode !== ''
                 ? User::query()
@@ -54,5 +55,11 @@ class UpsertAffiliateConversion
                 $data,
             );
         });
+
+        if ($conversion->wasRecentlyCreated || $conversion->wasChanged(['conversion_status', 'sale_amount', 'transaction_id'])) {
+            AffiliateConversionNotificationSender::changed($conversion);
+        }
+
+        return $conversion;
     }
 }
