@@ -11,3 +11,8 @@ Artisan::command('inspire', function () {
 Schedule::command('crm:mail-notifications')
     ->everyTenSeconds()
     ->withoutOverlapping();
+
+Schedule::command('affiliate:sync-hyperlead')
+    ->everyMinute()
+    ->withoutOverlapping(5)
+    ->onOneServer();

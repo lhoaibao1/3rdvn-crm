@@ -5,6 +5,8 @@ return [
         'postback_secret' => env('AFFILIATE_POSTBACK_SECRET'),
         'api_base_url' => env('AFFILIATE_API_BASE_URL'),
         'api_token' => env('AFFILIATE_API_TOKEN'),
+        'publisher_id' => env('AFFILIATE_PUBLISHER_ID'),
+        'sync_days' => (int) env('AFFILIATE_SYNC_DAYS', 10),
     ],
 
     /*
