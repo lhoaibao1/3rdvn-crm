@@ -73,7 +73,7 @@ class AffiliatePostbackTest extends TestCase
         $this->assertSame($user->getKey(), $conversion->created_by_id);
         $this->assertSame('shbfinance', $conversion->campaign_name);
         $this->assertSame('pending', $conversion->conversion_status);
-        $this->assertNotNull($conversion->conversion_time);
+        $this->assertSame('2026-08-17 18:37:30', $conversion->conversion_time?->format('Y-m-d H:i:s'));
     }
 
     public function test_accesstrade_endpoint_keeps_partner_separate(): void
