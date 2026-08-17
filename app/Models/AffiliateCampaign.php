@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AffiliateCampaign extends Model
 {
-    protected $fillable = ['name', 'slug', 'logo_url', 'summary', 'details', 'tracking_url', 'is_active', 'sort_order'];
+    protected $fillable = ['name', 'slug', 'logo_url', 'summary', 'details', 'tracking_url', 'attribution_param', 'is_active', 'sort_order'];
 
     protected function casts(): array
     {

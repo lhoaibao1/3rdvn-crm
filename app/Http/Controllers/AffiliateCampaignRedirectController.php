@@ -23,6 +23,8 @@ class AffiliateCampaignRedirectController extends Controller
 
         $separator = str_contains($campaign->tracking_url, '?') ? '&' : '?';
 
-        return redirect()->away($campaign->tracking_url.$separator.'aff_sub1='.rawurlencode($employeeCode));
+        $attributionParam = trim((string) ($campaign->attribution_param ?: 'aff_sub1'));
+
+        return redirect()->away($campaign->tracking_url.$separator.rawurlencode($attributionParam).'='.rawurlencode($employeeCode));
     }
 }
