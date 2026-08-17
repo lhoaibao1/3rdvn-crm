@@ -196,4 +196,8 @@ Route::post('/api/integration/v1/feol/applications/{application}/sync', FeolAppl
     ->middleware('throttle:240,1')
     ->name('api.integration.feol.sync');
 Route::match(['get', 'post'], '/api/integration/v1/affiliate/postback', AffiliatePostbackController::class)
+    ->defaults('affiliate_partner', 'hyperlead')
     ->name('api.integration.affiliate.postback');
+Route::match(['get', 'post'], '/api/integration/v1/affiliate/accesstrade/postback', AffiliatePostbackController::class)
+    ->defaults('affiliate_partner', 'accesstrade')
+    ->name('api.integration.affiliate.accesstrade.postback');

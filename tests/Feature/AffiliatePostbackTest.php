@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AffiliateConversion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 class AffiliatePostbackTest extends TestCase
@@ -73,5 +74,30 @@ class AffiliatePostbackTest extends TestCase
         $this->assertSame('shbfinance', $conversion->campaign_name);
         $this->assertSame('pending', $conversion->conversion_status);
         $this->assertNotNull($conversion->conversion_time);
+    }
+
+    public function test_accesstrade_endpoint_keeps_partner_separate(): void
+    {
+        Bus::fake();
+        config(['services.affiliate.postback_secret' => 'test-secret']);
+        User::factory()->create([
+            'employee_code' => 'RD260103',
+            'employment_status' => User::STATUS_ACTIVE,
+        ]);
+
+        $this->getJson('/api/integration/v1/affiliate/accesstrade/postback?'.http_build_query([
+            'secret' => 'test-secret',
+            'conversion_id' => 'AT-CV-1',
+            'transaction_id' => 'AT-TX-1',
+            'offer_id' => 'vietcredit',
+            'conversion_status' => 'pending',
+            'aff_sub1' => 'RD260103',
+        ]))->assertOk()->assertJsonPath('partner', 'accesstrade');
+
+        $this->assertDatabaseHas('affiliate_conversions', [
+            'partner' => 'accesstrade',
+            'conversion_id' => 'AT-CV-1',
+            'created_by_id' => User::query()->where('employee_code', 'RD260103')->value('id'),
+        ]);
     }
 }
