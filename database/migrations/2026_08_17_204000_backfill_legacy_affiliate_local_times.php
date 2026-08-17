@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         DB::table('affiliate_conversions')
             ->where('created_at', '<=', '2026-08-17 21:00:00')
             ->update([
@@ -19,6 +23,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         DB::table('affiliate_conversions')
             ->where('created_at', '<=', '2026-08-17 21:00:00')
             ->update([
