@@ -21,6 +21,11 @@ use App\Support\Permissions\DataCenterAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AffiliatePostbackController;
+use App\Http\Controllers\AffiliateCampaignRedirectController;
+
+Route::get('/aff/{campaign:slug}', AffiliateCampaignRedirectController::class)
+    ->middleware('throttle:120,1')
+    ->name('affiliate.campaign.redirect');
 
 Route::get('fe-deeplink/b1/{token}/trang-thai', [FeolPublicLandingController::class, 'status'])
     ->middleware('throttle:120,1')
@@ -39,13 +44,6 @@ Route::prefix('application/fe-deeplink/dang-ky')->middleware('throttle:10,1')->g
     Route::post('/{salesCode}', [FeolPublicLandingController::class, 'storeForSalesCode'])
         ->where('salesCode', '[0-9]{5}')
         ->name('feol.registration.store');
-});
-
-Route::prefix('feol')->middleware('throttle:10,1')->group(function (): void {
-    Route::get('/dangky', [FeolPublicLandingController::class, 'showForReferral'])
-        ->name('feol.referral.show');
-    Route::post('/dangky', [FeolPublicLandingController::class, 'storeForReferral'])
-        ->name('feol.referral.store');
 });
 
 Route::domain('los.3rdvn.io.vn')->group(function (): void {
