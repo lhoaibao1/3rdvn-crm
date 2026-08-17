@@ -13,6 +13,8 @@ class UpsertAffiliateConversion
     public function handle(array $payload, string $partner = 'accesstrade'): AffiliateConversion
     {
         $conversion = DB::transaction(function () use ($payload, $partner): AffiliateConversion {
+            $conversionId = (string) ($payload['conversion_id']
+                ?? (($payload['offer_id'] ?? '').($payload['transaction_id'] ?? '')));
             $employeeCode = trim((string) ($payload['aff_sub1'] ?? ''));
             $user = $employeeCode !== ''
                 ? User::query()
@@ -21,7 +23,7 @@ class UpsertAffiliateConversion
                     ->first()
                 : null;
 
-            $data = [
+            $incoming = [
                 'transaction_id' => $payload['transaction_id'] ?? null,
                 'click_id' => $payload['click_id'] ?? null,
                 'offer_id' => $payload['offer_id'] ?? null,
@@ -50,8 +52,20 @@ class UpsertAffiliateConversion
                 'raw_payload' => Arr::except($payload, ['secret']),
             ];
 
+            $existing = AffiliateConversion::query()
+                ->where('partner', $partner)
+                ->where('conversion_id', $conversionId)
+                ->first();
+            $data = collect($incoming)
+                ->map(fn ($value, string $key) => $value ?? $existing?->{$key})
+                ->all();
+            $data['raw_payload'] = array_replace(
+                (array) ($existing?->raw_payload ?? []),
+                Arr::except($payload, ['secret']),
+            );
+
             return AffiliateConversion::query()->updateOrCreate(
-                ['partner' => $partner, 'conversion_id' => $payload['conversion_id']],
+                ['partner' => $partner, 'conversion_id' => $conversionId],
                 $data,
             );
         });
