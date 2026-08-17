@@ -25,7 +25,9 @@ class StoreAffiliatePostbackRequest extends FormRequest
         foreach (['click_time', 'conversion_time', 'conversion_modified_time', 'conversion_status_updated_time'] as $field) {
             $value = $normalized[$field] ?? null;
             if (is_numeric($value) && (int) $value > 10_000_000_000) {
-                $normalized[$field] = CarbonImmutable::createFromTimestampMs((int) $value)->toDateTimeString();
+                $normalized[$field] = CarbonImmutable::createFromTimestampMs((int) $value)
+                    ->setTimezone((string) config('app.timezone', 'Asia/Ho_Chi_Minh'))
+                    ->toDateTimeString();
             }
         }
 
