@@ -6,6 +6,7 @@ use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\ChangePassword;
 use App\Filament\Pages\Dashboard as CrmDashboard;
 use App\Filament\Resources\Applications\ApplicationResource;
+use App\Filament\Resources\AffiliateConversions\AffiliateConversionResource;
 use App\Filament\Resources\CandidateApplications\CandidateApplicationResource;
 use App\Filament\Resources\CbpApplications\CbpApplicationResource;
 use App\Filament\Resources\DataCenterLeads\DataCenterLeadResource;
@@ -104,6 +105,7 @@ class UatPanelProvider extends AdminPanelProvider
                 CbpApplicationResource::class,
                 LotteFinanceApplicationResource::class,
                 FeDeeplinkApplicationResource::class,
+                AffiliateConversionResource::class,
                 ProjectReportResource::class,
                 SaleProfileResource::class,
                 JobVacancyResource::class,

@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'affiliate' => [
+        'postback_secret' => env('AFFILIATE_POSTBACK_SECRET'),
+        'api_base_url' => env('AFFILIATE_API_BASE_URL'),
+        'api_token' => env('AFFILIATE_API_TOKEN'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
