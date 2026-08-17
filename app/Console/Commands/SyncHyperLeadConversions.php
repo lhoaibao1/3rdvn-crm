@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Support\Affiliate\UpsertAffiliateConversion;
-use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -11,7 +10,7 @@ use RuntimeException;
 
 class SyncHyperLeadConversions extends Command
 {
-    protected $signature = 'affiliate:sync-hyperlead {--days=} {--transaction=}';
+    protected $signature = 'affiliate:sync-hyperlead {--transaction=}';
     protected $description = 'Đồng bộ toàn bộ dữ liệu chuyển đổi từ API report HyperLead';
 
     public function handle(UpsertAffiliateConversion $upsert): int
@@ -24,12 +23,9 @@ class SyncHyperLeadConversions extends Command
             return self::FAILURE;
         }
 
-        $days = max(1, min(31, (int) ($this->option('days') ?: config('services.affiliate.sync_days', 10))));
         $query = [
             'publisher_id' => $publisherId,
             'token' => $token,
-            'date_from' => CarbonImmutable::now()->subDays($days)->format('Y-m-d'),
-            'date_to' => CarbonImmutable::now()->addDay()->format('Y-m-d'),
             'limit' => 100,
         ];
         if ($transaction = trim((string) $this->option('transaction'))) {
