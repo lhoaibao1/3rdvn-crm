@@ -1,22 +1,22 @@
 <?php
 
-use App\Http\Controllers\Auth\PasswordOtpResetController;
 use App\Http\Controllers\CandidateApplicationController;
 use App\Http\Controllers\CorporateWebsiteController;
-use App\Http\Controllers\Crm\LatestNotificationController;
-use App\Http\Controllers\Crm\TableColumnPreferenceController;
-use App\Http\Controllers\Crm\WebPushSubscriptionController;
-use App\Http\Controllers\FeolPublicLandingController;
 use App\Http\Controllers\Integration\EssAuthenticationController;
+use App\Http\Controllers\FeolPublicLandingController;
 use App\Http\Controllers\Integration\CompletedCustomerDirectoryController;
 use App\Http\Controllers\Integration\FeolApplicationSyncController;
 use App\Http\Controllers\Integration\FeolPendingApplicationsController;
-use App\Http\Controllers\Integration\VpnUserDirectoryController;
+use App\Http\Controllers\Crm\LatestNotificationController;
 use App\Http\Controllers\LosApplicationLookupController;
 use App\Http\Controllers\LosAuthenticationController;
 use App\Http\Controllers\MailSsoController;
+use App\Http\Controllers\Auth\PasswordOtpResetController;
+use App\Http\Controllers\Crm\TableColumnPreferenceController;
+use App\Http\Controllers\Integration\VpnUserDirectoryController;
+use App\Http\Controllers\Crm\WebPushSubscriptionController;
 use App\Models\User;
-use App\Support\DataCenter\LeadReferralImportTemplate;
+use App\Support\LeadReferral\LeadReferralImportTemplate;
 use App\Support\Permissions\DataCenterAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +26,7 @@ use App\Http\Controllers\AffiliateCampaignRedirectController;
 Route::get('/aff/{campaign:slug}', AffiliateCampaignRedirectController::class)
     ->middleware('throttle:120,1')
     ->name('affiliate.campaign.redirect');
+
 Route::get('/affiliate/{campaign:slug}', AffiliateCampaignRedirectController::class)
     ->middleware('throttle:120,1')
     ->name('affiliate.campaign.public');
@@ -40,7 +41,7 @@ Route::prefix('fe-deeplink/b1')->middleware('throttle:30,1')->group(function ():
     Route::get('/{token}/hoan-tat', [FeolPublicLandingController::class, 'success'])->name('feol.landing.success');
 });
 
-Route::prefix('application/fe-deeplink/dang-ky')->middleware('throttle:10,1')->group(function (): void {
+Route::prefix('application/fe-deeplink/dang-ky')->middleware('throttle:60,1')->group(function (): void {
     Route::get('/{salesCode}', [FeolPublicLandingController::class, 'showForSalesCode'])
         ->where('salesCode', '[0-9]{5}')
         ->name('feol.registration.show');
@@ -49,6 +50,12 @@ Route::prefix('application/fe-deeplink/dang-ky')->middleware('throttle:10,1')->g
         ->name('feol.registration.store');
 });
 
+Route::prefix('feol')->middleware('throttle:60,1')->group(function (): void {
+    Route::get('/dangky', [FeolPublicLandingController::class, 'showForReferral'])
+        ->name('feol.referral.show');
+    Route::post('/dangky', [FeolPublicLandingController::class, 'storeForReferral'])
+        ->name('feol.referral.store');
+});
 Route::domain('los.3rdvn.io.vn')->group(function (): void {
     Route::get('/login', [LosAuthenticationController::class, 'create'])->name('los.login');
     Route::post('/login', [LosAuthenticationController::class, 'store'])
@@ -57,9 +64,14 @@ Route::domain('los.3rdvn.io.vn')->group(function (): void {
 
     Route::middleware('auth')->group(function (): void {
         Route::get('/', [LosApplicationLookupController::class, 'index'])->name('los.index');
-        Route::post('/tra-cuu', [LosApplicationLookupController::class, 'search'])
-            ->middleware('throttle:20,1')
+        Route::match(['get', 'post'], '/tra-cuu', [LosApplicationLookupController::class, 'search'])
+            ->middleware('throttle:60,1')
             ->name('los.search');
+        Route::match(['get', 'post'], '/tra-cuu/detail/{id}', [LosApplicationLookupController::class, 'detail'])
+            ->name('los.detail');
+        Route::get('/quan-ly', [\App\Http\Controllers\LosApplicationManagementController::class, 'index'])->name('los.management.index');
+        Route::get('/quan-ly/records', [\App\Http\Controllers\LosApplicationManagementController::class, 'getRecordsJson'])->name('los.management.records');
+        Route::get('/quan-ly/export', [\App\Http\Controllers\LosApplicationManagementController::class, 'exportExcel'])->name('los.management.export');
         Route::post('/logout', [LosAuthenticationController::class, 'destroy'])->name('los.logout');
     });
 });
@@ -181,7 +193,7 @@ Route::get('/api/integration/v1/users', VpnUserDirectoryController::class)
     ->name('api.integration.vpn.users');
 
 Route::post('/api/integration/v1/authenticate', EssAuthenticationController::class)
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:60,1')
     ->name('api.integration.ess.authenticate');
 
 Route::get('/api/integration/v1/completed-customers', CompletedCustomerDirectoryController::class)
@@ -195,9 +207,49 @@ Route::get('/api/integration/v1/feol/pending', FeolPendingApplicationsController
 Route::post('/api/integration/v1/feol/applications/{application}/sync', FeolApplicationSyncController::class)
     ->middleware('throttle:240,1')
     ->name('api.integration.feol.sync');
+// Affiliate Postback Endpoints (Dedicated Per-Campaign & Global)
+Route::match(['get', 'post'], '/api/affiliate/postback/{campaign}', AffiliatePostbackController::class)->name('api.affiliate.campaign.postback');
+Route::match(['get', 'post'], '/api/postback/{campaign}', AffiliatePostbackController::class)->name('api.postback.campaign');
+Route::match(['get', 'post'], '/api/affiliate/postback', AffiliatePostbackController::class)->name('api.affiliate.global.postback');
+Route::match(['get', 'post'], '/api/postback', AffiliatePostbackController::class)->name('api.postback.global');
 Route::match(['get', 'post'], '/api/integration/v1/affiliate/postback', AffiliatePostbackController::class)
     ->defaults('affiliate_partner', 'hyperlead')
     ->name('api.integration.affiliate.postback');
 Route::match(['get', 'post'], '/api/integration/v1/affiliate/accesstrade/postback', AffiliatePostbackController::class)
     ->defaults('affiliate_partner', 'accesstrade')
     ->name('api.integration.affiliate.accesstrade.postback');
+
+// Affiliate Publisher Portal APIs
+Route::prefix('api/integration/v1/affiliate-portal')->group(function (): void {
+    Route::options('/{any}', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'options'])->where('any', '.*');
+    Route::post('/login', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'login'])->name('api.affiliate-portal.login');
+    Route::get('/me', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getMe'])->name('api.affiliate-portal.me');
+    Route::get('/campaigns', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getCampaigns'])->name('api.affiliate-portal.campaigns');
+    Route::post('/campaigns/{id}/logo', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'updateCampaignLogo'])->name('api.affiliate-portal.campaigns.logo');
+    Route::get('/conversions', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getConversions'])->name('api.affiliate-portal.conversions');
+    Route::get('/stats', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getStats'])->name('api.affiliate-portal.stats');
+    Route::get('/notifications', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getNotifications'])->name('api.affiliate-portal.notifications');
+    Route::put('/notifications/read-all', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'markAllNotificationsRead'])->name('api.affiliate-portal.notifications.read-all');
+    Route::put('/notifications/{id}/read', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'markNotificationRead'])->name('api.affiliate-portal.notifications.read');
+    Route::get('/banks', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getBanks'])->name('api.affiliate-portal.banks');
+    Route::get('/members', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getMembers'])->name('api.affiliate-portal.members');
+    Route::post('/members', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'createMember'])->name('api.affiliate-portal.members.create');
+    Route::put('/members/{id}/status', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'toggleMemberStatus'])->name('api.affiliate-portal.members.status');
+    Route::get('/members/{id}', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getMemberDetail'])->name('api.affiliate-portal.members.detail');
+    Route::get('/auth/profile', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'getMyProfile'])->name('api.affiliate-portal.auth.profile');
+    Route::put('/members/{id}/password', [\App\Http\Controllers\Api\AffiliatePortalApiController::class, 'resetMemberPassword'])->name('api.affiliate-portal.members.password');
+});
+
+// Centralized SSO & Multi-App Authentication APIs
+Route::prefix('api/v1/sso')->group(function (): void {
+    Route::options('/{any}', function () {
+        return response('', 200, [
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
+        ]);
+    })->where('any', '.*');
+    Route::post('/login', [\App\Http\Controllers\Api\SsoApiController::class, 'login'])->name('api.sso.login');
+    Route::get('/verify', [\App\Http\Controllers\Api\SsoApiController::class, 'verify'])->name('api.sso.verify');
+});
+

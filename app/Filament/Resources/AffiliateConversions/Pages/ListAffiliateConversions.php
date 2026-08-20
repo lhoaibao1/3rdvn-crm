@@ -1,8 +1,8 @@
 <?php
+
 namespace App\Filament\Resources\AffiliateConversions\Pages;
 
 use App\Filament\Resources\AffiliateConversions\AffiliateConversionResource;
-use App\Filament\Widgets\AffiliateCampaignsWidget;
 use Filament\Resources\Pages\ListRecords;
 
 class ListAffiliateConversions extends ListRecords
@@ -11,13 +11,16 @@ class ListAffiliateConversions extends ListRecords
 
     public function getHeading(): string
     {
-        return 'Tiếp thị liên kết';
+        return 'Danh Sách Leads & Chuyển Đổi Tiếp Thị';
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Theo dõi hồ sơ khách hàng, lượt đăng ký và kết quả giải ngân từ các chiến dịch tiếp thị liên kết.';
     }
 
     protected function getHeaderWidgets(): array
     {
-        return [
-            AffiliateCampaignsWidget::class,
-        ];
+        return [];
     }
 }

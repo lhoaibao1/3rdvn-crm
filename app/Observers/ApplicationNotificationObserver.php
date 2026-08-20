@@ -17,6 +17,11 @@ class ApplicationNotificationObserver implements ShouldHandleEventsAfterCommit
     {
         $actorId = auth()->id();
 
+        $application->loadMissing('salesProject');
+        if (($application->salesProject?->slug ?: null) === 'fe-deeplink' && blank($actorId)) {
+            return;
+        }
+
         if ($application->wasChanged('assigned_sale_id')) {
             ApplicationNotificationSender::assigned(
                 $application,

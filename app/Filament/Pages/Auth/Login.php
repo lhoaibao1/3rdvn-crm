@@ -95,7 +95,11 @@ class Login extends BaseLogin
         }
 
         session()->regenerate();
-        app(StalwartMailService::class)->scheduleCredentialSync($user, $password);
+        try {
+            app(StalwartMailService::class)->scheduleCredentialSync($user, $password);
+        } catch (\Throwable $e) {
+            // Do not block login if mail sync fails
+        }
 
         return app(LoginResponse::class);
     }
@@ -118,16 +122,24 @@ class Login extends BaseLogin
     private function findUserByIdentifier(string $identifier): ?User
     {
         $normalizedPhone = preg_replace('/\D+/', '', $identifier) ?: $identifier;
+        $identLower = strtolower($identifier);
 
-        return User::query()
-            ->where('email', $identifier)
-            ->orWhere('username', $identifier)
-            ->orWhere('name', 'ilike', "%{$identifier}%")
-            ->orWhere('uid', $identifier)
-            ->orWhere('employee_code', $identifier)
+        $user = User::query()
+            ->whereRaw('LOWER(email) = ?', [$identLower])
+            ->orWhereRaw('LOWER(COALESCE(employee_code, \'\')) = ?', [$identLower])
+            ->orWhereRaw('LOWER(COALESCE(username, \'\')) = ?', [$identLower])
+            ->orWhereRaw('LOWER(COALESCE(uid, \'\')) = ?', [$identLower])
             ->orWhere('identity_number', $identifier)
             ->orWhere('phone', $identifier)
             ->orWhere('phone', $normalizedPhone)
             ->first();
+
+        if (! $user) {
+            $user = User::query()
+                ->where('name', 'ilike', "%{$identifier}%")
+                ->first();
+        }
+
+        return $user;
     }
 }
