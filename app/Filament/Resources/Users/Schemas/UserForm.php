@@ -448,10 +448,10 @@ class UserForm
                                         'actor_id' => auth()->id(),
                                         'action' => 'role_updated',
                                         'changes' => [[
-                                            'field' => 'roles',
-                                            'label' => 'Vai trò',
-                                            'old' => $currentRole,
-                                            'new' => $state,
+                                             'field' => 'roles',
+                                             'label' => 'Vai trò',
+                                             'old' => $currentRole,
+                                             'new' => $state,
                                         ]],
                                         'ip_address' => request()?->ip(),
                                         'user_agent' => request()?->userAgent(),
@@ -466,6 +466,19 @@ class UserForm
                             ->preload()
                             ->searchable(false)
                             ->native(false),
+                        \Filament\Forms\Components\CheckboxList::make('allowed_apps')
+                            ->label('Cổng Website Được Phép Đăng Nhập (SSO)')
+                            ->options([
+                                'crm' => '🏢 CRM Core (apps2.3rdvn.io.vn)',
+                                'los' => '📑 Quản lý hồ sơ LOS (los.3rdvn.io.vn)',
+                                'affiliate' => '🚀 Hub Tiếp Thị Liên Kết (pub2-aff.3rdvn.io.vn)',
+                                'ess' => '👥 Cổng Nhân Sự ESS (ess.3rdvn.io.vn)',
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull()
+                            ->default(['crm', 'los', 'affiliate', 'ess'])
+                            ->helperText('Tích chọn các cổng website mà người dùng này được cấp quyền truy cập.')
+                            ->disabled(fn (string $operation): bool => $operation === 'edit' && ! auth()->user()?->hasRole('Admin')),
                     ]),
             ]);
     }

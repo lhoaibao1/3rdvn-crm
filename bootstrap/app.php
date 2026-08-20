@@ -18,7 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
+            'api/*',
             'api/integration/*',
+            'api/v1/*',
+            'api/affiliate/*',
+            'api/postback/*',
         ]);
 
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->getHost() === 'los.3rdvn.io.vn'

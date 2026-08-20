@@ -28,6 +28,7 @@ use Wirechat\Wirechat\Traits\InteractsWithWirechat;
     'document_type', 'date_of_birth', 'gender', 'identity_number', 'identity_issued_date', 'identity_issued_place',
     'department', 'position', 'employment_status', 'hire_date', 'office', 'contract_type',
     'sales_projects', 'sales_codes', 'company_name', 'branch_name', 'branch_code', 'sales_channel',
+    'allowed_apps',
     'team_leader_id', 'courier_manager_id', 'am_id', 'zd_id', 'created_by_id',
     'address_line', 'province_code', 'province_name', 'district_code', 'district_name', 'ward_code', 'ward_name',
     'bank_code', 'bank_name', 'bank_account_number', 'bank_account_name', 'bank_branch',
@@ -80,6 +81,7 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
         'contract_type' => 'Loại hợp đồng',
         'sales_projects' => 'Dự án bán hàng',
         'sales_codes' => 'Mã bán hàng',
+        'allowed_apps' => 'Cổng truy cập được cấp quyền',
         'company_name' => 'Tên công ty',
         'branch_name' => 'Chi nhánh',
         'branch_code' => 'Mã chi nhánh',
@@ -127,6 +129,7 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
             'hire_date' => 'date',
             'sales_projects' => 'array',
             'sales_codes' => 'array',
+            'allowed_apps' => 'array',
             'mail_provisioned_at' => 'datetime',
             'password' => 'hashed',
         ];
@@ -142,9 +145,48 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
         return 'uid';
     }
 
+    public function getAllowedApps(): array
+    {
+        if (is_array($this->allowed_apps)) {
+            return $this->allowed_apps;
+        }
+        if (is_string($this->allowed_apps)) {
+            return json_decode($this->allowed_apps, true) ?: [];
+        }
+        return ['crm', 'los', 'affiliate', 'ess'];
+    }
+
+    public function canAccessApp(string $app): bool
+    {
+        if (in_array($this->employment_status, ['inactive', self::STATUS_DEACTIVE, 'resigned', self::STATUS_DELETED], true)) {
+            return false;
+        }
+
+        if ($this->hasRole('Admin') || $this->hasRole('Super Admin')) {
+            return true;
+        }
+
+        $allowed = $this->getAllowedApps();
+        return in_array(strtolower(trim($app)), array_map('strtolower', $allowed), true);
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         if (in_array($this->employment_status, ['inactive', self::STATUS_DEACTIVE, 'resigned', self::STATUS_DELETED], true)) {
+            return false;
+        }
+
+        if ($this->hasRole('Admin')) {
+            return true;
+        }
+
+        // Must be permitted to access CRM app
+        if (! $this->canAccessApp('crm')) {
+            return false;
+        }
+
+        // Affiliate-only publishers are strictly restricted from CRM Core panel
+        if ($this->hasRole('Affiliate Publisher') && ! $this->hasAnyRole(['Admin', 'Super Admin', 'Team Leader', 'Direct Sale', 'Sales Admin', 'AM', 'ZD', 'Telesale', 'CTV'])) {
             return false;
         }
 
@@ -152,7 +194,7 @@ class User extends Authenticatable implements FilamentUser, WirechatUserContract
             return $this->hasRole('Admin');
         }
 
-        return $this->hasRole('Admin') || $this->can('dashboard.view');
+        return $this->can('dashboard.view');
     }
 
     public function canAccessWirechatPanel(WirechatPanel $panel): bool

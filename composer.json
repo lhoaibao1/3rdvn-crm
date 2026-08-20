@@ -12,6 +12,7 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "minishlink/web-push": "^11.0",
+        "shuchkin/simplexlsxgen": "^1.5",
         "spatie/laravel-permission": "^8.0",
         "wirechat/wirechat": "^0.5"
     },
