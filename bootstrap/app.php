@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\AuthenticateFromSsoCookie;
 use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -17,6 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->encryptCookies(except: [
+            AuthenticateFromSsoCookie::COOKIE,
+        ]);
+
+        $middleware->web(append: [
+            AuthenticateFromSsoCookie::class,
+        ]);
+
         $middleware->validateCsrfTokens(except: [
             'api/*',
             'api/integration/*',

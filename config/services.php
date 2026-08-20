@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'sso' => [
+        'jwt_secret' => env('SSO_JWT_SECRET'),
+        'portal_url' => env('SSO_PORTAL_URL', 'https://sso.3rdvn.io.vn'),
+    ],
+
     'affiliate' => [
         'postback_secret' => env('AFFILIATE_POSTBACK_SECRET'),
         'api_base_url' => env('AFFILIATE_API_BASE_URL'),
