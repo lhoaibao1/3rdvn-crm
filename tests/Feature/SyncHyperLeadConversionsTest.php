@@ -32,4 +32,39 @@ class SyncHyperLeadConversionsTest extends TestCase
         $this->assertSame('2026-08-17 18:37:30', $conversion->conversion_time?->format('Y-m-d H:i:s'));
         $this->assertSame('2026-08-17 18:50:50', $conversion->conversion_modified_time?->format('Y-m-d H:i:s'));
     }
+
+    public function test_a_failed_middle_page_does_not_block_newer_conversions(): void
+    {
+        config(['services.affiliate.api_base_url' => 'https://publisher-api.riofintech.net', 'services.affiliate.publisher_id' => 'publisher', 'services.affiliate.api_token' => 'token']);
+
+        $oldRows = collect(range(1, 100))->map(fn (int $number) => [
+            'offer_id' => 'shbfinance',
+            'transaction_id' => 'OLD-'.$number,
+            'conversion_status' => 'pending',
+        ])->all();
+
+        Http::fake(function ($request) use ($oldRows) {
+            $page = (int) ($request->data()['page'] ?? 1);
+
+            return match ($page) {
+                1 => Http::response(['status' => 1, 'data' => $oldRows]),
+                2 => Http::response(['message' => 'temporary timeout'], 504),
+                3 => Http::response(['status' => 1, 'data' => [[
+                    'offer_id' => 'shbfinance',
+                    'transaction_id' => 'LATEST-TX',
+                    'conversion_status' => 'disbursed',
+                    'conversion_sale_amount' => 45_000_000,
+                ]]]),
+            };
+        });
+
+        $this->artisan('affiliate:sync-hyperlead')->assertSuccessful();
+
+        $this->assertDatabaseHas('affiliate_conversions', [
+            'partner' => 'hyperlead',
+            'transaction_id' => 'LATEST-TX',
+            'conversion_status' => 'disbursed',
+            'sale_amount' => 45_000_000,
+        ]);
+    }
 }

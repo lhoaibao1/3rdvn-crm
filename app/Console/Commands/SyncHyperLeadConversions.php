@@ -6,7 +6,9 @@ use App\Support\Affiliate\UpsertAffiliateConversion;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class SyncHyperLeadConversions extends Command
 {
@@ -33,16 +35,41 @@ class SyncHyperLeadConversions extends Command
         }
 
         $count = 0;
+        $failedPages = 0;
+        $consecutiveFailures = 0;
         for ($page = 1; $page <= 100; $page++) {
-            $response = $this->client()->get($baseUrl.'/v1/conversions', $query + ['page' => $page]);
-            $response->throw();
-            $json = $response->json();
-            if ((int) ($json['status'] ?? 0) !== 1) {
-                throw new RuntimeException((string) ($json['message'] ?? 'HyperLead API trả về lỗi.'));
-            }
-            $rows = $json['data'] ?? [];
-            if (! is_array($rows)) {
-                throw new RuntimeException('HyperLead API trả về data không hợp lệ.');
+            try {
+                $response = $this->client()->get($baseUrl.'/v1/conversions', $query + ['page' => $page]);
+                $response->throw();
+                $json = $response->json();
+                if ((int) ($json['status'] ?? 0) !== 1) {
+                    throw new RuntimeException((string) ($json['message'] ?? 'HyperLead API trả về lỗi.'));
+                }
+                $rows = $json['data'] ?? [];
+                if (! is_array($rows)) {
+                    throw new RuntimeException('HyperLead API trả về data không hợp lệ.');
+                }
+                $consecutiveFailures = 0;
+            } catch (Throwable $e) {
+                // Targeted refreshes must fail loudly so the queued command can retry.
+                if (isset($query['transaction_id'])) {
+                    throw $e;
+                }
+
+                $failedPages++;
+                $consecutiveFailures++;
+                Log::warning('HyperLead report page sync failed', [
+                    'page' => $page,
+                    'error' => $e->getMessage(),
+                ]);
+                $this->warn("Bỏ qua trang {$page} do API tạm thời không phản hồi.");
+
+                // One failed middle page must not prevent newer pages being imported,
+                // but stop quickly during a genuine partner outage.
+                if ($consecutiveFailures >= 2) {
+                    break;
+                }
+                continue;
             }
             foreach ($rows as $row) {
                 if (! is_array($row) || empty($row['transaction_id'])) {
@@ -57,7 +84,8 @@ class SyncHyperLeadConversions extends Command
                 break;
             }
         }
-        $this->info("Đã đồng bộ {$count} chuyển đổi HyperLead.");
+        $suffix = $failedPages > 0 ? " ({$failedPages} trang tạm lỗi)" : '';
+        $this->info("Đã đồng bộ {$count} chuyển đổi HyperLead{$suffix}.");
         return self::SUCCESS;
     }
 

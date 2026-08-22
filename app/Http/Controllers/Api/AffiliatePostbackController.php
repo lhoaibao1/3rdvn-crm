@@ -7,6 +7,8 @@ use App\Http\Requests\StoreAffiliatePostbackRequest;
 use App\Models\AffiliateCampaign;
 use App\Support\Affiliate\UpsertAffiliateConversion;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class AffiliatePostbackController extends Controller
@@ -59,6 +61,24 @@ class AffiliatePostbackController extends Controller
 
         try {
             $conversion = $action->handle($payload, $partner);
+
+            $status = strtolower(trim((string) $conversion->conversion_status));
+            $needsAmountRefresh = $partner === 'hyperlead'
+                && in_array($status, ['success', 'approved', 'disbursed', 'completed', 'paid'], true)
+                && (float) ($conversion->sale_amount ?? 0) <= 0
+                && filled($conversion->transaction_id);
+
+            if ($needsAmountRefresh) {
+                $transactionId = (string) $conversion->transaction_id;
+                $lockKey = 'affiliate:hyperlead:amount-refresh:'.hash('sha256', $transactionId);
+
+                // Collapse repeated status postbacks into one targeted report lookup.
+                if (Cache::add($lockKey, true, now()->addMinutes(2))) {
+                    Artisan::queue('affiliate:sync-hyperlead', [
+                        '--transaction' => $transactionId,
+                    ])->delay(now()->addSeconds(5));
+                }
+            }
 
             // Fire real-time Web Push broadcast to node server
             try {

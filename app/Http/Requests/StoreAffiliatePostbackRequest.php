@@ -43,8 +43,21 @@ class StoreAffiliatePostbackRequest extends FormRequest
         };
 
         // Amount mapping
-        $saleAmount = $input['conversion_sale_amount'] ?? $input['sale_amount'] ?? $input['order_value'] ?? $input['price'] ?? $input['amount'] ?? 0;
-        $payout = $input['conversion_publisher_payout'] ?? $input['publisher_payout'] ?? $input['pub_commission'] ?? $input['commission'] ?? 0;
+        $saleAmount = $input['conversion_sale_amount']
+            ?? $input['sale_amount']
+            ?? $input['order_value']
+            ?? $input['transaction_value']
+            ?? $input['product_price']
+            ?? $input['price']
+            ?? $input['amount']
+            ?? $input['approved_amount']
+            ?? $input['disbursed_amt']
+            ?? null;
+        $payout = $input['conversion_publisher_payout']
+            ?? $input['publisher_payout']
+            ?? $input['pub_commission']
+            ?? $input['commission']
+            ?? null;
 
         // Sub IDs mapping (UTM & Sub parameters)
         $affSub1 = $input['aff_sub1'] ?? $input['sub1'] ?? $input['utm_content'] ?? $input['publisher_code'] ?? null;
@@ -62,8 +75,10 @@ class StoreAffiliatePostbackRequest extends FormRequest
             'campaign_name' => $campaignName,
             'conversion_status' => $status,
             'conversion_status_code' => (string) ($rawStatus ?? '0'),
-            'conversion_sale_amount' => is_numeric($saleAmount) ? (float) $saleAmount : 0,
-            'conversion_publisher_payout' => is_numeric($payout) ? (float) $payout : 0,
+            // Missing amounts must remain null so a status-only postback cannot erase
+            // values already reconciled from the partner report API.
+            'conversion_sale_amount' => is_numeric($saleAmount) ? (float) $saleAmount : null,
+            'conversion_publisher_payout' => is_numeric($payout) ? (float) $payout : null,
             'aff_sub1' => $affSub1 ? trim((string) $affSub1) : null,
             'aff_sub2' => $affSub2 ? trim((string) $affSub2) : null,
             'aff_sub3' => $affSub3 ? trim((string) $affSub3) : null,
