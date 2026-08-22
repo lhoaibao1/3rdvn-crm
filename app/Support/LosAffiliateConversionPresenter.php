@@ -62,9 +62,6 @@ class LosAffiliateConversionPresenter
         ]));
 
         // ─── KHOẢN VAY PHÊ DUYỆT & ĐỀ XUẤT TIẾP THỊ ───
-        $isApproved = in_array(strtolower((string)$conversion->conversion_status), ['approved', '1', 'success', 'confirmed', 'paid'])
-            || in_array((string)$conversion->conversion_status_code, ['1', 'approved']);
-
         $saleAmt = self::money([
             $conversion->sale_amount,
             $raw['conversion_sale_amount'] ?? null,
@@ -73,27 +70,18 @@ class LosAffiliateConversionPresenter
             $raw['amount'] ?? null,
         ]);
 
-        if ($isApproved) {
-            $approvedLoanAmount = self::money([
-                $raw['approved_amount'] ?? null,
-                $raw['disbursed_amt'] ?? null,
-                $saleAmt,
-            ]);
-            $requestedLoanAmount = self::money([
-                $raw['loan_amount'] ?? null,
-                $raw['requested_amount'] ?? null,
-                $raw['offer_amt'] ?? null,
-            ]);
-        } else {
-            $requestedLoanAmount = self::money([
-                $raw['loan_amount'] ?? null,
-                $raw['requested_amount'] ?? null,
-                $raw['offer_amt'] ?? null,
-                $saleAmt,
-            ]);
-            // Chưa được phê duyệt -> Không có số tiền duyệt
-            $approvedLoanAmount = null;
-        }
+        // The partner can return the approved amount while its workflow is still
+        // pending. Amount availability and workflow status are independent.
+        $approvedLoanAmount = self::money([
+            $raw['approved_amount'] ?? null,
+            $raw['disbursed_amt'] ?? null,
+            $saleAmt,
+        ]);
+        $requestedLoanAmount = self::money([
+            $raw['loan_amount'] ?? null,
+            $raw['requested_amount'] ?? null,
+            $raw['offer_amt'] ?? null,
+        ]);
 
         $statusLabel = self::cleanString(self::affiliateStatusLabel($conversion->conversion_status, $conversion->status_message));
         $statusTone = self::affiliateStatusTone($conversion->conversion_status);
