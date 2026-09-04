@@ -4,41 +4,36 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AffiliateCampaign;
+use App\Models\AffiliateClick;
 use App\Models\AffiliateConversion;
 use App\Models\User;
+use App\Support\AffiliateConversionStatus;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
 
 class AffiliatePortalApiController extends Controller
 {
-    private const TOKEN_SECRET = '3rdvn_affiliate_portal_sec_token_2026';
-
-    /**
-     * CORS Helper
-     */
     private function jsonWithCors(array $data, int $status = 200): JsonResponse
     {
         return response()->json($data, $status)
             ->header('Access-Control-Allow-Origin', '*')
             ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-            ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization, X-Affiliate-Token, X-Requested-With');
+            ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Affiliate-Token');
     }
 
-    /**
-     * Handle Preflight OPTIONS
-     */
     public function options(): JsonResponse
     {
-        return $this->jsonWithCors(['status' => 'ok']);
+        return $this->jsonWithCors(['status' => 'OK']);
     }
 
-    /**
-     * Authenticate Publisher / Sale via Any CRM User Credentials
-     */
     public function login(Request $request): JsonResponse
     {
         $identifier = trim((string) $request->input('identifier', $request->input('username', $request->input('email', ''))));
@@ -54,7 +49,6 @@ class AffiliatePortalApiController extends Controller
         $normalizedPhone = preg_replace('/\D+/', '', $identifier) ?: $identifier;
         $identLower = strtolower($identifier);
 
-        // 1. Exact match by Email, Employee Code, Username, UID, Phone, Identity
         $user = User::query()
             ->whereRaw('LOWER(email) = ?', [$identLower])
             ->orWhereRaw('LOWER(COALESCE(employee_code, \'\')) = ?', [$identLower])
@@ -65,7 +59,6 @@ class AffiliatePortalApiController extends Controller
             ->orWhere('identity_number', $identifier)
             ->first();
 
-        // 2. Fallback to name search if not found
         if (! $user) {
             $user = User::query()
                 ->where('name', 'ilike', "%{$identifier}%")
@@ -93,13 +86,6 @@ class AffiliatePortalApiController extends Controller
             ], 403);
         }
 
-        if (method_exists($user, 'canAccessApp') && ! $user->canAccessApp('affiliate')) {
-            return $this->jsonWithCors([
-                'success' => false,
-                'message' => 'Tài khoản của bạn chưa được cấp quyền truy cập vào Hub Tiếp Thị Liên Kết.',
-            ], 403);
-        }
-
         $code = $user->employee_code ?: ($user->username ?: ($user->uid ?: ('RD' . str_pad((string)$user->id, 6, '0', STR_PAD_LEFT))));
         $roleName = method_exists($user, 'getRoleNames') ? ($user->getRoleNames()->first() ?? 'Direct Sale') : 'Direct Sale';
         $hierarchy = $this->getAccessibleHierarchy($user);
@@ -107,32 +93,31 @@ class AffiliatePortalApiController extends Controller
 
         return $this->jsonWithCors([
             'success' => true,
-            'message' => 'Đăng nhập thành công',
             'token' => $token,
             'user' => [
                 'id' => $user->id,
-                'name' => $user->name,
+                'uid' => $user->uid,
                 'employee_code' => $code,
+                'name' => $user->name,
                 'email' => $user->email,
-                'phone' => $user->phone ?? '-',
+                'phone' => $user->phone,
+                'avatar_path' => $user->avatar_path ? (str_starts_with($user->avatar_path, 'http') ? $user->avatar_path : asset('storage/' . $user->avatar_path)) : null,
                 'role' => $roleName,
-                'role_title' => $this->formatRoleTitle($roleName),
-                'is_admin' => in_array($roleName, ['Admin', 'Super Admin', 'Sales Admin']),
-                'can_manage_campaigns' => in_array($roleName, ['Admin', 'Super Admin', 'Sales Admin']),
-                'team' => $user->team?->name ?? '3RD Affiliate Network',
-                'managed_members' => $hierarchy ? $hierarchy['members_count'] : 'Toàn hệ thống',
+                'role_title' => $this->getRoleTitle($user),
+                'team' => $user->team?->name ?: ($user->branch_name ?: '3RD Fintech'),
+                'is_admin' => $user->hasRole('Admin') || $user->hasRole('Super Admin'),
+                'can_manage_campaigns' => $user->hasRole('Admin') || $user->hasRole('Super Admin') || $user->hasRole('Director') || $user->hasRole('General Manager') || $user->hasRole('Manager'),
+                'managed_members' => $hierarchy !== null ? count($hierarchy['codes']) : 'Toàn hệ thống',
             ],
+            'message' => 'Đăng nhập thành công',
         ]);
     }
 
-    /**
-     * Get Current Authenticated User Info
-     */
     public function getMe(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
         if (! $user) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Chưa đăng nhập hoặc phiên làm việc hết hạn.'], 401);
+            return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
         $code = $user->employee_code ?: ($user->username ?: ($user->uid ?: ('RD' . str_pad((string)$user->id, 6, '0', STR_PAD_LEFT))));
@@ -143,49 +128,66 @@ class AffiliatePortalApiController extends Controller
             'success' => true,
             'user' => [
                 'id' => $user->id,
-                'name' => $user->name,
+                'uid' => $user->uid,
                 'employee_code' => $code,
+                'name' => $user->name,
                 'email' => $user->email,
-                'phone' => $user->phone ?? '-',
+                'phone' => $user->phone,
+                'avatar_path' => $user->avatar_path ? (str_starts_with($user->avatar_path, 'http') ? $user->avatar_path : asset('storage/' . $user->avatar_path)) : null,
                 'role' => $roleName,
-                'role_title' => $this->formatRoleTitle($roleName),
-                'is_admin' => in_array($roleName, ['Admin', 'Super Admin', 'Sales Admin']),
-                'can_manage_campaigns' => in_array($roleName, ['Admin', 'Super Admin', 'Sales Admin']),
-                'team' => $user->team?->name ?? '3RD Affiliate Network',
-                'managed_members' => $hierarchy ? $hierarchy['members_count'] : 'Toàn hệ thống',
+                'role_title' => $this->getRoleTitle($user),
+                'team' => $user->team?->name ?: ($user->branch_name ?: '3RD Fintech'),
+                'is_admin' => $user->hasRole('Admin') || $user->hasRole('Super Admin'),
+                'can_manage_campaigns' => $user->hasRole('Admin') || $user->hasRole('Super Admin') || $user->hasRole('Director') || $user->hasRole('General Manager') || $user->hasRole('Manager'),
+                'managed_members' => $hierarchy !== null ? count($hierarchy['codes']) : 'Toàn hệ thống',
             ],
         ]);
     }
 
-    /**
-     * Get Active Affiliate Campaigns with AccessTrade Pub2 Style Metadata
-     */
     public function getCampaigns(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
-        $code = $user ? ($user->employee_code ?: ($user->username ?: ($user->uid ?: ('RD' . str_pad((string)$user->id, 6, '0', STR_PAD_LEFT))))) : 'RD260001';
+        if (! $user) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
 
+        $userCode = $user->employee_code ?: ($user->username ?: ($user->uid ?: ('RD' . str_pad((string)$user->id, 6, '0', STR_PAD_LEFT))));
         $campaigns = AffiliateCampaign::query()
-            ->where('is_active', true)
-            ->orderBy('sort_order', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
-        $data = $campaigns->map(function ($camp) use ($code) {
-            $slug = $camp->slug ?: Str::slug($camp->name);
-            $baseUrl = "https://3rdvn.io.vn/affiliate/{$slug}";
-            $trackingUrl = "{$baseUrl}?ref=" . urlencode($code);
+        $data = $campaigns->map(function ($camp) use ($userCode) {
+            $defaultLogo = match(strtolower($camp->slug ?: '')) {
+                'shb-finance', 'shbfinance' => '/static/logo-shb.svg',
+                'tinvay-vietcredit', 'tinvay' => '/static/logo-vietcredit.svg',
+                'vpbank-upl', 'vpbank' => '/static/logo-vpbank.svg',
+                'lotte-finance', 'lotte' => '/static/logo-lotte-finance.svg',
+                'shinhan-finance-android', 'shinhan-android', 'shinhan-finance-ios', 'shinhan-ios' => '/static/logo-shinhan.svg',
+                default => '/static/logo.jpg',
+            };
 
-            // AccessTrade Pub2 style Campaign Metadata (Clean separation for each partner)
-            $payoutInfo = match(strtolower($slug)) {
+            $campaignDetails = match(strtolower($camp->slug ?: '')) {
+                'shb-finance', 'shbfinance' => [
+                    'badge' => 'HOT NHẤT',
+                    'category' => 'Vay tiêu dùng tín chấp',
+                    'partner_name' => 'SHB Finance',
+                    'partner_logo' => '/static/logo-shb.svg',
+                    'loan_limit' => '10 - 100 Triệu VNĐ',
+                    'tenure' => '6 - 36 Tháng',
+                    'disbursement_time' => '12 - 24 Giờ',
+                    'target_audience' => 'Khách hàng có thu nhập từ lương hoặc tự doanh (20 - 59 tuổi)',
+                    'highlights' => ['Hạn mức đến 100 Triệu VNĐ', 'Lãi suất chỉ từ 1.6%/tháng', 'Không thế chấp tài sản', 'Đăng ký online 100%'],
+                    'terms' => 'Quy trình ghi nhận: Khách hàng click link -> Điền form thông tin -> SHB Finance liên hệ tư vấn -> Ký hợp đồng & Giải ngân.',
+                    'rejection_reasons' => 'Nợ xấu nhóm 2 trở lên trên CIC, sai thông tin định danh, hủy hồ sơ.',
+                ],
                 'vpbank-upl', 'vpbank' => [
-                    'badge' => 'DỰ ÁN MỚI',
-                    'category' => 'Vay tín chấp VPBank',
+                    'badge' => 'DUYỆT CAO',
+                    'category' => 'Vay tín chấp ngân hàng',
                     'partner_name' => 'VPBank UPL',
                     'partner_logo' => '/static/logo-vpbank.svg',
                     'loan_limit' => '20 - 200 Triệu VNĐ',
-                    'tenure' => '12 - 60 Tháng',
-                    'disbursement_time' => 'Duyệt trong 2H',
+                    'tenure' => '12 - 48 Tháng',
+                    'disbursement_time' => '24 Giờ',
                     'target_audience' => 'Khách hàng đi làm hưởng lương, tự doanh (20 - 60 tuổi)',
                     'highlights' => ['Hạn mức đến 200 Triệu VNĐ', 'Lãi suất từ 1.2%/tháng', 'Không thế chấp tài sản', 'Đăng ký online 100%'],
                     'terms' => 'Quy trình ghi nhận: Khách hàng click link -> Điền thông tin vay trên cổng VPBank -> VPBank thẩm định -> Giải ngân thành công.',
@@ -201,135 +203,95 @@ class AffiliatePortalApiController extends Controller
                     'disbursement_time' => 'Duyệt hồ sơ tự động',
                     'target_audience' => 'Khách hàng 18 - 60 tuổi có thu nhập ổn định',
                     'highlights' => ['Hạn mức đến 100 Triệu VNĐ', 'Duyệt hồ sơ tự động', 'Không thế chấp tài sản', 'Đăng ký online 100% với CCCD'],
-                    'terms' => 'Quy trình ghi nhận: Khách hàng đăng ký qua link -> Hoàn tất định danh eKYC -> Được giải ngân thành công.',
-                    'rejection_reasons' => 'Không hoàn tất bước chụp ảnh CCCD, không thỏa điều kiện thu nhập tối thiểu.',
+                    'terms' => 'Quy trình ghi nhận: Khách hàng đăng ký online -> Hệ thống thẩm định tự động -> Duyệt hạn mức và giải ngân.',
+                    'rejection_reasons' => 'Thông tin CCCD không hợp lệ, nợ xấu nhóm cao.',
                 ],
-                'shb-finance', 'shbfinance' => [
-                    'badge' => 'HOT NHẤT',
+                'lotte-finance', 'lotte' => [
+                    'badge' => 'HẠN MỨC CAO',
                     'category' => 'Vay tiêu dùng tín chấp',
-                    'partner_name' => 'SHB Finance',
-                    'partner_logo' => '/static/logo-shb.svg',
-                    'loan_limit' => '10 - 100 Triệu VNĐ',
-                    'tenure' => '12 - 36 Tháng',
-                    'disbursement_time' => 'Giải ngân trong 24H',
-                    'target_audience' => 'Khách hàng đi làm hưởng lương, tự kinh doanh (20 - 60 tuổi)',
-                    'highlights' => ['Hạn mức đến 100 Triệu VNĐ', 'Giải ngân nhanh 24H', 'Không thẩm định người thân', 'Lãi suất ưu đãi từ 1.6%/tháng'],
-                    'terms' => 'Quy trình ghi nhận: Khách hàng click link -> Điền thông tin đăng ký -> SHBFinance thẩm định và liên hệ tư vấn -> Ký hợp đồng & Giải ngân tiền thành công.',
-                    'rejection_reasons' => 'Nợ xấu nhóm 2 trở lên, thông tin CCCD không trùng khớp, không nghe máy cuộc gọi thẩm định.',
+                    'partner_name' => 'Lotte Finance',
+                    'partner_logo' => '/static/logo-lotte-finance.svg',
+                    'loan_limit' => '20 - 600 Triệu VNĐ',
+                    'tenure' => '6 - 60 Tháng',
+                    'disbursement_time' => 'Theo kết quả thẩm định',
+                    'target_audience' => 'Khách hàng từ 21 - 60 tuổi thuộc nhóm Công ty, Công ty TOP, GOV hoặc Bảo hiểm nhân thọ',
+                    'highlights' => ['Hạn mức đến 600 Triệu VNĐ', 'Kỳ hạn từ 6 đến 60 tháng', 'Không phụ thuộc CRM', 'Nhân viên Lotte Finance liên hệ hỗ trợ'],
+                    'terms' => 'Khách hàng hoàn tất biểu mẫu đăng ký. Hồ sơ được Admin xử lý tại LOS và cập nhật lần lượt: Đang thẩm định/Chờ duyệt, Đã duyệt - chờ giải ngân, Đã giải ngân hoặc Hủy.',
+                    'rejection_reasons' => 'Không đáp ứng điều kiện thẩm định hoặc khách hàng hủy hồ sơ.',
+                ],
+                'shinhan-finance-android', 'shinhan-android' => [
+                    'badge' => 'MỚI',
+                    'category' => 'Android · Vay online 100%',
+                    'partner_name' => 'Shinhan Finance Android',
+                    'partner_logo' => '/static/logo-shinhan.svg',
+                    'loan_limit' => 'Theo kết quả xét duyệt',
+                    'tenure' => 'Theo chính sách SVFC',
+                    'disbursement_time' => 'Quy trình tự động trên app',
+                    'target_audience' => 'Khách hàng có nhu cầu vay Tài Tốc hoặc Vay Thông Thường trên ứng dụng iShinhan',
+                    'highlights' => ['Đăng ký online 100%', 'Tải đúng app theo Android/iOS', 'Nhập mã giới thiệu ACT23', 'Shinhan Finance không thu phí khách hàng'],
+                    'terms' => 'Khách hàng điền landing form 3RDVN -> Hệ thống chuyển đến đúng link tải iShinhan theo Android/iOS -> Khách hàng tải và mở ứng dụng iShinhan -> Chọn Vay Tài Tốc hoặc Vay Thông Thường -> Nhập mã giới thiệu ACT23 -> Đăng ký khoản vay và xác thực eKYC bằng CCCD -> Hoàn tất xét duyệt tự động -> Ký hợp đồng trực tuyến trên iShinhan -> Shinhan Finance giải ngân thành công (CPA)',
+                    'rejection_reasons' => 'Không nhập mã ACT23, thông tin không hợp lệ, không hoàn tất eKYC/ký hợp đồng hoặc không được giải ngân.',
+                    'guide_url' => 'https://drive.google.com/file/d/1ZICJ8Op_WZ1oCstjLuokjmCkpikd2_2h/view?usp=sharing',
+                    'publisher_notice' => 'Shinhan Finance không thu bất kỳ khoản phí nào của khách hàng. Publisher thu phí hoặc làm khách hàng hiểu sai sẽ bị hủy đơn và có thể bị dừng tham gia các chiến dịch tài chính.',
+                ],
+                'shinhan-finance-ios', 'shinhan-ios' => [
+                    'badge' => 'MỚI',
+                    'category' => 'iOS · Vay online 100%',
+                    'partner_name' => 'Shinhan Finance iOS',
+                    'partner_logo' => '/static/logo-shinhan.svg',
+                    'loan_limit' => 'Theo kết quả xét duyệt',
+                    'tenure' => 'Theo chính sách SVFC',
+                    'disbursement_time' => 'Quy trình tự động trên app',
+                    'target_audience' => 'Khách hàng dùng iPhone/iPad có nhu cầu vay Tài Tốc hoặc Vay Thông Thường trên ứng dụng iShinhan',
+                    'highlights' => ['Link tải riêng cho iOS', 'Đăng ký online 100%', 'Nhập mã giới thiệu ACT23', 'Shinhan Finance không thu phí khách hàng'],
+                    'terms' => 'Khách hàng điền landing form 3RDVN -> Hệ thống chuyển đến link tải iShinhan dành cho iOS -> Khách hàng tải và mở ứng dụng iShinhan -> Chọn Vay Tài Tốc hoặc Vay Thông Thường -> Nhập mã giới thiệu ACT23 -> Đăng ký khoản vay và xác thực eKYC bằng CCCD -> Hoàn tất xét duyệt tự động -> Ký hợp đồng trực tuyến trên iShinhan -> Shinhan Finance giải ngân thành công (CPA)',
+                    'rejection_reasons' => 'Không nhập mã ACT23, thông tin không hợp lệ, không hoàn tất eKYC/ký hợp đồng hoặc không được giải ngân.',
+                    'guide_url' => 'https://drive.google.com/file/d/1ZICJ8Op_WZ1oCstjLuokjmCkpikd2_2h/view?usp=sharing',
+                    'publisher_notice' => 'Shinhan Finance không thu bất kỳ khoản phí nào của khách hàng. Publisher thu phí hoặc làm khách hàng hiểu sai sẽ bị hủy đơn và có thể bị dừng tham gia các chiến dịch tài chính.',
                 ],
                 default => [
                     'badge' => 'CHIẾN DỊCH',
-                    'category' => 'Tài chính - Ngân hàng',
+                    'category' => 'Tiếp thị liên kết',
                     'partner_name' => $camp->name,
-                    'partner_logo' => $camp->logo_url ?: '/static/logo.jpg',
-                    'loan_limit' => 'Theo chính sách dự án',
-                    'tenure' => 'Theo quy định đối tác',
-                    'disbursement_time' => 'Duyệt nhanh',
-                    'target_audience' => 'Mọi đối tượng khách hàng phù hợp',
-                    'highlights' => ['Duyệt hồ sơ tự động', 'Tỷ lệ duyệt cao', 'Đăng ký online 100%'],
-                    'terms' => 'Quy trình ghi nhận theo đúng quy chuẩn và hợp đồng hợp tác với đơn vị đối tác.',
-                    'rejection_reasons' => 'Thông tin không chính xác hoặc trùng lặp trong hệ thống.',
-                ],
+                    'partner_logo' => '/static/logo.jpg',
+                    'loan_limit' => 'Theo quy định',
+                    'tenure' => 'Linh hoạt',
+                    'disbursement_time' => '24 - 48 Giờ',
+                    'target_audience' => 'Khách hàng toàn quốc từ 18 - 60 tuổi',
+                    'highlights' => ['Đăng ký trực tuyến', 'Thủ tục đơn giản', 'Giải ngân nhanh'],
+                    'terms' => 'Quy trình ghi nhận theo chính sách của đối tác.',
+                    'rejection_reasons' => 'Thông tin không chính xác hoặc không đáp ứng điều kiện vay.',
+                ]
             };
 
             return [
                 'id' => $camp->id,
                 'name' => $camp->name,
-                'slug' => $slug,
-                'logo_url' => $camp->logo_url ?: $payoutInfo['partner_logo'],
-                'summary' => $camp->summary ?: 'Dự án tiếp thị liên kết chính thức',
-                'details' => $camp->details,
-                'raw_tracking_url' => $camp->tracking_url,
-                'attribution_param' => $camp->attribution_param ?: 'aff_sub1',
-                'publisher_url' => $trackingUrl,
-                'publisher_base_url' => $baseUrl,
-                'meta' => $payoutInfo,
+                'slug' => $camp->slug,
+                'description' => $camp->description,
+                'commission_rate' => $camp->commission_rate,
+                'cookie_duration_days' => $camp->cookie_duration_days,
+                'logo_url' => $camp->logo_url ?: $defaultLogo,
+                'is_active' => $camp->is_active,
+                'is_open' => $camp->isOpen(),
+                'opens_at' => $camp->opens_at?->toIso8601String(),
+                'closes_at' => $camp->closes_at?->toIso8601String(),
+                'closure_message' => $camp->closureReason(),
+                'publisher_base_url' => "https://3rdvn.io.vn/affiliate/{$camp->slug}",
+                'tracking_url' => "https://3rdvn.io.vn/affiliate/{$camp->slug}?ref={$userCode}",
+                'short_tracking_url' => "https://3rdvn.io.vn/aff/{$camp->slug}?ref={$userCode}",
+                'affiliate_link' => "https://3rdvn.io.vn/affiliate/{$camp->slug}?ref={$userCode}",
+                'meta' => $campaignDetails,
+                'details' => $campaignDetails,
             ];
         });
 
         return $this->jsonWithCors([
             'success' => true,
             'data' => $data,
-            'publisher_code' => $code,
         ]);
     }
 
-    /**
-     * Update Campaign Logo (URL or uploaded file)
-     */
-    public function updateCampaignLogo(Request $request, int $id): JsonResponse
-    {
-        $user = $this->authenticateRequest($request);
-        if (! $user) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng đăng nhập.'], 401);
-        }
-
-        $isAdmin = method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['Admin', 'Super Admin', 'Sales Admin']);
-        if (! $isAdmin) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Chỉ Quản trị viên (Admin) mới có quyền đổi logo chiến dịch.'], 403);
-        }
-
-        $campaign = AffiliateCampaign::find($id);
-        if (! $campaign) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Chiến dịch không tồn tại.'], 404);
-        }
-
-        $action = (string) $request->input('action', '');
-        if ($action === 'reset') {
-            $defaultLogo = match(strtolower($campaign->slug ?: '')) {
-                'shb-finance', 'shbfinance' => '/static/logo-shb.svg',
-                'tinvay-vietcredit', 'tinvay' => '/static/logo-vietcredit.svg',
-                default => null,
-            };
-            $campaign->logo_url = $defaultLogo;
-            $campaign->save();
-
-            return $this->jsonWithCors([
-                'success' => true,
-                'logo_url' => $defaultLogo ?: '/static/logo.jpg',
-                'message' => 'Đã khôi phục logo mặc định của chiến dịch ' . $campaign->name,
-            ]);
-        }
-
-        $logoUrl = trim((string) $request->input('logo_url', ''));
-        $logoBase64 = (string) $request->input('logo_base64', '');
-
-        if ($logoBase64 !== '') {
-            try {
-                $base64Data = $logoBase64;
-                $ext = '.png';
-                if (str_contains($base64Data, 'base64,')) {
-                    $header = explode('base64,', $base64Data)[0];
-                    if (str_contains($header, 'jpeg') || str_contains($header, 'jpg')) $ext = '.jpg';
-                    elseif (str_contains($header, 'svg')) $ext = '.svg';
-                    elseif (str_contains($header, 'webp')) $ext = '.webp';
-                    $base64Data = explode('base64,', $base64Data)[1];
-                }
-                $base64Data = preg_replace('/\s+/', '', $base64Data);
-                $filename = "campaign-{$id}-logo{$ext}";
-                $dest1 = "/opt/3rdvn-affiliate/public/{$filename}";
-                @file_put_contents($dest1, base64_decode($base64Data));
-                $logoUrl = "/static/{$filename}?v=" . time();
-            } catch (\Throwable $e) {}
-        }
-
-        if ($logoUrl === '') {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng chọn file ảnh hoặc nhập URL logo.'], 422);
-        }
-
-        $campaign->logo_url = $logoUrl;
-        $campaign->save();
-
-        return $this->jsonWithCors([
-            'success' => true,
-            'logo_url' => $campaign->logo_url,
-            'message' => 'Đã cập nhật logo cho chiến dịch ' . $campaign->name,
-        ]);
-    }
-
-    /**
-     * Get Conversions / Transactions List (Filtered by CRM Role Hierarchy)
-     */
     public function getConversions(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -337,98 +299,30 @@ class AffiliatePortalApiController extends Controller
             return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
-        $query = AffiliateConversion::query()
+        $query = $this->buildConversionReportQuery($request, $user)
             ->with(['createdBy'])
-            ->orderBy('conversion_time', 'desc')
+            ->orderByRaw('COALESCE(conversion_time, click_time, created_at) DESC')
             ->orderBy('id', 'desc');
 
-        // Apply CRM Role Hierarchy filter
-        $hierarchy = $this->getAccessibleHierarchy($user);
-        if ($hierarchy !== null) {
-            $codes = $hierarchy['codes'];
-            $userIds = $hierarchy['user_ids'];
-
-            $query->where(function ($q) use ($codes, $userIds) {
-                if (!empty($codes)) {
-                    $q->where(function($sq) use ($codes) {
-                        foreach ($codes as $c) {
-                            $sq->orWhere('aff_sub1', $c)
-                               ->orWhere('aff_sub1', 'like', "{$c}%");
-                        }
-                    });
-                }
-                if (!empty($userIds)) {
-                    $q->orWhereIn('created_by_id', $userIds);
-                }
-            });
-        }
-
-        // Filter: Campaign
-        $campaign = trim((string) $request->input('campaign', ''));
-        if ($campaign !== '' && $campaign !== 'all') {
-            if ($campaign === 'vpbank' || $campaign === 'vpbank-upl') {
-                $query->where(function ($q) {
-                    $q->where('campaign_name', 'ilike', '%vpbank%')
-                      ->orWhere('partner', 'ilike', '%isclix%');
-                });
-            } elseif ($campaign === 'shb' || $campaign === 'shb-finance' || $campaign === 'shbfinance') {
-                $query->where(function ($q) {
-                    $q->where('campaign_name', 'ilike', '%shb%')
-                      ->orWhere('partner', 'ilike', '%hyperlead%');
-                });
-            } elseif ($campaign === 'tinvay' || $campaign === 'tinvay-vietcredit') {
-                $query->where(function ($q) {
-                    $q->where('campaign_name', 'ilike', '%tinvay%')
-                      ->orWhere('partner', 'ilike', '%accesstrade%');
-                });
-            } else {
-                $query->where('campaign_name', 'ilike', "%{$campaign}%");
-            }
-        }
-
-        // Filter: Status
-        $status = trim((string) $request->input('status', ''));
-        if ($status !== '' && $status !== 'all') {
-            if ($status === 'approved' || $status === 'success') {
-                $query->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid']);
-            } elseif ($status === 'rejected' || $status === 'cancelled') {
-                $query->whereIn(DB::raw('LOWER(conversion_status)'), ['rejected', 'cancelled', 'failed', 'declined', 'trash']);
-            } elseif ($status === 'pending') {
-                $query->where(function ($q) {
-                    $q->whereNotIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid', 'rejected', 'cancelled', 'failed', 'declined', 'trash'])
-                      ->orWhereNull('conversion_status');
-                });
-            }
-        }
-
-        // Filter: Sub-ID
-        $subId = trim((string) $request->input('sub_id', ''));
-        if ($subId !== '') {
-            $query->where(function ($q) use ($subId) {
-                $q->where('aff_sub1', 'like', "%{$subId}%")
-                  ->orWhere('aff_sub2', 'like', "%{$subId}%");
-            });
-        }
-
-        // Filter: Search keyword
-        $search = trim((string) $request->input('search', ''));
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('conversion_id', 'like', "%{$search}%")
-                  ->orWhere('transaction_id', 'like', "%{$search}%")
-                  ->orWhere('aff_sub1', 'like', "%{$search}%")
-                  ->orWhere('aff_sub2', 'like', "%{$search}%")
-                  ->orWhere('product_name', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter: Date range
-        if ($request->filled('date_from')) {
-            $query->where('conversion_time', '>=', Carbon::parse($request->input('date_from'))->startOfDay());
-        }
-        if ($request->filled('date_to')) {
-            $query->where('conversion_time', '<=', Carbon::parse($request->input('date_to'))->endOfDay());
-        }
+        $statsQuery = clone $query;
+        $statsQuery->getQuery()->orders = null;
+        
+        $totalCount = (clone $statsQuery)->count();
+        $approvedCount = (clone $statsQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->count();
+        $approvedWaitingQuery = (clone $statsQuery)->where(function ($q) {
+            $q->whereRaw('LOWER(conversion_status) = ?', ['approved_waiting_disbursement'])
+              ->orWhere(function ($approvedAmountQuery) {
+                  $approvedAmountQuery
+                      ->whereNotIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid', 'rejected', 'cancelled', 'failed', 'declined', 'trash'])
+                      ->where('sale_amount', '>', 0);
+              });
+        });
+        $approvedWaitingCount = (clone $approvedWaitingQuery)->count();
+        $approvedWaitingVolume = (float) ((clone $approvedWaitingQuery)->sum('sale_amount') ?? 0);
+        $rejectedCount = (clone $statsQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['rejected', 'cancelled', 'failed', 'declined', 'trash'])->count();
+        $pendingCount = max(0, $totalCount - $approvedCount - $approvedWaitingCount - $rejectedCount);
+        $approvedVolume = (float) ((clone $statsQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->sum('sale_amount') ?? 0);
+        $approvalRate = $totalCount > 0 ? round(($approvedCount / $totalCount) * 100, 1) : 0;
 
         $perPage = min(100, max(10, (int) $request->input('per_page', 25)));
         $paginator = $query->paginate($perPage);
@@ -436,27 +330,55 @@ class AffiliatePortalApiController extends Controller
         $userCodeMap = User::all(['id', 'name', 'employee_code'])->filter(fn($u) => filled($u->employee_code))->keyBy('employee_code');
 
         $items = collect($paginator->items())->map(function (AffiliateConversion $item) use ($userCodeMap) {
-            $statusLower = strtolower((string) ($item->conversion_status ?? 'pending'));
-            $tone = match (true) {
-                in_array($statusLower, ['success', 'approved', 'disbursed', 'completed', 'paid']) => 'success',
-                in_array($statusLower, ['rejected', 'cancelled', 'failed', 'declined', 'trash']) => 'danger',
-                default => 'warning',
-            };
+            $recordedAt = $item->conversion_time ?: $item->click_time ?: $item->created_at;
+            $tone = AffiliateConversionStatus::tone($item->conversion_status, $item->sale_amount, $item->campaign_name.' '.$item->offer_id.' '.$item->partner);
+            $statusLabel = AffiliateConversionStatus::label($item->conversion_status, $item->sale_amount, $item->campaign_name.' '.$item->offer_id.' '.$item->partner);
 
-            $statusLabel = match ($tone) {
-                'success' => 'Thành công (Giải ngân)',
-                'danger' => 'Bị từ chối / Hủy',
-                default => 'Đang thẩm định / Chờ',
-            };
-
+            $searchMeta = strtolower((string)($item->campaign_name . $item->partner . $item->offer_id . $item->landing_page . $item->conversion_id));
             $campaignLabel = match (true) {
-                str_contains(strtolower($item->campaign_name . $item->partner), 'vpbank') => 'VPBank UPL',
-                str_contains(strtolower($item->campaign_name . $item->partner), 'shb') => 'SHB Finance',
-                str_contains(strtolower($item->campaign_name . $item->partner), 'tinvay') => 'TinVay - VietCredit',
-                default => $item->campaign_name ?: 'Tiếp thị liên kết',
+                str_contains($searchMeta, 'vpbank') => 'VPBank UPL',
+                str_contains($searchMeta, 'shb') || strtolower((string)$item->partner) === 'hyperlead' => 'SHB Finance',
+                str_contains($searchMeta, 'tinvay') || str_contains($searchMeta, 'vietcredit') || str_contains($searchMeta, 'vcredit') => 'Tin Vay',
+                default => $item->campaign_name ?: 'SHB Finance',
             };
 
             $creatorName = $item->createdBy?->name ?: ($userCodeMap[$item->aff_sub1]->name ?? null);
+            $rawPayload = (array) ($item->raw_payload ?? []);
+            $customerName = $rawPayload['customer_name'] ?? null;
+            $customerPhone = $rawPayload['customer_phone'] ?? null;
+            $customerIdNumber = $rawPayload['customer_identity_number'] ?? null;
+            $customerDob = $rawPayload['customer_dob'] ?? $rawPayload['date_of_birth'] ?? null;
+            $provinceName = $rawPayload['province_name'] ?? $rawPayload['province'] ?? null;
+            $customerGroupCode = $rawPayload['customer_group'] ?? null;
+            $customerGroup = $rawPayload['customer_group_label']
+                ?? $rawPayload['product_category']
+                ?? $rawPayload['category_name']
+                ?? data_get($rawPayload, '_extra.product_category');
+            if (! filled($customerGroup) && filled($customerGroupCode)) {
+                $customerGroup = match ($customerGroupCode) {
+                    'company' => 'Làm Công ty',
+                    'top_company' => 'Công ty TOP',
+                    'gov' => 'GOV',
+                    'life_insurance' => 'Bảo hiểm nhân thọ',
+                    default => $customerGroupCode,
+                };
+            }
+            if ($campaignLabel === 'Tin Vay') {
+                $customerGroup = 'High';
+                $customerGroupCode = 'high';
+                $statusLabel = AffiliateConversionStatus::label($item->conversion_status, $item->sale_amount, $campaignLabel);
+                $tone = AffiliateConversionStatus::tone($item->conversion_status, $item->sale_amount, $campaignLabel);
+            }
+            $attributionVerified = $rawPayload['attribution_verified'] ?? null;
+
+            if ($attributionVerified !== false && (!$customerName || !$customerPhone) && is_numeric($item->aff_sub2)) {
+                $lead = \App\Models\Lead::find((int) $item->aff_sub2);
+                if ($lead) {
+                    $customerName = $customerName ?: $lead->lead_name;
+                    $customerPhone = $customerPhone ?: $lead->phone;
+                    $customerIdNumber = $customerIdNumber ?: (is_array($lead->payload) ? ($lead->payload['identity_number'] ?? null) : null);
+                }
+            }
 
             return [
                 'id' => $item->id,
@@ -473,10 +395,25 @@ class AffiliatePortalApiController extends Controller
                 'status_tone' => $tone,
                 'created_by_name' => $creatorName ?: ($item->aff_sub1 ?: '-'),
                 'creator_name' => $creatorName ?: ($item->aff_sub1 ?: '-'),
+                'customer_name' => $customerName ?: 'Khách hàng',
+                'customer_phone' => $customerPhone ?: '-',
+                'customer_identity' => $customerIdNumber ?: '-',
+                'customer_dob' => $customerDob ?: '-',
+                'province_name' => $provinceName ?: '-',
+                'customer_group' => filled($customerGroup) ? $customerGroup : '-',
+                'customer_group_code' => $customerGroupCode ?: '-',
+                'requested_amount' => (float) ($rawPayload['requested_amount'] ?? 0),
+                'requested_amount_formatted' => number_format((float) ($rawPayload['requested_amount'] ?? 0), 0, ',', '.') . ' đ',
+                'approved_amount' => (float) ($rawPayload['approved_amount'] ?? $item->sale_amount ?? 0),
+                'approved_amount_formatted' => number_format((float) ($rawPayload['approved_amount'] ?? $item->sale_amount ?? 0), 0, ',', '.') . ' đ',
+                'loan_term_months' => filled($rawPayload['loan_term_months'] ?? null) ? (int) $rawPayload['loan_term_months'] : null,
+                'note' => filled($rawPayload['note'] ?? null) ? trim((string) $rawPayload['note']) : '-',
+                'attribution_verified' => $attributionVerified,
+                'lead_id' => $item->aff_sub2 ?: '-',
                 'aff_sub1' => $item->aff_sub1 ?: '-',
                 'aff_sub2' => $item->aff_sub2 ?: '-',
                 'click_time' => $item->click_time ? Carbon::parse($item->click_time)->format('H:i d/m/Y') : '-',
-                'conversion_time' => $item->conversion_time ? Carbon::parse($item->conversion_time)->format('H:i d/m/Y') : '-',
+                'conversion_time' => $recordedAt ? Carbon::parse($recordedAt)->format('H:i d/m/Y') : '-',
                 'created_at' => $item->created_at ? $item->created_at->format('H:i d/m/Y') : '-',
             ];
         });
@@ -484,6 +421,18 @@ class AffiliatePortalApiController extends Controller
         return $this->jsonWithCors([
             'success' => true,
             'data' => $items,
+            'summary' => [
+                'total' => $totalCount,
+                'pending' => $pendingCount,
+                'approved_waiting_disbursement' => $approvedWaitingCount,
+                'approved_waiting_disbursement_volume' => $approvedWaitingVolume,
+                'approved_waiting_disbursement_volume_formatted' => number_format($approvedWaitingVolume, 0, ',', '.') . ' đ',
+                'approved' => $approvedCount,
+                'rejected' => $rejectedCount,
+                'approved_volume' => $approvedVolume,
+                'approved_volume_formatted' => number_format($approvedVolume, 0, ',', '.') . ' đ',
+                'approval_rate' => $approvalRate,
+            ],
             'pagination' => [
                 'total' => $paginator->total(),
                 'per_page' => $paginator->perPage(),
@@ -493,9 +442,248 @@ class AffiliatePortalApiController extends Controller
         ]);
     }
 
-    /**
-     * Get Aggregated Performance Stats (Filtered by CRM Role Hierarchy)
-     */
+    public function exportConversions(Request $request): JsonResponse
+    {
+        $user = $this->authenticateRequest($request);
+        if (! $user) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'affiliate-report-3rdvn-');
+        if ($temporaryPath === false) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Không thể khởi tạo file Excel.'], 500);
+        }
+
+        $writer = new Writer();
+        $writer->openToFile($temporaryPath);
+        $writer->addRow(Row::fromValues([
+            'STT', 'Mã chuyển đổi', 'Mã giao dịch', 'Khách hàng', 'Số điện thoại',
+            'Chiến dịch', 'Nhóm khách hàng', 'Mã NVKD (Sub 1)', 'Người tạo',
+            'Doanh số vay', 'Trạng thái duyệt', 'Ghi chú', 'Thời gian ghi nhận',
+        ]));
+
+        $count = 0;
+        $userCodeMap = User::query()
+            ->select(['id', 'name', 'employee_code'])
+            ->whereNotNull('employee_code')
+            ->get()
+            ->keyBy('employee_code');
+
+        $this->buildConversionReportQuery($request, $user)
+            ->with('createdBy:id,name,employee_code')
+            ->orderBy('id')
+            ->chunkById(1000, function ($conversions) use ($writer, $userCodeMap, &$count): void {
+                foreach ($conversions as $conversion) {
+                    $recordedAt = $conversion->conversion_time ?: $conversion->click_time ?: $conversion->created_at;
+                    $rawPayload = (array) ($conversion->raw_payload ?? []);
+                    $searchMeta = strtolower((string) ($conversion->campaign_name.$conversion->partner.$conversion->offer_id.$conversion->landing_page.$conversion->conversion_id));
+                    $campaignLabel = match (true) {
+                        str_contains($searchMeta, 'vpbank') => 'VPBank UPL',
+                        str_contains($searchMeta, 'shb') || strtolower((string) $conversion->partner) === 'hyperlead' => 'SFinance',
+                        str_contains($searchMeta, 'tinvay') || str_contains($searchMeta, 'vietcredit') || str_contains($searchMeta, 'vcredit') => 'Tin Vay',
+                        str_contains($searchMeta, 'lotte') => 'Lotte Finance',
+                        default => $conversion->campaign_name ?: '-',
+                    };
+                    $customerGroupCode = $rawPayload['customer_group'] ?? null;
+                    $customerGroup = $rawPayload['customer_group_label']
+                        ?? $rawPayload['product_category']
+                        ?? $rawPayload['category_name']
+                        ?? data_get($rawPayload, '_extra.product_category');
+                    if (! filled($customerGroup) && filled($customerGroupCode)) {
+                        $customerGroup = match ($customerGroupCode) {
+                            'company' => 'Làm Công ty',
+                            'top_company' => 'Công ty TOP',
+                            'gov' => 'GOV',
+                            'life_insurance' => 'Bảo hiểm nhân thọ',
+                            default => $customerGroupCode,
+                        };
+                    }
+                    if ($campaignLabel === 'Tin Vay') {
+                        $customerGroup = 'High';
+                    }
+                    $creatorName = $conversion->createdBy?->name
+                        ?: ($userCodeMap[$conversion->aff_sub1]->name ?? $conversion->aff_sub1 ?? '-');
+
+                    $count++;
+                    $writer->addRow(Row::fromValues([
+                        $count,
+                        $conversion->conversion_id ?: 'CONV-'.$conversion->id,
+                        $conversion->transaction_id ?: '-',
+                        $rawPayload['customer_name'] ?? 'Khách hàng',
+                        $rawPayload['customer_phone'] ?? '-',
+                        $campaignLabel,
+                        filled($customerGroup) ? $customerGroup : '-',
+                        $conversion->aff_sub1 ?: '-',
+                        $creatorName,
+                        (float) ($conversion->sale_amount ?? 0),
+                        AffiliateConversionStatus::label($conversion->conversion_status, $conversion->sale_amount, $campaignLabel),
+                        filled($rawPayload['note'] ?? null) ? trim((string) $rawPayload['note']) : '-',
+                        $recordedAt ? Carbon::parse($recordedAt)->format('H:i d/m/Y') : '-',
+                    ]));
+                }
+            }, 'id');
+
+        $writer->close();
+        $xlsx = file_get_contents($temporaryPath);
+        @unlink($temporaryPath);
+        if ($xlsx === false) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Không thể đọc file Excel đã tạo.'], 500);
+        }
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'filename' => 'bao-cao-'.($request->filled('campaign')
+                ? Str::slug((string) $request->input('campaign'))
+                : 'tat-ca-chien-dich').'-3rdvn-'.now()->format('Ymd-His').'.xlsx',
+            'count' => $count,
+            'xlsx_base64' => base64_encode($xlsx),
+        ]);
+    }
+
+    public function getTraffic(Request $request): JsonResponse
+    {
+        $admin = $this->authenticateRequest($request);
+        if (! $admin) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+        if (! $this->isAffiliateAdmin($admin)) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Bạn không có quyền truy cập Quản lý Traffic.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), $this->trafficValidationRules());
+        if ($validator->fails()) {
+            return $this->jsonWithCors([
+                'success' => false,
+                'message' => 'Bộ lọc traffic không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $query = $this->buildTrafficQuery($request);
+        $statsQuery = clone $query;
+        $statsQuery->getQuery()->orders = null;
+
+        $perPage = min(100, max(10, (int) $request->input('per_page', 20)));
+        $paginator = $query
+            ->with(['user.roles', 'user.team', 'user.teamLeader', 'user.am'])
+            ->orderByDesc('clicked_at')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        $items = collect($paginator->items())
+            ->map(fn (AffiliateClick $click): array => $this->formatTrafficClick($click));
+
+        $campaigns = AffiliateClick::query()
+            ->select(['campaign_slug', 'campaign_name'])
+            ->whereNotNull('campaign_slug')
+            ->orderBy('campaign_name')
+            ->get()
+            ->unique('campaign_slug')
+            ->map(fn (AffiliateClick $click): array => [
+                'value' => $click->campaign_slug,
+                'label' => $click->campaign_name ?: $click->campaign_slug,
+            ])
+            ->values();
+
+        $employees = AffiliateClick::query()
+            ->with('user:id,name,employee_code')
+            ->select(['id', 'employee_code', 'user_id'])
+            ->whereNotNull('employee_code')
+            ->orderBy('employee_code')
+            ->get()
+            ->unique(fn (AffiliateClick $click): string => strtoupper((string) $click->employee_code))
+            ->map(fn (AffiliateClick $click): array => [
+                'value' => $click->employee_code,
+                'label' => trim(($click->user?->name ?: 'Không rõ tên').' · '.$click->employee_code),
+            ])
+            ->values();
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'data' => $items,
+            'stats' => [
+                'total_clicks' => (clone $statsQuery)->count(),
+                'unique_ips' => (clone $statsQuery)->whereNotNull('ip_address')->distinct('ip_address')->count('ip_address'),
+                'unique_employees' => (clone $statsQuery)->whereNotNull('employee_code')->distinct('employee_code')->count('employee_code'),
+                'mobile_clicks' => $this->applyTrafficDeviceFilter(clone $statsQuery, 'mobile')->count(),
+            ],
+            'options' => [
+                'campaigns' => $campaigns,
+                'employees' => $employees,
+            ],
+            'pagination' => [
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
+        ]);
+    }
+
+    public function exportTraffic(Request $request): JsonResponse
+    {
+        $admin = $this->authenticateRequest($request);
+        if (! $admin) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+        if (! $this->isAffiliateAdmin($admin)) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Bạn không có quyền xuất Traffic.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), $this->trafficValidationRules());
+        if ($validator->fails()) {
+            return $this->jsonWithCors([
+                'success' => false,
+                'message' => 'Bộ lọc traffic không hợp lệ.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'traffic-3rdvn-');
+        if ($temporaryPath === false) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Không thể khởi tạo file Excel.'], 500);
+        }
+
+        $writer = new Writer();
+        $writer->openToFile($temporaryPath);
+        $writer->addRow(Row::fromValues([
+            'Traffic ID', 'Click ID', 'Thời gian', 'Chiến dịch',
+            'Mã nhân viên', 'Họ tên', 'Vai trò', 'Đội nhóm', 'Team Leader', 'AM',
+            'Nguồn', 'Thiết bị', 'Trình duyệt', 'IP', 'Trang giới thiệu', 'User Agent',
+        ]));
+
+        $count = 0;
+        $this->buildTrafficQuery($request)
+            ->with(['user.roles', 'user.team', 'user.teamLeader', 'user.am'])
+            ->chunkById(1000, function ($clicks) use ($writer, &$count): void {
+                foreach ($clicks as $click) {
+                    $row = $this->formatTrafficClick($click);
+                    $writer->addRow(Row::fromValues([
+                        $row['traffic_id'], $row['click_id'], $row['clicked_at'], $row['campaign_name'],
+                        $row['employee_code'], $row['employee_name'], $row['role'], $row['team'], $row['team_leader'], $row['am'],
+                        $row['source'], $row['device'], $row['browser'], $row['ip_address'], $row['referer'], $row['user_agent'],
+                    ]));
+                    $count++;
+                }
+            }, 'id');
+
+        $writer->close();
+        $xlsx = file_get_contents($temporaryPath);
+        @unlink($temporaryPath);
+        if ($xlsx === false) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Không thể đọc file Excel đã tạo.'], 500);
+        }
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'filename' => 'traffic-3rdvn-'.now()->format('Ymd-His').'.xlsx',
+            'count' => $count,
+            'xlsx_base64' => base64_encode($xlsx),
+        ]);
+    }
+
     public function getStats(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -528,14 +716,9 @@ class AffiliatePortalApiController extends Controller
         $totalConversions = (clone $baseQuery)->count();
         $approvedCount = (clone $baseQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->count();
         $rejectedCount = (clone $baseQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['rejected', 'cancelled', 'failed', 'declined', 'trash'])->count();
-        $pendingCount = (clone $baseQuery)->where(function ($q) {
-            $q->whereNotIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid', 'rejected', 'cancelled', 'failed', 'declined', 'trash'])
-              ->orWhereNull('conversion_status');
-        })->count();
-
+        $pendingCount = max(0, $totalConversions - $approvedCount - $rejectedCount);
         $totalSaleAmount = (float) (clone $baseQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->sum('sale_amount');
 
-        // Realtime Click Query
         $clickQuery = \App\Models\AffiliateClick::query();
         if ($hierarchy !== null) {
             $codes = $hierarchy['codes'];
@@ -566,7 +749,9 @@ class AffiliatePortalApiController extends Controller
         $vpbankTotal = (clone $vpbankQuery)->count();
         $vpbankApproved = (clone $vpbankQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->count();
         $vpbankPending = (clone $vpbankQuery)->whereNotIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid', 'rejected', 'cancelled', 'failed', 'declined', 'trash'])->count();
+        $vpbankRejected = (clone $vpbankQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['rejected', 'cancelled', 'failed', 'declined', 'trash'])->count();
         $vpbankSaleAmount = (float) (clone $vpbankQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->sum('sale_amount');
+        $vpbankRate = $vpbankTotal > 0 ? round(($vpbankApproved / $vpbankTotal) * 100, 1) : 0;
         $vpbankClicks = (clone $clickQuery)->where(function ($q) {
             $q->where('campaign_slug', 'ilike', '%vpbank%')->orWhere('partner', 'isclix');
         })->count();
@@ -577,18 +762,25 @@ class AffiliatePortalApiController extends Controller
         $shbTotal = (clone $shbQuery)->count();
         $shbApproved = (clone $shbQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->count();
         $shbPending = (clone $shbQuery)->whereNotIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid', 'rejected', 'cancelled', 'failed', 'declined', 'trash'])->count();
+        $shbRejected = (clone $shbQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['rejected', 'cancelled', 'failed', 'declined', 'trash'])->count();
         $shbSaleAmount = (float) (clone $shbQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->sum('sale_amount');
+        $shbRate = $shbTotal > 0 ? round(($shbApproved / $shbTotal) * 100, 1) : 0;
         $shbClicks = (clone $clickQuery)->where(function ($q) {
             $q->where('campaign_slug', 'ilike', '%shb%')->orWhere('partner', 'hyperlead');
         })->count();
 
         $tinvayQuery = (clone $baseQuery)->where(function ($q) {
-            $q->where('campaign_name', 'ilike', '%tinvay%')->orWhere('partner', 'ilike', '%accesstrade%');
+            $q->where('campaign_name', 'ilike', '%tinvay%')
+              ->orWhere('campaign_name', 'ilike', '%tin vay%')
+              ->orWhere('campaign_name', 'ilike', '%vietcredit%')
+              ->orWhere('campaign_name', 'ilike', '%vcredit%');
         });
         $tinvayTotal = (clone $tinvayQuery)->count();
         $tinvayApproved = (clone $tinvayQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->count();
         $tinvayPending = (clone $tinvayQuery)->whereNotIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid', 'rejected', 'cancelled', 'failed', 'declined', 'trash'])->count();
+        $tinvayRejected = (clone $tinvayQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['rejected', 'cancelled', 'failed', 'declined', 'trash'])->count();
         $tinvaySaleAmount = (float) (clone $tinvayQuery)->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->sum('sale_amount');
+        $tinvayRate = $tinvayTotal > 0 ? round(($tinvayApproved / $tinvayTotal) * 100, 1) : 0;
         $tinvayClicks = (clone $clickQuery)->where(function ($q) {
             $q->where('campaign_slug', 'ilike', '%tinvay%')->orWhere('partner', 'accesstrade');
         })->count();
@@ -610,6 +802,8 @@ class AffiliatePortalApiController extends Controller
                         'total' => $vpbankTotal,
                         'approved' => $vpbankApproved,
                         'pending' => $vpbankPending,
+                        'rejected' => $vpbankRejected,
+                        'approval_rate' => $vpbankRate,
                         'sale_amount' => $vpbankSaleAmount,
                         'sale_amount_formatted' => number_format($vpbankSaleAmount, 0, ',', '.') . ' đ',
                     ],
@@ -618,6 +812,8 @@ class AffiliatePortalApiController extends Controller
                         'total' => $shbTotal,
                         'approved' => $shbApproved,
                         'pending' => $shbPending,
+                        'rejected' => $shbRejected,
+                        'approval_rate' => $shbRate,
                         'sale_amount' => $shbSaleAmount,
                         'sale_amount_formatted' => number_format($shbSaleAmount, 0, ',', '.') . ' đ',
                     ],
@@ -626,6 +822,8 @@ class AffiliatePortalApiController extends Controller
                         'total' => $tinvayTotal,
                         'approved' => $tinvayApproved,
                         'pending' => $tinvayPending,
+                        'rejected' => $tinvayRejected,
+                        'approval_rate' => $tinvayRate,
                         'sale_amount' => $tinvaySaleAmount,
                         'sale_amount_formatted' => number_format($tinvaySaleAmount, 0, ',', '.') . ' đ',
                     ],
@@ -634,9 +832,6 @@ class AffiliatePortalApiController extends Controller
         ]);
     }
 
-    /**
-     * Get Realtime Notifications (Unified with CRM System Notifications Table, Deduplicated)
-     */
     public function getNotifications(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -644,148 +839,37 @@ class AffiliatePortalApiController extends Controller
             return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
-        // Strictly fetch notifications addressed to THIS user
-        $dbNotifs = DB::table('notifications')
-            ->where('notifiable_type', 'App\\Models\\User')
-            ->where('notifiable_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->take(80)
-            ->get();
+        $query = DB::table('notifications')->where('notifiable_id', $user->id);
 
-        $notifications = [];
-        $seenFingerprints = [];
+        $rawNotifs = $query->orderBy('created_at', 'desc')->take(30)->get();
+        $unreadCount = (clone $query)->whereNull('read_at')->count();
 
-        $userCodeMap = User::all(['id', 'name', 'employee_code'])->filter(fn($u) => filled($u->employee_code))->keyBy('employee_code');
-
-        foreach ($dbNotifs as $n) {
-            $data = json_decode($n->data, true) ?: [];
-            $title = (string) ($data['title'] ?? '');
-            $body = (string) ($data['body'] ?? '');
-            $searchContext = strtolower($title . ' ' . $body . ' ' . json_encode($data));
-
-            // EXCLUDE generic CRM internal notifications (ticket assignments, column preferences, system tasks)
-            $isAffiliateRelevant = str_contains($searchContext, 'affiliate') ||
-                                   str_contains($searchContext, 'vpbank') ||
-                                   str_contains($searchContext, 'tinvay') ||
-                                   str_contains($searchContext, 'shb') ||
-                                   str_contains($searchContext, 'chuyển đổi') ||
-                                   str_contains($searchContext, 'hoa hồng') ||
-                                   str_contains($searchContext, 'giải ngân') ||
-                                   str_contains($searchContext, 'thẩm định') ||
-                                   str_contains($searchContext, 'lead') ||
-                                   str_contains($searchContext, 'hồ sơ vay') ||
-                                   str_contains($searchContext, 'đơn mới') ||
-                                   str_contains($searchContext, 'chiến dịch') ||
-                                   str_contains($searchContext, 'vietcredit') ||
-                                   str_contains($searchContext, 'isclix') ||
-                                   str_contains($searchContext, 'accesstrade') ||
-                                   str_contains($searchContext, 'hyperlead') ||
-                                   isset($data['conversion_id']) ||
-                                   isset($data['campaign_name']) ||
-                                   isset($data['aff_sub1']) ||
-                                   (isset($data['actions']) && str_contains(json_encode($data['actions']), 'openAffiliate'));
-
-            if (! $isAffiliateRelevant) {
-                continue; // Skip unrelated CRM notifications
-            }
-
-            $statusLower = strtolower($title . ' ' . $body . ' ' . ($data['status'] ?? ''));
-
-            $isApproved = str_contains($statusLower, 'approved') || str_contains($statusLower, 'thành công') || str_contains($statusLower, 'disbursed') || str_contains($statusLower, 'giải ngân') || str_contains($statusLower, 'completed') || str_contains($statusLower, 'paid');
-            $isRejected = str_contains($statusLower, 'rejected') || str_contains($statusLower, 'từ chối') || str_contains($statusLower, 'failed') || str_contains($statusLower, 'thất bại') || str_contains($statusLower, 'cancelled') || str_contains($statusLower, 'hủy') || str_contains($statusLower, 'huỷ');
-
-            // 1. Tiêu đề chuẩn hóa kèm icon cảm xúc sinh động
-            if ($isApproved) {
-                $finalTitle = '🎉 Chúc mừng, bạn có hồ sơ mới giải ngân';
+        $notifications = $rawNotifs->map(function ($n) {
+            $data = json_decode($n->data ?? '{}', true) ?: [];
+            $title = $data['title'] ?? 'Thông báo hệ thống';
+            $body = $data['body'] ?? ($data['message'] ?? '');
+            $icon = 'info';
+            if (str_contains($title, '🎉') || str_contains($title, 'giải ngân') || str_contains($title, 'thành công')) {
                 $icon = 'success';
-                $type = 'approved';
-            } elseif ($isRejected) {
-                $finalTitle = '❌ Rất tiếc, bạn có hồ sơ thất bại';
+            } elseif (str_contains($title, '❌') || str_contains($title, 'thất bại') || str_contains($title, 'từ chối')) {
                 $icon = 'danger';
-                $type = 'rejected';
-            } else {
-                $finalTitle = '📋 Cập nhật hồ sơ';
+            } elseif (str_contains($title, '⏳') || str_contains($title, 'chờ') || str_contains($title, 'cập nhật')) {
                 $icon = 'warning';
-                $type = 'lead';
             }
 
-            // Extract campaign label
-            $campLabel = match(true) {
-                str_contains(strtolower($title . ' ' . $body), 'vpbank') => 'VPBank UPL',
-                str_contains(strtolower($title . ' ' . $body), 'tinvay') => 'TinVay · VietCredit',
-                str_contains(strtolower($title . ' ' . $body), 'shb') => 'SHB Finance',
-                default => ($data['campaign_name'] ?? ($data['offer_id'] ?? 'Chiến dịch tiếp thị')),
-            };
-
-            // 2. Nội dung chuẩn hóa theo đúng cấu trúc: Dự án, Mã giao dịch/CaseID, Trạng thái, Số tiền duyệt (ở TRÊN), User (ở DƯỚI)
-            if (str_contains($body, '🏢 Dự án:') || str_contains($body, 'Dự án:')) {
-                // If body is already formatted, ensure icons and order are clean
-                $finalBody = $body;
-            } else {
-                // Parse old body format
-                $caseId = '-';
-                if (preg_match('/Mã giao dịch:\s*([^\s·\n]+)/u', $body, $m) && $m[1] !== '-') {
-                    $caseId = $m[1];
-                } elseif (preg_match('/Mã chuyển đổi:\s*([^\s·\n]+)/u', $body, $m)) {
-                    $caseId = $m[1];
-                }
-
-                $statusVal = 'Mới ghi nhận';
-                if (preg_match('/Trạng thái:\s*([^·\n]+)/u', $body, $m)) {
-                    $statusVal = trim($m[1]);
-                }
-
-                $userVal = 'Hệ thống';
-                if (preg_match('/NVKD:\s*([^·\n]+)/u', $body, $m)) {
-                    $userVal = trim($m[1]);
-                } elseif (preg_match('/Mã (?:nhân viên|NV):\s*([^·\n]+)/u', $body, $m)) {
-                    $code = trim($m[1]);
-                    $userVal = isset($userCodeMap[$code]) ? "{$userCodeMap[$code]->name} ({$code})" : $code;
-                }
-
-                $bodyLines = [
-                    "🏢 Dự án: {$campLabel}",
-                    "🔖 Mã giao dịch/CaseID: {$caseId}",
-                    "📊 Trạng thái: {$statusVal}",
-                ];
-
-                if ($isApproved && isset($data['sale_amount']) && (float)$data['sale_amount'] > 0) {
-                    $bodyLines[] = "💰 Số tiền duyệt: " . number_format((float)$data['sale_amount'], 0, ',', '.') . " đ";
-                } elseif ($isApproved && preg_match('/(?:Doanh số|Số tiền|giải ngân):\s*([0-9\.,]+)/iu', $body, $m)) {
-                    $bodyLines[] = "💰 Số tiền duyệt: " . trim($m[1]) . " đ";
-                }
-
-                $bodyLines[] = "👤 User: {$userVal}";
-
-                $finalBody = implode("\n", $bodyLines);
-            }
-
-            // Deduplication fingerprint: title + body + rounded minute
-            $timeSlot = $n->created_at ? Carbon::parse($n->created_at)->format('Y-m-d H:i') : '';
-            $fingerprint = md5($finalTitle . '|' . $finalBody) . '_' . $timeSlot;
-
-            if (isset($seenFingerprints[$fingerprint])) {
-                continue; // Skip duplicate notification record
-            }
-            $seenFingerprints[$fingerprint] = true;
-
-            $timeStr = $n->created_at ? Carbon::parse($n->created_at)->diffForHumans() : 'Vừa xong';
-            $exactTime = $n->created_at ? Carbon::parse($n->created_at)->format('H:i d/m/Y') : '';
-            $notifications[] = [
-                'id' => (string) $n->id,
-                'type' => $type,
+            $createdAt = Carbon::parse($n->created_at);
+            return [
+                'id' => $n->id,
+                'title' => $title,
+                'body' => $body,
                 'icon' => $icon,
-                'title' => $finalTitle,
-                'body' => $finalBody,
-                'campaign' => $campLabel,
-                'time_ago' => $timeStr,
-                'exact_time' => $exactTime,
-                'created_at' => $n->created_at ? Carbon::parse($n->created_at)->toISOString() : now()->toISOString(),
-                'unread' => is_null($n->read_at),
+                'unread' => empty($n->read_at),
+                'read_at' => $n->read_at,
+                'time_ago' => $createdAt->diffForHumans(),
+                'exact_time' => $createdAt->format('H:i d/m/Y'),
+                'conversion_id' => $data['conversion_id'] ?? null,
             ];
-        }
-
-        $unreadCount = count(array_filter($notifications, fn($n) => !empty($n['unread'])));
+        });
 
         return $this->jsonWithCors([
             'success' => true,
@@ -794,9 +878,6 @@ class AffiliatePortalApiController extends Controller
         ]);
     }
 
-    /**
-     * Mark Single Notification as Read
-     */
     public function markNotificationRead(Request $request, string $id): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -805,13 +886,9 @@ class AffiliatePortalApiController extends Controller
         }
 
         DB::table('notifications')->where('id', $id)->update(['read_at' => now()]);
-
-        return $this->jsonWithCors(['success' => true, 'message' => 'Đã đánh dấu đã đọc']);
+        return $this->jsonWithCors(['success' => true]);
     }
 
-    /**
-     * Mark All Notifications as Read
-     */
     public function markAllNotificationsRead(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -819,95 +896,32 @@ class AffiliatePortalApiController extends Controller
             return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
-        DB::table('notifications')
-            ->where('notifiable_type', 'App\\Models\\User')
-            ->where('notifiable_id', $user->id)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
-
-        return $this->jsonWithCors(['success' => true, 'message' => 'Đã đánh dấu tất cả đã đọc']);
+        DB::table('notifications')->where('notifiable_id', $user->id)->whereNull('read_at')->update(['read_at' => now()]);
+        return $this->jsonWithCors(['success' => true]);
     }
 
-    /**
-     * Get Accessible Hierarchy Sub-Codes for User (CRM Role & Permission Mapping)
-     * Returns null if Admin (Full Access).
-     * Returns array of codes & user IDs for ZD, AM, Team Leader, and Staff.
-     */
-    private function getAccessibleHierarchy(User $user): ?array
+    public function getBanks(Request $request): JsonResponse
     {
-        $roleName = method_exists($user, 'getRoleNames') ? ($user->getRoleNames()->first() ?? 'Direct Sale') : 'Direct Sale';
-
-        if (in_array($roleName, ['Admin', 'Super Admin', 'Sales Admin', 'Director', 'Board'])) {
-            return null; // Full Access
-        }
-
-        $subUserQuery = User::query();
-
-        if (str_contains($roleName, 'ZD')) {
-            $subUserQuery->where(function ($q) use ($user) {
-                $q->where('zd_id', $user->id)
-                  ->orWhere('id', $user->id);
-            });
-        } elseif (str_contains($roleName, 'AM')) {
-            $subUserQuery->where(function ($q) use ($user) {
-                $q->where('am_id', $user->id)
-                  ->orWhere('id', $user->id);
-            });
-        } elseif (str_contains($roleName, 'Team Leader') || str_contains($roleName, 'Leader')) {
-            $subUserQuery->where(function ($q) use ($user) {
-                $q->where('team_leader_id', $user->id)
-                  ->orWhere('id', $user->id);
-                if ($user->team_id) {
-                    $q->orWhere('team_id', $user->team_id);
-                }
-            });
-        } else {
-            // Direct Sale / CTV / Telesale / Staff
-            $subUserQuery->where('id', $user->id);
-        }
-
-        $subUsers = $subUserQuery->get(['id', 'employee_code', 'username', 'uid']);
-        $codes = [];
-        $userIds = [];
-
-        foreach ($subUsers as $u) {
-            $userIds[] = $u->id;
-            if ($u->employee_code) $codes[] = $u->employee_code;
-            if ($u->username) $codes[] = $u->username;
-            if ($u->uid) $codes[] = $u->uid;
-            $codes[] = 'RD' . str_pad((string)$u->id, 6, '0', STR_PAD_LEFT);
-        }
-
-        return [
-            'user_ids' => array_unique($userIds),
-            'codes' => array_values(array_unique(array_filter($codes))),
-            'role_scope' => $roleName,
-            'members_count' => count($subUsers),
+        $banks = [
+            ['code' => 'VCB', 'name' => 'Vietcombank - Ngân hàng Ngoại thương Việt Nam'],
+            ['code' => 'TCB', 'name' => 'Techcombank - Ngân hàng Kỹ Thương Việt Nam'],
+            ['code' => 'MB',  'name' => 'MB Bank - Ngân hàng Quân Đội'],
+            ['code' => 'VPB', 'name' => 'VPBank - Ngân hàng Việt Nam Thịnh Vượng'],
+            ['code' => 'ACB', 'name' => 'ACB - Ngân hàng Á Châu'],
+            ['code' => 'BIDV','name' => 'BIDV - Ngân hàng Đầu tư và Phát triển Việt Nam'],
+            ['code' => 'CTG', 'name' => 'VietinBank - Ngân hàng Công Thương Việt Nam'],
+            ['code' => 'SHB', 'name' => 'SHB - Ngân hàng Sài Gòn - Hà Nội'],
+            ['code' => 'STB', 'name' => 'Sacombank - Ngân hàng Sài Gòn Thương Tín'],
+            ['code' => 'TPB', 'name' => 'TPBank - Ngân hàng Tiên Phong'],
+            ['code' => 'HDB', 'name' => 'HDBank - Ngân hàng Phát triển TP.HCM'],
+            ['code' => 'MSB', 'name' => 'MSB - Ngân hàng Hàng Hải'],
+            ['code' => 'VIB', 'name' => 'VIB - Ngân hàng Quốc Tế'],
+            ['code' => 'OCB', 'name' => 'OCB - Ngân hàng Phương Đông'],
         ];
+
+        return $this->jsonWithCors(['success' => true, 'data' => $banks]);
     }
 
-    /**
-     * Format Human-Readable Role Title
-     */
-    private function formatRoleTitle(string $roleName): string
-    {
-        return match($roleName) {
-            'Admin', 'Super Admin' => 'Quản Trị Viên (Admin)',
-            'Sales Admin' => 'Quản Trị Kinh Doanh (Sales Admin)',
-            'ZD' => 'Giám Đốc Vùng (ZD)',
-            'AM' => 'Quản Lý Khu Vực (AM)',
-            'Team Leader' => 'Trưởng Nhóm (Team Leader)',
-            'Direct Sale' => 'Chuyên Viên Kinh Doanh',
-            'CTV' => 'Cộng Tác Viên (CTV)',
-            'Courier Manager' => 'Quản Lý Giao Nhận',
-            'Courier' => 'Nhân Viên Giao Nhận',
-            default => $roleName,
-        };
-    }
-
-    /**
-     * Get Members / Publishers List (Full Hierarchy, Exact Spatie Roles, Teams & Pagination)
-     */
     public function getMembers(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -915,252 +929,131 @@ class AffiliatePortalApiController extends Controller
             return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
+        $query = User::query()->whereNotIn('employment_status', ['deleted', 'resigned'])->with(['team', 'teamLeader']);
         $hierarchy = $this->getAccessibleHierarchy($user);
-        $query = User::query()->with(['team', 'teamLeader', 'roles'])->orderBy('id', 'desc');
-
         if ($hierarchy !== null) {
-            $userIds = $hierarchy['user_ids'];
-            $query->where(function ($q) use ($userIds, $user) {
-                $q->whereIn('id', $userIds)
-                  ->orWhere('created_by_id', $user->id)
-                  ->orWhere('team_leader_id', $user->id);
-                if ($user->team_id) {
-                    $q->orWhere('team_id', $user->team_id);
-                }
-            });
+            $query->whereIn('id', $hierarchy['user_ids']);
         }
 
-        // Filter: Search Keyword
+        // Keep dashboard counters independent from the active table filters.
+        $statsQuery = clone $query;
+
         $search = trim((string) $request->input('search', ''));
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('email', 'ilike', "%{$search}%")
-                  ->orWhere('employee_code', 'ilike', "%{$search}%")
-                  ->orWhere('username', 'ilike', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('identity_number', 'like', "%{$search}%");
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('employee_code', 'like', "%{$search}%")
+                    ->orWhere('uid', 'like', "%{$search}%")
+                    ->orWhere('identity_number', 'like', "%{$search}%");
             });
         }
 
-        // Filter: Role (Exact Spatie Role Name)
-        $roleFilter = trim((string) $request->input('role', ''));
-        if ($roleFilter !== '' && $roleFilter !== 'all') {
-            $query->whereHas('roles', fn ($rq) => $rq->where('name', $roleFilter));
+        if ($request->filled('role')) {
+            $role = trim((string) $request->input('role'));
+            $query->whereHas('roles', fn ($builder) => $builder->where('name', $role));
         }
 
-        // Filter: Team ID
-        $teamFilter = trim((string) $request->input('team_id', ''));
-        if ($teamFilter !== '' && $teamFilter !== 'all') {
-            $query->where('team_id', (int) $teamFilter);
+        if ($request->filled('team_id')) {
+            $query->where('team_id', (int) $request->input('team_id'));
         }
 
-        // Filter: Status
-        $statusFilter = trim((string) $request->input('status', ''));
-        if ($statusFilter !== '' && $statusFilter !== 'all') {
-            if ($statusFilter === 'active') {
-                $query->whereNotIn('employment_status', ['inactive', User::STATUS_DEACTIVE, 'resigned', User::STATUS_DELETED]);
-            } elseif ($statusFilter === 'inactive') {
-                $query->whereIn('employment_status', ['inactive', User::STATUS_DEACTIVE, 'resigned', User::STATUS_DELETED]);
+        if ($request->filled('status')) {
+            $status = trim((string) $request->input('status'));
+            if ($status === 'active') {
+                $query->where(function ($builder) {
+                    $builder->where('employment_status', 'active')->orWhereNull('employment_status');
+                });
+            } elseif ($status === 'inactive') {
+                $query->where('employment_status', 'inactive');
             }
         }
 
-        $perPageInput = $request->input('per_page', 50);
-        $perPage = ($perPageInput === 'all' || (int)$perPageInput === -1) ? 500 : min(500, max(5, (int) $perPageInput));
-        $paginator = $query->paginate($perPage);
+        $convStats = AffiliateConversion::query()
+            ->select('aff_sub1', 
+                DB::raw('count(*) as conversions'),
+                DB::raw('count(case when lower(conversion_status) in (\'success\',\'approved\',\'disbursed\',\'completed\',\'paid\') then 1 end) as approved')
+            )
+            ->whereNotNull('aff_sub1')
+            ->groupBy('aff_sub1')
+            ->get()
+            ->keyBy('aff_sub1');
 
-        $items = collect($paginator->items())->map(function (User $member) {
-            $code = $member->employee_code ?: ($member->username ?: ('RD' . str_pad((string)$member->id, 6, '0', STR_PAD_LEFT)));
+        $clickStats = \App\Models\AffiliateClick::query()
+            ->select('employee_code', DB::raw('count(*) as clicks'))
+            ->whereNotNull('employee_code')
+            ->groupBy('employee_code')
+            ->get()
+            ->keyBy('employee_code');
+
+        $perPage = max(10, min(100, (int) $request->input('per_page', 15)));
+        $paginator = $query->orderBy('id', 'asc')->paginate($perPage);
+        $members = collect($paginator->items())->map(function ($u) use ($convStats, $clickStats) {
+            $code = $u->employee_code ?: ($u->username ?: ('RD' . str_pad((string)$u->id, 6, '0', STR_PAD_LEFT)));
+            $roleName = method_exists($u, 'getRoleNames') ? ($u->getRoleNames()->first() ?? 'Direct Sale') : 'Direct Sale';
+            $isActive = ($u->employment_status === 'active' || empty($u->employment_status));
             
-            // Exact Spatie Roles
-            $roles = $member->getRoleNames()->toArray();
-            $exactRole = !empty($roles) ? implode(', ', $roles) : ($member->position ?: 'Direct Sale');
-            
-            // Team & Leader
-            $teamName = $member->team?->name ?? ($member->branch_name ?: '-');
-            $leaderName = $member->teamLeader?->name ?: '-';
-
-            // Live click & conversion stats for this member
-            $clicksCount = \App\Models\AffiliateClick::where('employee_code', $code)->orWhere('user_id', $member->id)->count();
-            $convsCount = AffiliateConversion::where('aff_sub1', $code)->orWhere('created_by_id', $member->id)->count();
-            $approvedCount = AffiliateConversion::where(function($q) use ($code, $member) {
-                $q->where('aff_sub1', $code)->orWhere('created_by_id', $member->id);
-            })->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->count();
-
-            $isActive = ! in_array($member->employment_status, ['inactive', User::STATUS_DEACTIVE, 'resigned', User::STATUS_DELETED], true);
+            $cStat = $convStats->get($code);
+            $clkStat = $clickStats->get($code);
 
             return [
-                'id' => $member->id,
-                'name' => $member->name,
+                'id' => $u->id,
+                'uid' => $u->uid ?: '-',
+                'name' => $u->name,
                 'employee_code' => $code,
-                'email' => $member->email,
-                'phone' => $member->phone ?? '-',
-                'role' => $exactRole,
-                'roles_array' => $roles,
-                'team_id' => $member->team_id,
-                'team_name' => $teamName,
-                'leader_name' => $leaderName,
-                'branch_name' => $member->branch_name ?? '-',
+                'email' => $u->email ?: '-',
+                'phone' => $u->phone ?: '-',
+                'role' => $roleName,
+                'role_title' => $this->getRoleTitle($u),
+                'team_name' => $u->team?->name ?: ($u->branch_name ?: 'Fintech'),
+                'team' => $u->team?->name ?: ($u->branch_name ?: 'Fintech'),
+                'leader_name' => $u->teamLeader?->name ?: '-',
+                'status' => $isActive ? 'active' : 'inactive',
                 'is_active' => $isActive,
-                'status_label' => $isActive ? 'Hoạt động' : 'Tạm khóa',
-                'bank_name' => $member->bank_name ?? '-',
-                'bank_account_number' => $member->bank_account_number ?? '-',
-                'bank_account_name' => $member->bank_account_name ?? '-',
-                'identity_number' => $member->identity_number ?? '-',
-                'clicks_count' => $clicksCount,
-                'conversions_count' => $convsCount,
-                'approved_count' => $approvedCount,
-                'created_at' => $member->created_at ? $member->created_at->format('d/m/Y H:i') : '-',
+                'stats' => [
+                    'clicks' => (int) ($clkStat?->clicks ?? 0),
+                    'conversions' => (int) ($cStat?->conversions ?? 0),
+                    'approved' => (int) ($cStat?->approved ?? 0),
+                ],
+                'created_at' => $u->created_at?->format('d/m/Y'),
             ];
         });
 
-        // Get Available Roles, Teams and Banks for Dropdown Filters
-        $availableRoles = \Spatie\Permission\Models\Role::orderBy('id')->pluck('name')->toArray();
-        $availableTeams = DB::table('crm_teams')->select('id', 'name', 'code')->orderBy('id')->get();
-        $availableBanks = class_exists(\App\Support\VietnamBankCatalog::class) ? \App\Support\VietnamBankCatalog::banks() : [];
-
         return $this->jsonWithCors([
             'success' => true,
-            'data' => $items,
+            'data' => $members->values(),
             'meta' => [
-                'available_roles' => $availableRoles,
-                'available_teams' => $availableTeams,
-                'available_banks' => $availableBanks,
+                'total' => (clone $statsQuery)->count(),
+                'active_count' => (clone $statsQuery)
+                    ->where(function ($builder) {
+                        $builder->where('employment_status', 'active')->orWhereNull('employment_status');
+                    })->count(),
+                'inactive_count' => (clone $statsQuery)->where('employment_status', 'inactive')->count(),
+                'publisher_count' => (clone $statsQuery)
+                    ->whereHas('roles', fn ($builder) => $builder->where('name', 'Publisher'))->count(),
+                'ctv_count' => (clone $statsQuery)
+                    ->whereHas('roles', fn ($builder) => $builder->where('name', 'CTV'))->count(),
+                'direct_sale_count' => (clone $statsQuery)
+                    ->whereHas('roles', fn ($builder) => $builder->where('name', 'Direct Sale'))->count(),
+                'total_clicks' => (int) $clickStats->sum('clicks'),
+                'total_conversions' => (int) $convStats->sum('conversions'),
+                'per_page' => $paginator->perPage(),
+                'available_teams' => \App\Models\CrmTeam::query()
+                    ->orderBy('name')
+                    ->get(['id', 'name'])
+                    ->map(fn ($team) => ['id' => $team->id, 'name' => $team->name])
+                    ->values(),
             ],
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
-                'from' => $paginator->firstItem() ?? 0,
-                'to' => $paginator->lastItem() ?? 0,
             ],
         ]);
     }
 
-    /**
-     * Get Vietnam Banks Catalog (VietQR)
-     */
-    public function getBanks(Request $request): JsonResponse
-    {
-        $banks = class_exists(\App\Support\VietnamBankCatalog::class) ? \App\Support\VietnamBankCatalog::banks() : [];
-        return $this->jsonWithCors([
-            'success' => true,
-            'data' => $banks,
-        ]);
-    }
-
-    /**
-     * Create New Affiliate Publisher / Member (Auto CRM Employee Code RD26xxxx)
-     */
-    public function createMember(Request $request): JsonResponse
-    {
-        $user = $this->authenticateRequest($request);
-        if (! $user) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng đăng nhập.'], 401);
-        }
-
-        $name = trim((string) $request->input('name', ''));
-        $email = strtolower(trim((string) $request->input('email', '')));
-        $password = (string) $request->input('password', '');
-        $phone = trim((string) $request->input('phone', ''));
-        $roleName = trim((string) $request->input('role', 'Affiliate Publisher'));
-        $teamId = $request->filled('team_id') ? (int) $request->input('team_id') : $user->team_id;
-        $bankName = trim((string) $request->input('bank_name', ''));
-        $bankAccNum = trim((string) $request->input('bank_account_number', ''));
-        $bankAccName = trim((string) $request->input('bank_account_name', ''));
-        $idNumber = trim((string) $request->input('identity_number', ''));
-
-        if ($name === '') {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng nhập Họ và tên thành viên.'], 422);
-        }
-        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng nhập định dạng Email hợp lệ.'], 422);
-        }
-        if (strlen($password) < 6) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Mật khẩu phải có tối thiểu 6 ký tự.'], 422);
-        }
-
-        // Check unique email
-        if (User::where('email', $email)->exists()) {
-            return $this->jsonWithCors(['success' => false, 'message' => "Email '{$email}' đã tồn tại trong hệ thống."], 422);
-        }
-
-        // Employee code is automatically generated by CRM User::booted creating hook (RD26xxxx sequence)
-        $newMember = new User([
-            'name' => $name,
-            'email' => $email,
-            'password' => Hash::make($password),
-            'phone' => $phone ?: null,
-            'identity_number' => $idNumber ?: null,
-            'bank_name' => $bankName ?: null,
-            'bank_account_number' => $bankAccNum ?: null,
-            'bank_account_name' => $bankAccName ? strtoupper($bankAccName) : null,
-            'position' => $roleName,
-            'department' => 'Affiliate Network',
-            'employment_status' => 'active',
-            'team_id' => $teamId,
-            'team_leader_id' => $user->hasRole('Team Leader') ? $user->id : $user->team_leader_id,
-            'created_by_id' => $user->id,
-            'hire_date' => now()->toDateString(),
-        ]);
-        $newMember->save();
-
-        // Refresh to get auto-generated employee_code from CRM
-        $newMember->refresh();
-
-        try {
-            $newMember->assignRole($roleName ?: 'Affiliate Publisher');
-        } catch (\Throwable) {
-            try {
-                $newMember->assignRole('Affiliate Publisher');
-            } catch (\Throwable) {}
-        }
-
-        return $this->jsonWithCors([
-            'success' => true,
-            'message' => "Đã tạo thành công tài khoản {$name} (Mã NV/CTV: {$newMember->employee_code}, Vai trò: {$roleName})!",
-            'member' => [
-                'id' => $newMember->id,
-                'name' => $newMember->name,
-                'employee_code' => $newMember->employee_code,
-                'email' => $newMember->email,
-                'phone' => $newMember->phone,
-                'role' => $roleName,
-            ],
-        ], 201);
-    }
-
-    /**
-     * Toggle Member Active Status
-     */
-    public function toggleMemberStatus(Request $request, int $id): JsonResponse
-    {
-        $user = $this->authenticateRequest($request);
-        if (! $user) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
-        }
-
-        $member = User::find($id);
-        if (! $member) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Thành viên không tồn tại.'], 404);
-        }
-
-        $isCurrentlyActive = ! in_array($member->employment_status, ['inactive', User::STATUS_DEACTIVE, 'resigned', User::STATUS_DELETED], true);
-        $newStatus = $isCurrentlyActive ? 'inactive' : 'active';
-        $member->employment_status = $newStatus;
-        $member->save();
-
-        return $this->jsonWithCors([
-            'success' => true,
-            'is_active' => $newStatus === 'active',
-            'message' => $newStatus === 'active' ? "Đã mở khóa tài khoản {$member->name}" : "Đã tạm khóa tài khoản {$member->name}",
-        ]);
-    }
-
-    /**
-     * Get Member Full Detail
-     */
     public function getMemberDetail(Request $request, int $id): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -1168,73 +1061,80 @@ class AffiliatePortalApiController extends Controller
             return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
-        $member = User::with(['roles', 'team', 'teamLeader'])->find($id);
+        $member = User::with(['team', 'teamLeader'])->find($id);
         if (! $member) {
             return $this->jsonWithCors(['success' => false, 'message' => 'Không tìm thấy thành viên'], 404);
         }
 
-        $code = $member->employee_code ?: ($member->username ?: ($member->uid ?: ('RD' . str_pad((string)$member->id, 6, '0', STR_PAD_LEFT))));
-        $roles = $member->roles->pluck('name')->toArray();
-        $exactRole = $roles[0] ?? ($member->position ?: 'Thành viên');
-        $teamName = $member->team ? $member->team->name : ($member->department ?: '-');
-        $leaderName = $member->teamLeader ? $member->teamLeader->name : '-';
-        $isActive = ! in_array($member->employment_status, ['inactive', User::STATUS_DEACTIVE, 'resigned', User::STATUS_DELETED], true);
+        $code = $member->employee_code ?: ($member->username ?: ('RD' . str_pad((string)$member->id, 6, '0', STR_PAD_LEFT)));
+        $roleName = method_exists($member, 'getRoleNames') ? ($member->getRoleNames()->first() ?? 'Direct Sale') : 'Direct Sale';
+        $isActive = ($member->employment_status === 'active' || empty($member->employment_status));
 
-        // Stats
-        $clicksCount = \App\Models\AffiliateClick::where('employee_code', $code)->orWhere('user_id', $member->id)->count();
-        $conversionsCount = AffiliateConversion::where('aff_sub1', $code)->orWhere('created_by_id', $member->id)->count();
-        $approvedCount = AffiliateConversion::where(function($q) use ($code, $member) {
+        $totalConversions = AffiliateConversion::where('aff_sub1', $code)->orWhere('created_by_id', $member->id)->count();
+        $approvedConversions = AffiliateConversion::where(function($q) use ($code, $member) {
             $q->where('aff_sub1', $code)->orWhere('created_by_id', $member->id);
         })->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid'])->count();
-        $rejectedCount = AffiliateConversion::where(function($q) use ($code, $member) {
-            $q->where('aff_sub1', $code)->orWhere('created_by_id', $member->id);
-        })->whereIn(DB::raw('LOWER(conversion_status)'), ['rejected', 'failed', 'cancelled', 'trash'])->count();
-        $pendingCount = AffiliateConversion::where(function($q) use ($code, $member) {
-            $q->where('aff_sub1', $code)->orWhere('created_by_id', $member->id);
-        })->whereIn(DB::raw('LOWER(conversion_status)'), ['pending', 'processing', 'new'])->count();
+        $totalClicks = \App\Models\AffiliateClick::where('employee_code', $code)->orWhere('user_id', $member->id)->count();
 
         return $this->jsonWithCors([
             'success' => true,
             'data' => [
                 'id' => $member->id,
+                'uid' => $member->uid ?: '-',
                 'name' => $member->name,
                 'employee_code' => $code,
-                'uid' => $member->uid ?? '-',
-                'email' => $member->email,
-                'phone' => $member->phone ?? '-',
-                'identity_number' => $member->identity_number ?? '-',
-                'role' => $exactRole,
-                'roles_array' => $roles,
+                'email' => $member->email ?: '-',
+                'phone' => $member->phone ?: '-',
+                'identity_number' => $member->identity_number ?: '-',
+                'bank_account_number' => $member->bank_account_number ?: '-',
+                'bank_account_name' => $member->bank_account_name ?: '-',
+                'bank_name' => $member->bank_name ?: '-',
                 'team_id' => $member->team_id,
-                'team_name' => $teamName,
-                'leader_name' => $leaderName,
-                'branch_name' => $member->branch_name ?? '-',
-                'employment_status' => $member->employment_status ?? 'active',
+                'role' => $roleName,
+                'role_title' => $this->getRoleTitle($member),
+                'team_name' => $member->team?->name ?: 'Fintech',
+                'leader_name' => $member->teamLeader?->name ?: '-',
+                'status' => $isActive ? 'active' : 'inactive',
                 'is_active' => $isActive,
-                'bank_name' => $member->bank_name ?? '-',
-                'bank_account_number' => $member->bank_account_number ?? '-',
-                'bank_account_name' => $member->bank_account_name ?? '-',
-                'hire_date' => $member->hire_date ? (is_string($member->hire_date) ? $member->hire_date : $member->hire_date->format('d/m/Y')) : '-',
-                'created_at' => $member->created_at ? $member->created_at->format('d/m/Y H:i') : '-',
                 'stats' => [
-                    'clicks' => $clicksCount,
-                    'conversions' => $conversionsCount,
-                    'approved' => $approvedCount,
-                    'rejected' => $rejectedCount,
-                    'pending' => $pendingCount,
+                    'clicks' => $totalClicks,
+                    'conversions' => $totalConversions,
+                    'approved' => $approvedConversions,
                 ],
-            ],
+                'created_at' => $member->created_at?->format('d/m/Y H:i'),
+            ]
         ]);
     }
 
-    /**
-     * Reset / Change Member Password
-     */
-    public function resetMemberPassword(Request $request, int $id): JsonResponse
+    public function toggleMemberStatus(Request $request, int $id): JsonResponse
     {
         $user = $this->authenticateRequest($request);
-        if (! $user) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
+        if (! $user || (! $user->hasRole('Admin') && ! $user->hasRole('Super Admin'))) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Bạn không có quyền thực hiện thao tác này'], 403);
+        }
+
+        $member = User::find($id);
+        if ($member->id === $user->id || $member->id === 1) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Không thể khóa tài khoản Quản trị viên tối cao'], 400);
+        }
+
+        $newStatus = ($member->employment_status === 'active' || empty($member->employment_status)) ? 'inactive' : 'active';
+        $member->employment_status = $newStatus;
+        $member->saveQuietly();
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'message' => $newStatus === 'active' ? 'Đã mở khóa tài khoản thành công' : 'Đã tạm khóa tài khoản thành công',
+            'is_active' => $newStatus === 'active',
+            'status' => $newStatus,
+        ]);
+    }
+
+    public function updateMember(Request $request, int $id): JsonResponse
+    {
+        $admin = $this->authenticateRequest($request);
+        if (! $admin || (! $admin->hasRole('Admin') && ! $admin->hasRole('Super Admin'))) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Bạn không có quyền sửa thông tin nhân sự'], 403);
         }
 
         $member = User::find($id);
@@ -1242,23 +1142,377 @@ class AffiliatePortalApiController extends Controller
             return $this->jsonWithCors(['success' => false, 'message' => 'Không tìm thấy thành viên'], 404);
         }
 
-        $newPassword = (string) $request->input('new_password', '');
-        if (strlen($newPassword) < 6) {
-            return $this->jsonWithCors(['success' => false, 'message' => 'Mật khẩu mới phải có ít nhất 6 ký tự.'], 422);
+        $name = trim((string) $request->input('name', ''));
+        $email = strtolower(trim((string) $request->input('email', '')));
+        if ($name === '' || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Họ tên hoặc email không hợp lệ'], 422);
+        }
+        if (User::where('email', $email)->where('id', '!=', $member->id)->exists()) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Email đã được sử dụng bởi tài khoản khác'], 422);
         }
 
-        $member->password = Hash::make($newPassword);
+        $member->fill([
+            'name' => $name,
+            'email' => $email,
+            'phone' => trim((string) $request->input('phone', '')) ?: null,
+            'identity_number' => trim((string) $request->input('identity_number', '')) ?: null,
+            'team_id' => $request->filled('team_id') ? (int) $request->input('team_id') : null,
+            'bank_name' => trim((string) $request->input('bank_name', '')) ?: null,
+            'bank_account_number' => trim((string) $request->input('bank_account_number', '')) ?: null,
+            'bank_account_name' => trim((string) $request->input('bank_account_name', '')) ?: null,
+        ]);
+        if ($request->filled('password')) {
+            $member->password = Hash::make((string) $request->input('password'));
+        }
         $member->save();
+
+        $role = trim((string) $request->input('role', ''));
+        if ($role !== '') {
+            try {
+                $member->syncRoles([$role]);
+            } catch (\Throwable $e) {
+                return $this->jsonWithCors(['success' => false, 'message' => 'Vai trò không hợp lệ'], 422);
+            }
+        }
 
         return $this->jsonWithCors([
             'success' => true,
-            'message' => "Đã đổi mật khẩu thành công cho tài khoản {$member->name} ({$member->employee_code})!",
+            'message' => "Đã cập nhật thông tin {$member->name}",
         ]);
     }
 
-    /**
-     * Get Current Logged In User Profile Details
-     */
+    private function normalizePublisherManagerCode(?string $code): string
+    {
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/i', '', (string) $code));
+        if (preg_match('/^RD260(\d{1,3})$/', $normalized, $matches)) {
+            return 'RD260'.str_pad($matches[1], 3, '0', STR_PAD_LEFT);
+        }
+
+        return $normalized;
+    }
+
+    private function publisherManagerQuery()
+    {
+        return User::query()
+            ->whereNotNull('employee_code')
+            ->whereNotIn('employment_status', ['inactive', 'deactive', 'resigned', 'deleted'])
+            ->where(function ($query): void {
+                $query->whereHas('roles', function ($roleQuery): void {
+                    $roleQuery->whereIn('name', [
+                        'Admin', 'Super Admin', 'Director', 'General Manager', 'Manager',
+                        'Sales Admin', 'ZD', 'AM', 'Team Leader', 'Trưởng nhóm', 'Quản lý',
+                    ]);
+                })->orWhereHas('managedTeam');
+            });
+    }
+
+    public function getPublicPublisherManagers(Request $request): JsonResponse
+    {
+        $defaultCode = $this->normalizePublisherManagerCode('RD26003');
+        $requestedCode = $this->normalizePublisherManagerCode($request->query('ref'));
+        $managers = $this->publisherManagerQuery()
+            ->with('roles:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'employee_code', 'team_id'])
+            ->map(fn (User $manager): array => [
+                'name' => $manager->name,
+                'employee_code' => $manager->employee_code,
+                'role' => $manager->roles->first()?->name,
+            ])
+            ->values();
+
+        $selectedCode = $requestedCode !== '' && $managers->contains('employee_code', $requestedCode)
+            ? $requestedCode
+            : $defaultCode;
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'data' => $managers,
+            'selected_code' => $selectedCode,
+            'ref_applied' => $requestedCode !== '' && $selectedCode === $requestedCode,
+        ]);
+    }
+
+    public function registerPublicPublisher(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => ['required', 'string', 'min:2', 'max:120'],
+            'email' => ['required', 'email', 'max:190', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'max:100', 'confirmed'],
+            'phone' => ['required', 'regex:/^(0|84)[0-9]{9,10}$/', 'unique:users,phone'],
+            'identity_number' => ['nullable', 'regex:/^[0-9]{9,12}$/'],
+            'manager_code' => ['nullable', 'string', 'max:30'],
+            'ref' => ['nullable', 'string', 'max:30'],
+            'bank_name' => ['nullable', 'string', 'max:120'],
+            'bank_account_number' => ['nullable', 'string', 'max:30'],
+            'bank_account_name' => ['nullable', 'string', 'max:120'],
+        ], [
+            'email.unique' => 'Email này đã được sử dụng.',
+            'phone.unique' => 'Số điện thoại này đã được sử dụng.',
+            'phone.regex' => 'Số điện thoại không hợp lệ.',
+            'password.confirmed' => 'Mật khẩu nhập lại không khớp.',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->jsonWithCors([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $managerCode = $this->normalizePublisherManagerCode(
+            $request->input('ref') ?: $request->input('manager_code') ?: 'RD26003'
+        );
+        $manager = $this->publisherManagerQuery()
+            ->where('employee_code', $managerCode)
+            ->with(['roles', 'team', 'managedTeam'])
+            ->first();
+
+        if (! $manager) {
+            return $this->jsonWithCors([
+                'success' => false,
+                'message' => 'Quản lý đã chọn không hợp lệ hoặc đang ngừng hoạt động.',
+            ], 422);
+        }
+
+        try {
+            $newMember = DB::transaction(function () use ($request, $manager): User {
+                $maxEmployeeSequence = User::query()
+                    ->whereNotNull('employee_code')
+                    ->lockForUpdate()
+                    ->pluck('employee_code')
+                    ->reduce(function (int $max, $code): int {
+                        return preg_match('/^RD260(\d+)$/i', (string) $code, $matches)
+                            ? max($max, (int) $matches[1])
+                            : $max;
+                    }, 139);
+                $maxUidSequence = User::query()
+                    ->whereNotNull('uid')
+                    ->lockForUpdate()
+                    ->pluck('uid')
+                    ->reduce(function (int $max, $uid): int {
+                        return preg_match('/^NV(\d+)$/i', (string) $uid, $matches)
+                            ? max($max, (int) $matches[1])
+                            : $max;
+                    }, 139);
+
+                $teamLeaderId = $manager->hasRole(['Team Leader', 'Trưởng nhóm']) ? $manager->id : $manager->team_leader_id;
+                $amId = $manager->hasRole('AM') ? $manager->id : $manager->am_id;
+                $zdId = $manager->hasRole('ZD') ? $manager->id : $manager->zd_id;
+                $teamId = $manager->team_id ?: $manager->managedTeam?->id;
+
+                $member = User::create([
+                    'name' => trim((string) $request->input('name')),
+                    'email' => strtolower(trim((string) $request->input('email'))),
+                    'password' => Hash::make((string) $request->input('password')),
+                    'phone' => trim((string) $request->input('phone')),
+                    'employee_code' => 'RD260'.str_pad((string) ($maxEmployeeSequence + 1), 3, '0', STR_PAD_LEFT),
+                    'uid' => 'NV'.str_pad((string) ($maxUidSequence + 1), 4, '0', STR_PAD_LEFT),
+                    'team_id' => $teamId,
+                    'team_leader_id' => $teamLeaderId,
+                    'am_id' => $amId,
+                    'zd_id' => $zdId,
+                    'created_by_id' => $manager->id,
+                    'branch_name' => $manager->branch_name ?: ($manager->team?->name ?: '3RD Fintech'),
+                    'employment_status' => 'active',
+                    'allowed_apps' => ['affiliate'],
+                    'identity_number' => trim((string) $request->input('identity_number')) ?: null,
+                    'bank_name' => trim((string) $request->input('bank_name')) ?: null,
+                    'bank_account_number' => trim((string) $request->input('bank_account_number')) ?: null,
+                    'bank_account_name' => trim((string) $request->input('bank_account_name')) ?: null,
+                    'hire_date' => now()->toDateString(),
+                ]);
+                $member->assignRole('Affiliate Publisher');
+
+                return $member;
+            });
+        } catch (\Throwable $exception) {
+            Log::error('Public publisher registration failed', [
+                'email' => $request->input('email'),
+                'manager_code' => $managerCode,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $this->jsonWithCors([
+                'success' => false,
+                'message' => 'Chưa thể tạo tài khoản lúc này. Vui lòng thử lại.',
+            ], 500);
+        }
+
+        $this->notifyAffiliateDefaultCommission($manager, $newMember);
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'message' => 'Đăng ký CTV thành công.',
+            'data' => [
+                'name' => $newMember->name,
+                'employee_code' => $newMember->employee_code,
+                'manager_name' => $manager->name,
+                'manager_code' => $manager->employee_code,
+            ],
+        ], 201);
+    }
+
+    public function createMember(Request $request): JsonResponse
+    {
+        $creator = $this->authenticateRequest($request);
+        if (! $creator) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng đăng nhập'], 401);
+        }
+
+        $isManager = $creator->hasRole(['Admin', 'Super Admin', 'Director', 'General Manager', 'Manager', 'AM', 'ZD', 'Team Leader', 'Trưởng nhóm', 'Quản lý'])
+            || \App\Models\CrmTeam::where('manager_id', $creator->id)->exists()
+            || $creator->employee_code === 'RD260001';
+
+        if (! $isManager) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Bạn không có quyền tạo thành viên mới'], 403);
+        }
+
+        $name = trim((string) $request->input('name', ''));
+        $email = strtolower(trim((string) $request->input('email', '')));
+        $phone = trim((string) $request->input('phone', ''));
+        $password = (string) $request->input('password', '');
+
+        if ($name === '') {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng nhập họ và tên thành viên'], 422);
+        }
+
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng nhập địa chỉ email hợp lệ'], 422);
+        }
+
+        if (User::where('email', $email)->exists()) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Địa chỉ email này đã tồn tại trên hệ thống'], 422);
+        }
+
+        $teamId = null;
+        if (($creator->hasRole('Admin') || $creator->hasRole('Super Admin')) && $request->filled('team_id')) {
+            $teamId = (int) $request->input('team_id');
+        } else {
+            $teamId = $creator->team_id ?: ($creator->managedTeam?->id ?: (\App\Models\CrmTeam::where('manager_id', $creator->id)->value('id') ?: null));
+        }
+
+        $teamLeaderId = null;
+        $amId = null;
+        $zdId = null;
+
+        if ($creator->hasRole('Team Leader') || $creator->hasRole('Trưởng nhóm')) {
+            $teamLeaderId = $creator->id;
+            $amId = $creator->am_id;
+            $zdId = $creator->zd_id;
+        } elseif ($creator->hasRole('AM')) {
+            $teamLeaderId = null;
+            $amId = $creator->id;
+            $zdId = $creator->zd_id;
+        } elseif ($creator->hasRole('ZD')) {
+            $teamLeaderId = null;
+            $amId = null;
+            $zdId = $creator->id;
+        } else {
+            $teamLeaderId = $creator->team_leader_id;
+            $amId = $creator->am_id;
+            $zdId = $creator->zd_id;
+        }
+
+        $createdById = $creator->id;
+        $branchName = $creator->branch_name ?: ($creator->team?->name ?: '3RD Fintech');
+
+        $maxNum = 139;
+        $codes = User::pluck('employee_code');
+        foreach ($codes as $c) {
+            if (preg_match('/RD260?(\d+)/i', (string)$c, $m)) {
+                $n = (int) $m[1];
+                if ($n > $maxNum) $maxNum = $n;
+            }
+        }
+        $employeeCode = 'RD260' . str_pad((string)($maxNum + 1), 3, '0', STR_PAD_LEFT);
+
+        $maxUid = 139;
+        $uids = User::pluck('uid');
+        foreach ($uids as $u) {
+            if (preg_match('/NV(\d+)/i', (string)$u, $m)) {
+                $n = (int) $m[1];
+                if ($n > $maxUid) $maxUid = $n;
+            }
+        }
+        $uid = 'NV' . str_pad((string)($maxUid + 1), 4, '0', STR_PAD_LEFT);
+
+        $newMember = User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make($password !== '' ? $password : '123456Aa@'),
+            'phone' => $phone ?: null,
+            'employee_code' => $employeeCode,
+            'uid' => $uid,
+            'team_id' => $teamId,
+            'team_leader_id' => $teamLeaderId,
+            'am_id' => $amId,
+            'zd_id' => $zdId,
+            'created_by_id' => $createdById,
+            'branch_name' => $branchName,
+            'employment_status' => 'active',
+            'allowed_apps' => ['affiliate', 'crm'],
+            'identity_number' => trim((string)$request->input('identity_number', '')),
+            'bank_name' => trim((string)$request->input('bank_name', '')),
+            'bank_account_number' => trim((string)$request->input('bank_account_number', '')),
+            'bank_account_name' => trim((string)$request->input('bank_account_name', '')),
+            'hire_date' => now()->toDateString(),
+        ]);
+
+        $role = trim((string)$request->input('role', 'Affiliate Publisher'));
+        try {
+            $newMember->assignRole($role !== '' ? $role : 'Affiliate Publisher');
+        } catch (\Throwable $e) {}
+
+        $this->notifyAffiliateDefaultCommission($creator, $newMember);
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'message' => "Tạo thành viên {$newMember->name} ({$newMember->employee_code}) thành công!",
+            'data' => [
+                'id' => $newMember->id,
+                'name' => $newMember->name,
+                'employee_code' => $newMember->employee_code,
+                'email' => $newMember->email,
+                'team_id' => $newMember->team_id,
+            ],
+        ]);
+    }
+
+
+    private function notifyAffiliateDefaultCommission($manager, $member): void
+    {
+        try {
+            $payload = json_encode([
+                'manager_code' => (string) ($manager->employee_code ?? ''),
+                'recipient' => [
+                    'id' => $member->id,
+                    'employee_code' => $member->employee_code,
+                    'name' => $member->name,
+                    'role' => method_exists($member, 'getRoleNames') ? ($member->getRoleNames()->first() ?: 'Affiliate Publisher') : 'Affiliate Publisher',
+                    'team_name' => $member->branch_name ?: ($member->team?->name ?? ''),
+                ],
+            ], JSON_UNESCAPED_UNICODE);
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\nContent-Length: " . strlen($payload) . "\r\n",
+                    'content' => $payload,
+                    'timeout' => 3,
+                    'ignore_errors' => true,
+                ],
+            ]);
+            @file_get_contents('http://127.0.0.1:3070/api/internal/commission-auto-assign', false, $context);
+        } catch (\Throwable $exception) {
+            Log::warning('Affiliate default commission notify failed', [
+                'manager' => $manager->employee_code ?? null,
+                'member' => $member->employee_code ?? null,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
     public function getMyProfile(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -1266,12 +1520,48 @@ class AffiliatePortalApiController extends Controller
             return $this->jsonWithCors(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
-        return $this->getMemberDetail($request, $user->id);
+        $user->loadMissing(['team', 'teamLeader', 'managedTeam']);
+
+        $code = $user->employee_code ?: ($user->username ?: ($user->uid ?: ('RD' . str_pad((string)$user->id, 6, '0', STR_PAD_LEFT))));
+        $roleName = method_exists($user, 'getRoleNames') ? ($user->getRoleNames()->first() ?? 'Direct Sale') : 'Direct Sale';
+        $hierarchy = $this->getAccessibleHierarchy($user);
+
+        $teamName = $user->team?->name ?: ($user->managedTeam?->name ?: ($user->branch_name ?: 'Fintech'));
+        $leaderName = $user->teamLeader?->name ?: ($user->team?->manager?->name ?: '-');
+
+        $profileData = [
+            'id' => $user->id,
+            'uid' => $user->uid ?: '-',
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone ?: '-',
+            'employee_code' => $code,
+            'role' => $roleName,
+            'role_title' => $this->getRoleTitle($user),
+            'avatar_path' => $user->avatar_path ? (str_starts_with($user->avatar_path, 'http') ? $user->avatar_path : asset('storage/' . $user->avatar_path)) : null,
+            'identity_number' => $user->identity_number ?: '-',
+            'hire_date' => $user->hire_date ? Carbon::parse($user->hire_date)->format('d/m/Y') : ($user->created_at?->format('d/m/Y') ?: '-'),
+            'created_at' => $user->created_at?->format('d/m/Y') ?: '-',
+            'team_id' => $user->team_id ?: ($user->managedTeam?->id ?: null),
+            'team_name' => $teamName,
+            'leader_name' => $leaderName,
+            'branch_name' => $user->branch_name ?: '3RD Fintech',
+            'employment_status' => ($user->employment_status === 'active' || empty($user->employment_status)) ? 'Đang làm việc' : 'Tạm khóa',
+            'bank_name' => $user->bank_name ?: '-',
+            'bank_account_number' => $user->bank_account_number ?: '-',
+            'bank_account_name' => $user->bank_account_name ?: '-',
+            'is_admin' => $user->hasRole('Admin') || $user->hasRole('Super Admin'),
+            'can_manage_campaigns' => $user->hasRole('Admin') || $user->hasRole('Super Admin') || $user->hasRole('Director') || $user->hasRole('General Manager') || $user->hasRole('Manager'),
+            'managed_members' => $hierarchy !== null ? count($hierarchy['codes']) : 'Toàn hệ thống',
+        ];
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'data' => $profileData,
+            'user' => $profileData,
+        ]);
     }
 
-    /**
-     * Change Password for Current Logged In User
-     */
     public function changePassword(Request $request): JsonResponse
     {
         $user = $this->authenticateRequest($request);
@@ -1285,7 +1575,7 @@ class AffiliatePortalApiController extends Controller
         if ($currentPassword !== '' && ! Hash::check($currentPassword, $user->password)) {
             return $this->jsonWithCors([
                 'success' => false,
-                'message' => 'Mật khẩu hiện tại không chính xác. Vui lòng kiểm tra lại.',
+                'message' => 'Mật khẩu hiện tại không chính xác.',
             ], 422);
         }
 
@@ -1296,67 +1586,563 @@ class AffiliatePortalApiController extends Controller
             ], 422);
         }
 
-        $user->password = Hash::make($newPassword);
-        $user->save();
+        DB::table('users')->where('id', $user->id)->update([
+            'password' => Hash::make($newPassword),
+            'updated_at' => now(),
+        ]);
 
         return $this->jsonWithCors([
             'success' => true,
-            'message' => 'Đổi mật khẩu thành công! Vui lòng sử dụng mật khẩu mới cho các lần đăng nhập tiếp theo.',
+            'message' => 'Đổi mật khẩu thành công!',
         ]);
     }
 
-    /**
-     * Simple HMAC Token Generator for Portal Session
-     */
-    private function generateToken(User $user): string
+    public function resetMemberPassword(Request $request, int $id): JsonResponse
     {
-        $payload = [
-            'id' => $user->id,
-            'email' => $user->email,
-            'code' => $user->employee_code ?: ($user->username ?: ($user->uid ?: ('RD' . str_pad((string)$user->id, 6, '0', STR_PAD_LEFT)))),
-            'time' => time(),
-        ];
-        $json = json_encode($payload);
-        $sig = hash_hmac('sha256', $json, self::TOKEN_SECRET);
+        $user = $this->authenticateRequest($request);
+        if (! $user || (! $user->hasRole('Admin') && ! $user->hasRole('Super Admin') && ! $user->hasRole('Director') && ! $user->hasRole('General Manager'))) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Bạn không có quyền đổi mật khẩu thành viên'], 403);
+        }
 
-        return base64_encode($json) . '.' . $sig;
+        $member = User::find($id);
+        if (! $member) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Không tìm thấy thành viên'], 404);
+        }
+
+        $newPassword = (string) $request->input('new_password', '');
+        if (strlen($newPassword) < 6) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Mật khẩu mới phải có ít nhất 6 ký tự'], 422);
+        }
+
+        DB::table('users')->where('id', $member->id)->update([
+            'password' => Hash::make($newPassword),
+            'updated_at' => now(),
+        ]);
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'message' => "Đã cập nhật mật khẩu cho thành viên {$member->name} thành công!",
+        ]);
     }
 
-    /**
-     * Authenticate Request from Bearer Token or Cookie
-     */
+    public function updateCampaignLogo(Request $request, int $id): JsonResponse
+    {
+        $user = $this->authenticateRequest($request);
+        if (! $user || (! $user->hasRole('Admin') && ! $user->hasRole('Super Admin'))) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Bạn không có quyền thay đổi logo'], 403);
+        }
+
+        $campaign = AffiliateCampaign::find($id);
+        if (! $campaign) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Không tìm thấy chiến dịch'], 404);
+        }
+
+        $logo = $request->input('logo') ?: $request->input('logo_url');
+        if (! $logo) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Vui lòng cung cấp URL logo hợp lệ'], 422);
+        }
+
+        $campaign->logo_url = $logo;
+        $campaign->save();
+
+        return $this->jsonWithCors(['success' => true, 'message' => 'Cập nhật logo thành công', 'logo_url' => $campaign->logo_url]);
+    }
+
+    public function updateCampaignAvailability(Request $request, int $id): JsonResponse
+    {
+        $user = $this->authenticateRequest($request);
+        if (! $user || (! $user->hasRole('Admin') && ! $user->hasRole('Super Admin'))) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Chỉ Admin được đóng/mở chiến dịch'], 403);
+        }
+
+        $validated = $request->validate([
+            'is_active' => ['required', 'boolean'],
+            'opens_at' => ['nullable', 'date'],
+            'closes_at' => ['nullable', 'date', 'after:opens_at'],
+            'closure_message' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $campaign = AffiliateCampaign::find($id);
+        if (! $campaign) {
+            return $this->jsonWithCors(['success' => false, 'message' => 'Không tìm thấy chiến dịch'], 404);
+        }
+
+        $campaign->update([
+            'is_active' => (bool) $validated['is_active'],
+            'opens_at' => filled($validated['opens_at'] ?? null) ? $validated['opens_at'] : null,
+            'closes_at' => filled($validated['closes_at'] ?? null) ? $validated['closes_at'] : null,
+            'closure_message' => trim((string) ($validated['closure_message'] ?? '')) ?: null,
+        ]);
+
+        Log::notice('Affiliate campaign availability updated', [
+            'campaign_id' => $campaign->id,
+            'admin_id' => $user->id,
+            'is_active' => $campaign->is_active,
+            'opens_at' => $campaign->opens_at?->toIso8601String(),
+            'closes_at' => $campaign->closes_at?->toIso8601String(),
+        ]);
+
+        return $this->jsonWithCors([
+            'success' => true,
+            'message' => 'Đã cập nhật trạng thái chiến dịch',
+            'campaign' => [
+                'id' => $campaign->id,
+                'is_open' => $campaign->isOpen(),
+                'is_active' => $campaign->is_active,
+                'opens_at' => $campaign->opens_at?->toIso8601String(),
+                'closes_at' => $campaign->closes_at?->toIso8601String(),
+                'closure_message' => $campaign->closureReason(),
+            ],
+        ]);
+    }
+
+    private function buildConversionReportQuery(Request $request, User $user)
+    {
+        $query = AffiliateConversion::query();
+        $hierarchy = $this->getAccessibleHierarchy($user);
+
+        if ($hierarchy !== null) {
+            $codes = $hierarchy['codes'];
+            $userIds = $hierarchy['user_ids'];
+            $query->where(function ($q) use ($codes, $userIds): void {
+                if (! empty($codes)) {
+                    $q->where(function ($subQuery) use ($codes): void {
+                        foreach ($codes as $code) {
+                            $subQuery->orWhere('aff_sub1', $code)
+                                ->orWhere('aff_sub1', 'like', "{$code}%");
+                        }
+                    });
+                }
+                if (! empty($userIds)) {
+                    $q->orWhereIn('created_by_id', $userIds);
+                }
+            });
+        }
+
+        $campaign = trim((string) $request->input('campaign', ''));
+        if ($campaign !== '' && $campaign !== 'all') {
+            if (in_array($campaign, ['vpbank', 'vpbank-upl', 'vpbank3t_vaytinchap'], true)) {
+                $query->where(function ($q): void {
+                    $q->whereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%vpbank%'])
+                        ->orWhereRaw("LOWER(COALESCE(partner, '')) LIKE ?", ['%isclix%']);
+                });
+            } elseif (in_array($campaign, ['shb', 'shb-finance', 'shbfinance'], true)) {
+                $query->where(function ($q): void {
+                    $q->whereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%shb%'])
+                        ->orWhereRaw("LOWER(COALESCE(partner, '')) LIKE ?", ['%hyperlead%']);
+                });
+            } elseif (in_array($campaign, ['tinvay', 'tinvay-vietcredit'], true)) {
+                $query->where(function ($q): void {
+                    $q->whereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%tinvay%'])
+                        ->orWhereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%tin vay%'])
+                        ->orWhereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%vietcredit%'])
+                        ->orWhereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%vcredit%']);
+                });
+            } elseif (in_array($campaign, ['shinhan-finance-android', 'shinhan-android'], true)) {
+                $query->where(function ($q): void {
+                    $q->whereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%shinhan finance android%'])
+                        ->orWhereIn('offer_id', ['shinhan-finance-android', '6949942463850829113']);
+                });
+            } elseif (in_array($campaign, ['shinhan-finance-ios', 'shinhan-ios'], true)) {
+                $query->where(function ($q): void {
+                    $q->whereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%shinhan finance ios%'])
+                        ->orWhereIn('offer_id', ['shinhan-finance-ios', '6949939948611548600']);
+                });
+            } else {
+                $query->whereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", ['%'.strtolower($campaign).'%']);
+            }
+        }
+
+        $status = trim((string) $request->input('status', ''));
+        if ($status !== '' && $status !== 'all') {
+            if (in_array($status, ['approved', 'success'], true)) {
+                $query->whereIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid']);
+            } elseif ($status === 'approved_waiting_disbursement') {
+                $query->where(function ($q): void {
+                    $q->whereRaw('LOWER(conversion_status) = ?', ['approved_waiting_disbursement'])
+                        ->orWhere(function ($approvedAmountQuery): void {
+                            $approvedAmountQuery
+                                ->whereNotIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid', 'rejected', 'cancelled', 'failed', 'declined', 'trash'])
+                                ->where('sale_amount', '>', 0);
+                        });
+                });
+            } elseif (in_array($status, ['rejected', 'cancelled'], true)) {
+                $query->whereIn(DB::raw('LOWER(conversion_status)'), ['rejected', 'cancelled', 'failed', 'declined', 'trash']);
+            } elseif ($status === 'pending') {
+                $query->where(function ($q): void {
+                    $q->whereNotIn(DB::raw('LOWER(conversion_status)'), ['success', 'approved', 'disbursed', 'completed', 'paid', 'rejected', 'cancelled', 'failed', 'declined', 'trash'])
+                        ->where(function ($amountQuery): void {
+                            $amountQuery->whereNull('sale_amount')->orWhere('sale_amount', '<=', 0);
+                        })
+                        ->orWhereNull('conversion_status');
+                });
+            }
+        }
+
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search): void {
+                $q->where('conversion_id', 'like', "%{$search}%")
+                    ->orWhere('transaction_id', 'like', "%{$search}%")
+                    ->orWhere('aff_sub1', 'like', "%{$search}%")
+                    ->orWhere('aff_sub2', 'like', "%{$search}%")
+                    ->orWhere('product_name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereRaw(
+                'COALESCE(conversion_time, click_time, created_at) >= ?',
+                [Carbon::parse($request->input('date_from'))->startOfDay()]
+            );
+        }
+        if ($request->filled('date_to')) {
+            $query->whereRaw(
+                'COALESCE(conversion_time, click_time, created_at) <= ?',
+                [Carbon::parse($request->input('date_to'))->endOfDay()]
+            );
+        }
+
+        return $query;
+    }
+
+    private function trafficValidationRules(): array
+    {
+        return [
+            'campaign' => ['nullable', 'string', 'max:150'],
+            'employee_code' => ['nullable', 'string', 'max:80'],
+            'source' => ['nullable', 'in:direct,zalo,facebook,google,other'],
+            'device' => ['nullable', 'in:mobile,desktop'],
+            'q' => ['nullable', 'string', 'max:180'],
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            'time_from' => ['nullable', 'date_format:H:i'],
+            'time_to' => ['nullable', 'date_format:H:i'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'in:10,20,50,100'],
+        ];
+    }
+
+    private function isAffiliateAdmin(User $user): bool
+    {
+        return $user->hasRole('Admin') || $user->hasRole('Super Admin');
+    }
+
+    private function buildTrafficQuery(Request $request)
+    {
+        $query = AffiliateClick::query();
+
+        if ($request->filled('campaign') && $request->input('campaign') !== 'all') {
+            $campaign = trim((string) $request->input('campaign'));
+            $campaignLike = '%'.strtolower($campaign).'%';
+            $query->where(function ($campaignQuery) use ($campaign, $campaignLike): void {
+                $campaignQuery->where('campaign_slug', $campaign)
+                    ->orWhereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", [$campaignLike]);
+            });
+        }
+        if ($request->filled('employee_code') && $request->input('employee_code') !== 'all') {
+            $query->whereRaw('UPPER(employee_code) = ?', [strtoupper(trim((string) $request->input('employee_code')))]);
+        }
+        if ($request->filled('device')) {
+            $this->applyTrafficDeviceFilter($query, (string) $request->input('device'));
+        }
+        if ($request->filled('source')) {
+            $this->applyTrafficSourceFilter($query, (string) $request->input('source'));
+        }
+        if ($request->filled('q')) {
+            $search = trim((string) $request->input('q'));
+            $searchLike = '%'.strtolower($search).'%';
+            $numericId = preg_replace('/\D+/', '', $search);
+            $query->where(function ($searchQuery) use ($searchLike, $numericId): void {
+                $searchQuery->whereRaw("LOWER(COALESCE(campaign_name, '')) LIKE ?", [$searchLike])
+                    ->orWhereRaw("LOWER(COALESCE(campaign_slug, '')) LIKE ?", [$searchLike])
+                    ->orWhereRaw("LOWER(COALESCE(employee_code, '')) LIKE ?", [$searchLike])
+                    ->orWhereRaw("LOWER(COALESCE(ip_address, '')) LIKE ?", [$searchLike])
+                    ->orWhereRaw("LOWER(COALESCE(referer, '')) LIKE ?", [$searchLike])
+                    ->orWhereHas('user', fn ($userQuery) => $userQuery->whereRaw("LOWER(COALESCE(name, '')) LIKE ?", [$searchLike]));
+                if ($numericId !== '') {
+                    $searchQuery->orWhere('id', (int) $numericId);
+                }
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->where('clicked_at', '>=', Carbon::createFromFormat('Y-m-d', (string) $request->input('date_from'))->startOfDay());
+        }
+        if ($request->filled('date_to')) {
+            $query->where('clicked_at', '<=', Carbon::createFromFormat('Y-m-d', (string) $request->input('date_to'))->endOfDay());
+        }
+        if ($request->filled('time_from')) {
+            $query->whereTime('clicked_at', '>=', (string) $request->input('time_from'));
+        }
+        if ($request->filled('time_to')) {
+            $query->whereTime('clicked_at', '<=', (string) $request->input('time_to'));
+        }
+
+        return $query;
+    }
+
+    private function applyTrafficDeviceFilter($query, string $device)
+    {
+        $mobilePatterns = ['%mobile%', '%android%', '%iphone%', '%ipad%'];
+        if ($device === 'mobile') {
+            return $query->where(function ($deviceQuery) use ($mobilePatterns): void {
+                foreach ($mobilePatterns as $pattern) {
+                    $deviceQuery->orWhereRaw('LOWER(COALESCE(user_agent, \'\')) LIKE ?', [$pattern]);
+                }
+            });
+        }
+
+        return $query->where(function ($deviceQuery) use ($mobilePatterns): void {
+            $deviceQuery->whereNull('user_agent');
+            foreach ($mobilePatterns as $pattern) {
+                $deviceQuery->whereRaw('LOWER(COALESCE(user_agent, \'\')) NOT LIKE ?', [$pattern]);
+            }
+        });
+    }
+
+    private function applyTrafficSourceFilter($query, string $source)
+    {
+        $ref = "LOWER(COALESCE(referer, ''))";
+        if ($source === 'direct') {
+            return $query->where(function ($sourceQuery): void {
+                $sourceQuery->whereNull('referer')->orWhere('referer', '');
+            });
+        }
+        if ($source === 'zalo') {
+            return $query->where(fn ($sourceQuery) => $sourceQuery
+                ->whereRaw("{$ref} LIKE ?", ['%zalo%'])
+                ->orWhereRaw("{$ref} LIKE ?", ['%zarsrc%']));
+        }
+        if ($source === 'facebook') {
+            return $query->where(fn ($sourceQuery) => $sourceQuery
+                ->whereRaw("{$ref} LIKE ?", ['%facebook%'])
+                ->orWhereRaw("{$ref} LIKE ?", ['%fbclid%']));
+        }
+        if ($source === 'google') {
+            return $query->where(fn ($sourceQuery) => $sourceQuery
+                ->whereRaw("{$ref} LIKE ?", ['%google%'])
+                ->orWhereRaw("{$ref} LIKE ?", ['%gclid%']));
+        }
+
+        return $query->whereNotNull('referer')
+            ->where('referer', '<>', '')
+            ->whereRaw("{$ref} NOT LIKE ?", ['%zalo%'])
+            ->whereRaw("{$ref} NOT LIKE ?", ['%zarsrc%'])
+            ->whereRaw("{$ref} NOT LIKE ?", ['%facebook%'])
+            ->whereRaw("{$ref} NOT LIKE ?", ['%fbclid%'])
+            ->whereRaw("{$ref} NOT LIKE ?", ['%google%'])
+            ->whereRaw("{$ref} NOT LIKE ?", ['%gclid%']);
+    }
+
+    private function formatTrafficClick(AffiliateClick $click): array
+    {
+        $userAgent = (string) ($click->user_agent ?: '');
+        $employee = $click->user;
+        $role = $employee?->roles?->pluck('name')->implode(', ') ?: '-';
+
+        return [
+            'traffic_id' => 'TRF-'.str_pad((string) $click->id, 10, '0', STR_PAD_LEFT),
+            'click_id' => $click->id,
+            'clicked_at' => $click->clicked_at?->format('H:i:s d/m/Y') ?: '-',
+            'clicked_at_iso' => $click->clicked_at?->toIso8601String(),
+            'campaign_slug' => $click->campaign_slug,
+            'campaign_name' => $click->campaign_name ?: $click->campaign_slug,
+            'employee_code' => $click->employee_code ?: '-',
+            'employee_name' => $employee?->name ?: 'Không rõ tên',
+            'role' => $role,
+            'team' => $employee?->team?->name ?: '-',
+            'team_leader' => $employee?->teamLeader?->name ?: '-',
+            'am' => $employee?->am?->name ?: '-',
+            'source' => $this->trafficSourceLabel($click->referer),
+            'device' => preg_match('/mobile|android|iphone|ipad/i', $userAgent) ? 'Mobile' : 'Desktop',
+            'browser' => $this->trafficBrowserLabel($userAgent),
+            'ip_address' => $click->ip_address ?: '-',
+            'referer' => $click->referer ?: 'Truy cập trực tiếp',
+            'user_agent' => $userAgent ?: '-',
+        ];
+    }
+
+    private function trafficSourceLabel(?string $referer): string
+    {
+        if (! filled($referer)) {
+            return 'Trực tiếp';
+        }
+        $value = strtolower($referer);
+        if (str_contains($value, 'zalo') || str_contains($value, 'zarsrc')) return 'Zalo';
+        if (str_contains($value, 'facebook') || str_contains($value, 'fbclid')) return 'Facebook';
+        if (str_contains($value, 'google') || str_contains($value, 'gclid')) return 'Google';
+        return parse_url($referer, PHP_URL_HOST) ?: 'Nguồn khác';
+    }
+
+    private function trafficBrowserLabel(string $userAgent): string
+    {
+        return match (true) {
+            str_contains($userAgent, 'Edg/') => 'Microsoft Edge',
+            str_contains($userAgent, 'OPR/') => 'Opera',
+            str_contains($userAgent, 'SamsungBrowser') => 'Samsung Internet',
+            str_contains($userAgent, 'CriOS') || str_contains($userAgent, 'Chrome/') => 'Google Chrome',
+            str_contains($userAgent, 'FxiOS') || str_contains($userAgent, 'Firefox/') => 'Mozilla Firefox',
+            str_contains($userAgent, 'Safari/') => 'Safari',
+            default => 'Khác',
+        };
+    }
+
     private function authenticateRequest(Request $request): ?User
     {
         $token = $request->bearerToken() ?: $request->header('X-Affiliate-Token');
         if (! $token && $request->hasCookie('aff_token')) {
             $token = $request->cookie('aff_token');
         }
+        if (! $token && $request->hasCookie('sso_token')) {
+            $token = $request->cookie('sso_token');
+        }
 
         if (! $token || ! is_string($token) || ! str_contains($token, '.')) {
             return null;
         }
 
-        try {
-            [$encodedJson, $receivedSig] = explode('.', $token, 2);
-            $decodedJson = base64_decode($encodedJson, true);
-            if (! $decodedJson) {
+        $parts = explode('.', $token);
+
+        if (count($parts) === 3) {
+            try {
+                [$headerB64, $payloadB64, $sigB64] = $parts;
+                
+                $payloadJson = base64_decode(strtr($payloadB64, '-_', '+/'));
+                $payload = json_decode($payloadJson, true);
+                if (! $payload) return null;
+
+                $userId = $payload['id'] ?? ($payload['uid'] ?? ($payload['sub'] ?? null));
+                if (! $userId) return null;
+
+                $ssoSecrets = array_filter([
+                    env('SSO_JWT_SECRET', 'bRokIaKqZvOF7h0VuPI8A3RhD2dblYxYzzt9HQC5iB7AG49t'),
+                    'bRokIaKqZvOF7h0VuPI8A3RhD2dblYxYzzt9HQC5iB7AG49t',
+                    config('app.key'),
+                ]);
+
+                $sigValid = false;
+                $sigTrimmed = rtrim($sigB64, '=');
+
+                foreach ($ssoSecrets as $secret) {
+                    $expectedRaw = hash_hmac('sha256', "{$headerB64}.{$payloadB64}", $secret, true);
+                    $expectedUrlSafe = rtrim(strtr(base64_encode($expectedRaw), '+/', '-_'), '=');
+                    $expectedB64 = rtrim(base64_encode($expectedRaw), '=');
+                    $expectedHex = hash_hmac('sha256', "{$headerB64}.{$payloadB64}", $secret);
+
+                    if (hash_equals($expectedUrlSafe, $sigTrimmed) || hash_equals($expectedB64, $sigTrimmed) || hash_equals($expectedHex, $sigB64)) {
+                        $sigValid = true;
+                        break;
+                    }
+                }
+
+                if (! $sigValid) return null;
+
+                return User::find($userId);
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+
+        if (count($parts) === 2) {
+            [$payloadB64, $signature] = $parts;
+            $secret = config('app.key');
+            $expectedSig = hash_hmac('sha256', $payloadB64, $secret);
+
+            if (! hash_equals($expectedSig, $signature)) {
                 return null;
             }
 
-            $expectedSig = hash_hmac('sha256', $decodedJson, self::TOKEN_SECRET);
-            if (! hash_equals($expectedSig, $receivedSig)) {
-                return null;
-            }
-
-            $payload = json_decode($decodedJson, true);
-            if (! isset($payload['id'])) {
+            $payload = json_decode(base64_decode($payloadB64), true);
+            if (! $payload || empty($payload['id'])) {
                 return null;
             }
 
             return User::find($payload['id']);
-        } catch (\Throwable) {
+        }
+
+        return null;
+    }
+
+    private function generateToken(User $user): string
+    {
+        $code = $user->employee_code ?: ($user->username ?: ($user->uid ?: ('RD' . str_pad((string)$user->id, 6, '0', STR_PAD_LEFT))));
+        $payload = [
+            'id' => $user->id,
+            'email' => $user->email,
+            'code' => $code,
+            'time' => time(),
+        ];
+        $payloadB64 = base64_encode(json_encode($payload));
+        $secret = config('app.key');
+        $signature = hash_hmac('sha256', $payloadB64, $secret);
+
+        return "{$payloadB64}.{$signature}";
+    }
+
+    private function getAccessibleHierarchy(User $user): ?array
+    {
+        if ($user->hasRole('Admin') || $user->hasRole('Super Admin') || $user->hasRole('Director') || $user->hasRole('General Manager') || $user->hasRole('BOD') || $user->employee_code === 'RD260001') {
             return null;
         }
+
+        $userIds = [$user->id];
+        $codes = array_filter([$user->employee_code, $user->username, $user->uid]);
+
+        // Cấp quản lý bao gồm: Team Leader, AM, ZD, Courier Manager, Manager, hoặc người quản lý team trong CrmTeam
+        $isManager = $user->hasRole(['Manager', 'Team Leader', 'AM', 'ZD', 'Courier Manager', 'Trưởng nhóm', 'Quản lý'])
+            || \App\Models\CrmTeam::where('manager_id', $user->id)->exists()
+            || User::where('team_leader_id', $user->id)->orWhere('am_id', $user->id)->orWhere('zd_id', $user->id)->orWhere('created_by_id', $user->id)->exists();
+
+        if ($isManager) {
+            $managedTeamIds = \App\Models\CrmTeam::where('manager_id', $user->id)->pluck('id')->toArray();
+            $managedTeamIds = array_values(array_filter(array_unique($managedTeamIds)));
+
+            // team_id only identifies the team a user belongs to. It must not grant
+            // management access unless that user is the configured CrmTeam manager.
+            // Otherwise a Team Leader sharing an AM's team would see every sale of the AM.
+
+            $subordinates = User::query()
+                ->where('id', '!=', $user->id)
+                ->where(function ($q) use ($user, $managedTeamIds) {
+                    $q->where('team_leader_id', $user->id)
+                      ->orWhere('am_id', $user->id)
+                      ->orWhere('zd_id', $user->id)
+                      ->orWhere('courier_manager_id', $user->id)
+                      ->orWhere('created_by_id', $user->id);
+                    
+                    if (!empty($managedTeamIds)) {
+                        $q->orWhereIn('team_id', $managedTeamIds);
+                    }
+                })
+                ->get(['id', 'employee_code', 'username', 'uid']);
+
+            foreach ($subordinates as $sub) {
+                $userIds[] = $sub->id;
+                if ($sub->employee_code) $codes[] = $sub->employee_code;
+                if ($sub->username) $codes[] = $sub->username;
+                if ($sub->uid) $codes[] = $sub->uid;
+            }
+        }
+
+        return [
+            'user_ids' => array_values(array_unique($userIds)),
+            'codes' => array_values(array_unique($codes)),
+        ];
+    }
+
+    private function getRoleTitle(User $user): string
+    {
+        $roleName = method_exists($user, 'getRoleNames') ? ($user->getRoleNames()->first() ?? 'Direct Sale') : 'Direct Sale';
+        return match ($roleName) {
+            'Admin', 'Super Admin' => 'Quản trị viên cấp cao',
+            'Director', 'General Manager' => 'Ban Giám Đốc',
+            'Manager' => 'Quản lý kinh doanh',
+            'Team Leader', 'Trưởng nhóm' => 'Trưởng nhóm kinh doanh',
+            'Publisher', 'Cộng tác viên', 'Affiliate Publisher' => 'Cộng tác viên tiếp thị (Publisher)',
+            'AM' => 'Quản lý khu vực (AM)',
+            'ZD' => 'Giám đốc vùng (ZD)',
+            default => 'Chuyên viên tư vấn (Direct Sale)',
+        };
     }
 }
-

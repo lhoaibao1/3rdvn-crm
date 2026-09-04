@@ -4,11 +4,15 @@ namespace App\Filament\Resources\AffiliateConversions;
 
 use App\Filament\Resources\AffiliateConversions\Pages\ListAffiliateConversions;
 use App\Models\AffiliateConversion;
+use App\Models\Lead;
+use App\Models\User;
+use App\Support\AffiliateConversionStatus;
 use App\Support\Permissions\RecordVisibility;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -85,43 +89,97 @@ class AffiliateConversionResource extends Resource
                     ->label('Mã chuyển đổi')
                     ->searchable()
                     ->copyable()
-                    ->weight('bold'),
-                TextColumn::make('transaction_id')
-                    ->label('Mã giao dịch')
-                    ->searchable()
-                    ->placeholder('-'),
+                    ->weight('bold')
+                    ->description(fn (AffiliateConversion $record): ?string => $record->transaction_id && $record->transaction_id !== '-' ? "Mã GD: {$record->transaction_id}" : null),
+
                 TextColumn::make('campaign_name')
                     ->label('Chiến dịch')
-                    ->searchable()
                     ->badge()
-                    ->color('primary'),
+                    ->getStateUsing(function (AffiliateConversion $record): string {
+                        $meta = strtolower((string)($record->campaign_name . $record->partner . $record->offer_id . $record->landing_page . $record->conversion_id));
+                        return match (true) {
+                            str_contains($meta, 'vpbank') => 'VPBank UPL',
+                            str_contains($meta, 'shb') || strtolower((string)$record->partner) === 'hyperlead' => 'SHB Finance',
+                            str_contains($meta, 'tinvay') || str_contains($meta, 'vietcredit') => 'Tin Vay',
+                            default => $record->campaign_name ?: 'SHB Finance',
+                        };
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'SHB Finance' => 'warning',
+                        'VPBank UPL' => 'success',
+                        'Tin Vay' => 'info',
+                        default => 'primary',
+                    })
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where('campaign_name', 'ilike', "%{$search}%")
+                            ->orWhere('offer_id', 'ilike', "%{$search}%")
+                            ->orWhere('partner', 'ilike', "%{$search}%");
+                    }),
+
+                TextColumn::make('customer_name')
+                    ->label('Khách hàng')
+                    ->getStateUsing(function (AffiliateConversion $record): string {
+                        $raw = (array) ($record->raw_payload ?? []);
+                        if (!empty($raw['customer_name'])) {
+                            return $raw['customer_name'];
+                        }
+                        if (is_numeric($record->aff_sub2)) {
+                            $lead = Lead::find((int) $record->aff_sub2);
+                            if ($lead && $lead->lead_name) {
+                                return $lead->lead_name;
+                            }
+                        }
+                        return 'Khách hàng';
+                    })
+                    ->description(function (AffiliateConversion $record): ?string {
+                        $raw = (array) ($record->raw_payload ?? []);
+                        $phone = $raw['customer_phone'] ?? null;
+                        $cccd = $raw['customer_identity_number'] ?? null;
+                        if (!$phone && is_numeric($record->aff_sub2)) {
+                            $lead = Lead::find((int) $record->aff_sub2);
+                            $phone = $lead?->phone;
+                            $cccd = is_array($lead?->payload) ? ($lead->payload['identity_number'] ?? null) : null;
+                        }
+                        $parts = [];
+                        if ($phone) {
+                            $parts[] = '📞 ' . $phone;
+                        }
+                        if ($cccd) {
+                            $parts[] = 'CCCD: ' . $cccd;
+                        }
+                        return !empty($parts) ? implode(' · ', $parts) : null;
+                    })
+                    ->weight('semibold'),
+
+                TextColumn::make('createdBy.name')
+                    ->label('Nhân sự phụ trách')
+                    ->getStateUsing(function (AffiliateConversion $record): string {
+                        if ($record->createdBy) {
+                            return $record->createdBy->name;
+                        }
+                        if ($record->aff_sub1) {
+                            $u = User::where('employee_code', $record->aff_sub1)->first();
+                            if ($u) return $u->name;
+                            return $record->aff_sub1;
+                        }
+                        return 'Hệ thống';
+                    })
+                    ->description(fn (AffiliateConversion $record): ?string => $record->aff_sub1 ?: ($record->createdBy?->employee_code))
+                    ->searchable(),
+
                 TextColumn::make('sale_amount')
-                    ->label('Doanh số vay')
+                    ->label('Doanh số duyệt')
                     ->numeric(decimalPlaces: 0, thousandsSeparator: '.')
                     ->suffix(' đ')
-                    ->sortable(),
+                    ->sortable()
+                    ->placeholder('0 đ'),
+
                 TextColumn::make('conversion_status')
                     ->label('Trạng thái')
                     ->badge()
-                    ->color(fn (?string $state): string => match (strtolower((string)$state)) {
-                        'success', 'approved', 'disbursed', 'completed', 'paid' => 'success',
-                        'rejected', 'cancelled', 'failed', 'declined', 'trash' => 'danger',
-                        default => 'warning',
-                    })
-                    ->formatStateUsing(fn (?string $state): string => match (strtolower((string)$state)) {
-                        'success', 'approved', 'disbursed', 'completed', 'paid' => 'Đã duyệt / Giải ngân',
-                        'rejected', 'cancelled', 'failed', 'declined', 'trash' => 'Từ chối / Hủy',
-                        default => 'Đang thẩm định / Chờ',
-                    }),
-                TextColumn::make('aff_sub1')
-                    ->label('Mã NVKD (Sub 1)')
-                    ->searchable()
-                    ->badge()
-                    ->color('gray'),
-                TextColumn::make('aff_sub2')
-                    ->label('Mã Lead (Sub 2)')
-                    ->searchable()
-                    ->placeholder('-'),
+                    ->color(fn (?string $state, AffiliateConversion $record): string => AffiliateConversionStatus::tone($state, $record->sale_amount, $record->campaign_name))
+                    ->formatStateUsing(fn (?string $state, AffiliateConversion $record): string => AffiliateConversionStatus::label($state, $record->sale_amount, $record->campaign_name)),
+
                 TextColumn::make('conversion_time')
                     ->label('Thời gian ghi nhận')
                     ->dateTime('d/m/Y H:i')
@@ -131,9 +189,9 @@ class AffiliateConversionResource extends Resource
                 SelectFilter::make('campaign_name')
                     ->label('Chiến dịch')
                     ->options([
+                        'SHB Finance' => 'SHB Finance',
                         'VPBank UPL' => 'VPBank UPL',
                         'Tin Vay' => 'Tin Vay',
-                        'SHB Finance' => 'SHB Finance',
                     ]),
                 SelectFilter::make('conversion_status')
                     ->label('Trạng thái')

@@ -7,6 +7,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAffiliatePostbackRequest extends FormRequest
 {
+    private bool $hasUnresolvedIdentityMacro = false;
+
     public function authorize(): bool
     {
         $isAccessTradeRoute = str_contains($this->path(), 'accesstrade');
@@ -33,6 +35,9 @@ class StoreAffiliatePostbackRequest extends FormRequest
         $conversionId = $input['conversion_id'] ?? $input['trans_id'] ?? $input['order_id'] ?? $input['id'] ?? null;
         $transactionId = $input['transaction_id'] ?? $input['order_id'] ?? $input['trans_id'] ?? null;
         $campaignName = $input['campaign_name'] ?? $input['campaign'] ?? $input['offer_name'] ?? $input['merchant'] ?? null;
+
+        $this->hasUnresolvedIdentityMacro = $this->isUnresolvedIdentityMacro($conversionId)
+            || $this->isUnresolvedIdentityMacro($transactionId);
         
         // Status mapping (0: pending, 1: approved, 2: rejected)
         $rawStatus = $input['conversion_status'] ?? $input['status'] ?? $input['status_code'] ?? null;
@@ -41,6 +46,10 @@ class StoreAffiliatePostbackRequest extends FormRequest
             '2', 'rejected', 'cancelled', 'failed', 'declined', 'trash' => 'rejected',
             default => 'pending',
         };
+        $campaignFingerprint = strtolower((string) ($campaignName ?? '').($this->route('campaign') ?? '').($this->path()));
+        if ($status !== 'rejected' && (str_contains($campaignFingerprint, 'tinvay') || str_contains($campaignFingerprint, 'vietcredit') || str_contains($campaignFingerprint, 'vcredit'))) {
+            $status = 'disbursed';
+        }
 
         // Amount mapping
         $saleAmount = $input['conversion_sale_amount']
@@ -90,15 +99,15 @@ class StoreAffiliatePostbackRequest extends FormRequest
         ];
 
         foreach (['click_time', 'conversion_time'] as $field) {
-            $value = $normalized[$field] ?? null;
-            if (is_numeric($value) && (int) $value > 10_000_000_000) {
-                $normalized[$field] = CarbonImmutable::createFromTimestampMs((int) $value)
-                    ->setTimezone((string) config('app.timezone', 'Asia/Ho_Chi_Minh'))
-                    ->toDateTimeString();
-            }
+            $normalized[$field] = $this->normalizePartnerTime($normalized[$field] ?? null);
         }
 
         $this->merge($normalized);
+    }
+
+    public function hasUnresolvedIdentityMacro(): bool
+    {
+        return $this->hasUnresolvedIdentityMacro;
     }
 
     public function rules(): array
@@ -120,5 +129,73 @@ class StoreAffiliatePostbackRequest extends FormRequest
             'aff_sub4' => ['nullable', 'string', 'max:255'],
             'status_message' => ['nullable', 'string', 'max:2000'],
         ];
+    }
+
+    private function normalizePartnerTime(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        // Some partner postback configurations send the macro name itself
+        // (for example `trans_time`) when that macro is unavailable.
+        if (in_array(strtolower($value), [
+            'click_time',
+            'conversion_time',
+            'trans_time',
+            'transaction_time',
+            'action_time',
+            'update_time',
+        ], true)) {
+            return null;
+        }
+
+        try {
+            if (is_numeric($value)) {
+                $timestamp = (int) $value;
+
+                return ($timestamp > 10_000_000_000
+                    ? CarbonImmutable::createFromTimestampMs($timestamp)
+                    : CarbonImmutable::createFromTimestamp($timestamp))
+                    ->setTimezone((string) config('app.timezone', 'Asia/Ho_Chi_Minh'))
+                    ->toDateTimeString();
+            }
+
+            return CarbonImmutable::parse($value)
+                ->setTimezone((string) config('app.timezone', 'Asia/Ho_Chi_Minh'))
+                ->toDateTimeString();
+        } catch (\Throwable) {
+            // A malformed optional timestamp must never reject the order.
+            return null;
+        }
+    }
+
+    private function isUnresolvedIdentityMacro(mixed $value): bool
+    {
+        if ($value === null || ! is_scalar($value)) {
+            return false;
+        }
+
+        $value = strtolower(trim((string) $value));
+        if ($value === '') {
+            return false;
+        }
+
+        // Partner postback test tools may send either the bare macro name or
+        // an unresolved template such as {conversion_id}/${transaction_id}.
+        $value = trim($value, " \t\n\r\0\x0B{}[]()<>%$");
+
+        return in_array($value, [
+            'conversion_id',
+            'transaction_id',
+            'trans_id',
+            'order_id',
+            'id',
+        ], true);
     }
 }

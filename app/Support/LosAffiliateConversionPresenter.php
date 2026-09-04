@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\AffiliateConversion;
+use App\Models\Lead;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Throwable;
@@ -12,6 +13,14 @@ class LosAffiliateConversionPresenter
     public static function make(AffiliateConversion $conversion): array
     {
         $raw = (array) ($conversion->raw_payload ?? []);
+
+        // 1. Tự động liên kết Lead CRM nếu có aff_sub2
+        $lead = null;
+        if (is_numeric($conversion->aff_sub2)) {
+            try {
+                $lead = Lead::find((int) $conversion->aff_sub2);
+            } catch (\Throwable $e) {}
+        }
 
         $campaignName = self::cleanString(self::firstFilled([
             $conversion->campaign_name,
@@ -23,36 +32,44 @@ class LosAffiliateConversionPresenter
 
         $applicantName = self::cleanString(self::firstFilled([
             $raw['customer_name'] ?? null,
+            $lead?->lead_name,
             $raw['ten_khach_hang'] ?? null,
             $raw['applicant_name'] ?? null,
             $raw['lead_name'] ?? null,
             $raw['name'] ?? null,
-            $conversion->aff_sub4 ? ('Khách hàng ' . self::maskIdentity($conversion->aff_sub4)) : null,
             'Khách hàng Tiếp thị',
         ]));
 
-        $rawIdentity = self::firstFilled([
+        $rawIdentity = self::cleanString(self::firstFilled([
+            $raw['customer_identity_number'] ?? null,
+            is_array($lead?->payload) ? ($lead->payload['identity_number'] ?? null) : null,
             $conversion->aff_sub4,
             $raw['aff_sub4'] ?? null,
             $raw['customer_id_no'] ?? null,
             $raw['identity_number'] ?? null,
             $raw['cccd'] ?? null,
             $raw['cmnd'] ?? null,
-        ]);
+        ]));
 
-        $rawPhone = self::firstFilled([
-            $conversion->aff_sub3,
-            $conversion->aff_sub2,
-            $raw['aff_sub3'] ?? null,
-            $raw['aff_sub2'] ?? null,
+        $rawPhone = self::cleanString(self::firstFilled([
+            $raw['customer_phone'] ?? null,
+            $lead?->phone,
             $raw['customer_mobile'] ?? null,
             $raw['phone'] ?? null,
             $raw['so_dien_thoai'] ?? null,
-        ]);
+            $conversion->aff_sub3,
+        ]));
 
-        // 🔒 MÃ HOÁ BẢO MẬT CCCD VÀ SỐ ĐIỆN THOẠI
-        $maskedIdentity = self::maskIdentity($rawIdentity);
-        $maskedPhone = self::maskPhone($rawPhone);
+        $rawDob = self::cleanString(self::firstFilled([
+            $raw['customer_dob'] ?? null,
+            is_array($lead?->payload) ? ($lead->payload['date_of_birth'] ?? null) : null,
+            $raw['dob'] ?? null,
+            $raw['date_of_birth'] ?? null,
+        ]));
+
+        // HIỂN THỊ ĐẦY ĐỦ KHÔNG MÃ HOÁ
+        $unmaskedIdentity = $rawIdentity;
+        $unmaskedPhone = $rawPhone;
 
         $productName = self::cleanString(self::firstFilled([
             $conversion->product_name,
@@ -83,8 +100,8 @@ class LosAffiliateConversionPresenter
             $raw['offer_amt'] ?? null,
         ]);
 
-        $statusLabel = self::cleanString(self::affiliateStatusLabel($conversion->conversion_status, $conversion->status_message));
-        $statusTone = self::affiliateStatusTone($conversion->conversion_status);
+        $statusLabel = self::cleanString(AffiliateConversionStatus::label($conversion->conversion_status, $approvedLoanAmount, $conversion->campaign_name));
+        $statusTone = AffiliateConversionStatus::tone($conversion->conversion_status, $approvedLoanAmount, $conversion->campaign_name);
 
         $appCode = self::cleanString(self::firstFilled([
             $conversion->transaction_id,
@@ -118,15 +135,16 @@ class LosAffiliateConversionPresenter
             self::field('Mã chuyển đổi / Conversion ID', (string) ($conversion->conversion_id ?: '-')),
             self::field('Chiến dịch / Đối tác', $campaignName),
             self::field('Sản phẩm / Gói vay', $productName),
-            self::field('Họ và tên khách hàng', $applicantName),
-            self::field('Số CCCD / CMND (Đã mã hóa)', $maskedIdentity),
-            self::field('Số điện thoại (Đã mã hóa)', $maskedPhone),
+            self::field('Họ và tên khách hàng', $applicantName, 'primary'),
+            self::field('Số điện thoại liên hệ', $unmaskedPhone, 'success'),
+            self::field('Số CCCD / CMND', $unmaskedIdentity, 'info'),
+            self::field('Ngày tháng năm sinh', $rawDob),
             self::field('Mã Click ID', (string) ($conversion->click_id ?: ($raw['click_id'] ?? '-'))),
             self::field('Mã NV tiếp thị (Aff Sub 1)', (string) ($conversion->aff_sub1 ?: ($raw['aff_sub1'] ?? '-'))),
         ];
 
         if (filled($conversion->aff_sub2 ?: ($raw['aff_sub2'] ?? null))) {
-            $customerFields[] = self::field('Chi nhánh / Aff Sub 2', (string) ($conversion->aff_sub2 ?: $raw['aff_sub2']));
+            $customerFields[] = self::field('Mã Lead CRM / Aff Sub 2', (string) ($conversion->aff_sub2 ?: $raw['aff_sub2']));
         }
         if (filled($conversion->aff_sub3 ?: ($raw['aff_sub3'] ?? null))) {
             $customerFields[] = self::field('Kênh / Aff Sub 3', (string) ($conversion->aff_sub3 ?: $raw['aff_sub3']));
@@ -179,9 +197,9 @@ class LosAffiliateConversionPresenter
             'application_code' => $appCode,
             'project' => $campaignName,
             'applicant_name' => $applicantName,
-            'identity_number' => $maskedIdentity,
-            'phone_number' => $maskedPhone,
-            'dob' => '-',
+            'identity_number' => $unmaskedIdentity,
+            'phone_number' => $unmaskedPhone,
+            'dob' => $rawDob,
             'product' => $productName,
             'scheme' => '-',
             'scheme_name' => '-',
@@ -214,22 +232,14 @@ class LosAffiliateConversionPresenter
     {
         $raw = self::cleanString($value);
         if ($raw === '' || $raw === '-') return '-';
-        $digits = preg_replace('/[^0-9A-Za-z]/', '', $raw) ?: '';
-        $len = strlen($digits);
-        if ($len <= 4) return str_repeat('*', max(1, $len));
-        if ($len === 9) return substr($digits, 0, 3) . '***' . substr($digits, -3);
-        if ($len >= 12) return substr($digits, 0, 4) . '****' . substr($digits, -4);
-        return substr($digits, 0, 2) . str_repeat('*', max(2, $len - 4)) . substr($digits, -2);
+        return $raw;
     }
 
     public static function maskPhone(?string $value): string
     {
         $raw = self::cleanString($value);
         if ($raw === '' || $raw === '-') return '-';
-        $digits = preg_replace('/[^0-9]/', '', $raw) ?: '';
-        $len = strlen($digits);
-        if ($len < 7) return str_repeat('*', max(1, $len));
-        return substr($digits, 0, 4) . '***' . substr($digits, -3);
+        return $raw;
     }
 
     private static function field(string $label, string $value, ?string $tone = null, bool $wide = false): array
@@ -283,25 +293,15 @@ class LosAffiliateConversionPresenter
 
     public static function affiliateStatusLabel(?string $status, ?string $msg = null): string
     {
-        $s = strtolower(trim((string) $status));
-        return match ($s) {
-            'approved', '1', 'success', 'confirmed' => 'Phê duyệt thành công',
-            'rejected', '-1', 'cancelled', 'canceled', 'failed' => 'Bị từ chối / Hủy' . (filled($msg) ? " ({$msg})" : ''),
-            'pending', '0' => 'Chờ xử lý / Đang thẩm định',
-            'paid' => 'Đã thanh toán hoa hồng',
-            default => filled($status) ? (string)$status : 'Mới ghi nhận',
-        };
+        $label = AffiliateConversionStatus::label($status);
+        return AffiliateConversionStatus::phase($status) === AffiliateConversionStatus::REJECTED && filled($msg)
+            ? "{$label} ({$msg})"
+            : $label;
     }
 
     public static function affiliateStatusTone(?string $status): string
     {
-        $s = strtolower(trim((string) $status));
-        return match ($s) {
-            'approved', 'paid', '1', 'success', 'confirmed' => 'success',
-            'rejected', '-1', 'cancelled', 'canceled', 'failed' => 'danger',
-            'pending', '0' => 'warning',
-            default => 'primary',
-        };
+        return AffiliateConversionStatus::tone($status);
     }
 
     protected static ?array $userMapCache = null;
