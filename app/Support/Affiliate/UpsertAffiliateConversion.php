@@ -3,11 +3,13 @@
 namespace App\Support\Affiliate;
 
 use App\Models\AffiliateConversion;
+use App\Models\Lead;
 use App\Models\User;
 use App\Support\Notifications\AffiliateConversionNotificationSender;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UpsertAffiliateConversion
 {
@@ -49,6 +51,11 @@ class UpsertAffiliateConversion
                 'landing_page' => $payload['landing_page'] ?? null,
                 'event' => $payload['events'] ?? null,
                 'status_message' => $payload['status_message'] ?? null,
+                'shop_status_code' => $payload['shop_status_code'] ?? null,
+                'publisher_id' => $payload['publisher_id'] ?? null,
+                'conversion_date' => $payload['conversion_date'] ?? null,
+                'conversion_modified_date' => $payload['conversion_modified_date'] ?? null,
+                'click_date' => $payload['click_date'] ?? null,
                 'created_by_id' => $user?->getKey(),
                 'raw_payload' => Arr::except($payload, ['secret']),
             ];
@@ -64,6 +71,31 @@ class UpsertAffiliateConversion
                 (array) ($existing?->raw_payload ?? []),
                 Arr::except($payload, ['secret']),
             );
+
+            // Auto-link to Lead in CRM if aff_sub2 is a Lead ID
+            $leadId = $payload['aff_sub2'] ?? $existing?->aff_sub2 ?? null;
+            if (filled($leadId) && is_numeric($leadId)) {
+                $lead = Lead::find((int) $leadId);
+                if ($lead) {
+                    $payloadData = (array) ($lead->payload ?? []);
+                    $payloadData['transaction_id'] = $incoming['transaction_id'] ?: ($payloadData['transaction_id'] ?? null);
+                    $payloadData['conversion_id'] = $conversionId;
+                    $payloadData['conversion_status'] = $incoming['conversion_status'] ?: ($payloadData['conversion_status'] ?? null);
+                    $payloadData['events'] = $incoming['event'] ?: ($payloadData['events'] ?? null);
+                    $lead->payload = $payloadData;
+                    $lead->saveQuietly();
+                }
+            }
+
+            Log::info('Affiliate postback processed', [
+                'partner' => $partner,
+                'conversion_id' => $conversionId,
+                'status' => $incoming['conversion_status'] ?? 'unknown',
+                'amount' => $incoming['sale_amount'] ?? 0,
+                'employee_code' => $employeeCode,
+                'employee_found' => $user ? true : false,
+                'publisher_id' => $incoming['publisher_id'] ?? null,
+            ]);
 
             return AffiliateConversion::query()->updateOrCreate(
                 ['partner' => $partner, 'conversion_id' => $conversionId],

@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\FeolSyncState;
-use App\Enums\FeolSubmitState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,17 +19,9 @@ class FeolApplicationIntegration extends Model
     protected function casts(): array
     {
         return [
-            'sync_state' => FeolSyncState::class,
-            'submit_state' => FeolSubmitState::class,
-            'sync_requested_at' => 'immutable_datetime',
-            'last_synced_at' => 'immutable_datetime',
-            'next_sync_at' => 'immutable_datetime',
             'raw_payload' => 'array',
             'version' => 'integer',
             'submit_attempts' => 'integer',
-            'consented_at' => 'immutable_datetime',
-            'partner_last_attempt_at' => 'immutable_datetime',
-            'partner_submitted_at' => 'immutable_datetime',
             'partner_submit_response' => 'array',
         ];
     }

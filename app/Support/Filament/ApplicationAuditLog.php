@@ -50,6 +50,12 @@ class ApplicationAuditLog
 
     public static function businessSummary(object $log, callable $statusResolver, int $limit = 5): string
     {
+        $action = (string) ($log->action ?? '');
+
+        if (str_starts_with($action, 'feol_')) {
+            return self::feolBusinessSummary($log, $statusResolver);
+        }
+
         if (($log->action ?? null) === 'created') {
             return 'Tạo mới: Hồ sơ được khởi tạo trên hệ thống.';
         }
@@ -101,6 +107,30 @@ class ApplicationAuditLog
         }
 
         return $visible->join("\n");
+    }
+
+    private static function feolBusinessSummary(object $log, callable $statusResolver): string
+    {
+        $action = (string) ($log->action ?? '');
+        $changes = self::changes($log, $statusResolver);
+        $byPath = collect($changes)->keyBy('path');
+        $statusChange = $byPath->get('sub_status')
+            ?: $byPath->get('main_status')
+            ?: $byPath->get('status');
+
+        if (is_array($statusChange) && ($statusChange['old'] ?? null) !== ($statusChange['new'] ?? null)) {
+            return 'Chuyển bước: '.($statusChange['old'] ?: '-').' → '.($statusChange['new'] ?: '-');
+        }
+
+        if ($action === 'feol_sync_failed') {
+            return 'Đồng bộ lỗi: không cập nhật được trạng thái từ CRM đối tác.';
+        }
+
+        if ($action === 'feol_synced') {
+            return 'Đã kiểm tra CRM đối tác, chưa có chuyển bước mới.';
+        }
+
+        return 'FEOL: hệ thống đã xử lý hồ sơ.';
     }
 
     public static function changes(object $log, callable $statusResolver): array

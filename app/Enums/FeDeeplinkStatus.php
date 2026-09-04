@@ -74,6 +74,17 @@ enum FeDeeplinkStatus: string
         return $this === self::ELIGIBLE;
     }
 
+    public function rejectsDeeplink(): bool
+    {
+        return in_array($this, [
+            self::INELIGIBLE,
+            self::PRE_SCREENING_FAILURE,
+            self::HARD_REJECT,
+            self::SOFT_REJECT,
+            self::CANCELLATION,
+        ], true);
+    }
+
     /** @return array<string, string> */
     public static function options(): array
     {

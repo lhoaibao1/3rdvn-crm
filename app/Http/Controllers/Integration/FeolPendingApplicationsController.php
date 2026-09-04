@@ -17,6 +17,7 @@ class FeolPendingApplicationsController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         $this->authorizeFeolBridge($request);
+        $terminalStatuses = collect(FeDeeplinkStatus::cases())->filter->isTerminal()->map->value->all();
 
         $applications = Application::query()
             ->whereHas('salesProject', fn (Builder $query): Builder => $query->where('slug', 'fe-deeplink'))
@@ -34,7 +35,14 @@ class FeolPendingApplicationsController extends Controller
                                         ->orWhereColumn('sync_requested_at', '>', 'last_synced_at')));
                         }));
             })
-            ->whereNotIn('status', collect(FeDeeplinkStatus::cases())->filter->isTerminal()->map->value->all())
+            ->where(function (Builder $query) use ($terminalStatuses): void {
+                $query->whereNotIn('status', $terminalStatuses)
+                    ->orWhereHas('feolIntegration', fn (Builder $query): Builder => $query
+                        ->whereNotNull('sync_requested_at')
+                        ->where(fn (Builder $query): Builder => $query
+                            ->whereNull('last_synced_at')
+                            ->orWhereColumn('sync_requested_at', '>', 'last_synced_at')));
+            })
             ->with(['createdBy:id,name,uid,employee_code', 'feolIntegration'])
             ->orderByDesc('updated_at')
             ->limit(50)

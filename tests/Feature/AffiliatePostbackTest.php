@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AffiliateConversion;
 use App\Models\User;
+use Illuminate\Foundation\Console\QueuedCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
@@ -40,6 +41,52 @@ class AffiliatePostbackTest extends TestCase
 
         $this->assertDatabaseCount('affiliate_conversions', 1);
         $this->assertSame('approved', AffiliateConversion::first()->conversion_status);
+    }
+
+    public function test_status_only_postback_does_not_erase_reconciled_amounts(): void
+    {
+        config(['services.affiliate.postback_secret' => 'test-secret']);
+        AffiliateConversion::query()->create([
+            'partner' => 'hyperlead',
+            'conversion_id' => 'shbfinanceTX-PRESERVE',
+            'transaction_id' => 'TX-PRESERVE',
+            'conversion_status' => 'pending',
+            'sale_amount' => 30_000_000,
+            'publisher_payout' => 900_000,
+            'raw_payload' => [],
+        ]);
+
+        $this->withHeader('X-Affiliate-Secret', 'test-secret')
+            ->postJson('/api/affiliate/postback/shb-finance', [
+                'conversion_id' => 'shbfinanceTX-PRESERVE',
+                'transaction_id' => 'TX-PRESERVE',
+                'conversion_status' => 'approved',
+            ])
+            ->assertOk();
+
+        $conversion = AffiliateConversion::query()->sole();
+        $this->assertSame('approved', $conversion->conversion_status);
+        $this->assertSame('30000000.00', $conversion->sale_amount);
+        $this->assertSame('900000.00', $conversion->publisher_payout);
+    }
+
+    public function test_approved_hyperlead_postback_without_amount_queues_targeted_refresh(): void
+    {
+        Bus::fake();
+        config(['services.affiliate.postback_secret' => 'test-secret']);
+
+        $this->withHeader('X-Affiliate-Secret', 'test-secret')
+            ->postJson('/api/affiliate/postback/shb-finance', [
+                'conversion_id' => 'shbfinanceTX-REFRESH',
+                'transaction_id' => 'TX-REFRESH',
+                'conversion_status' => 'approved',
+            ])
+            ->assertOk()
+            ->assertJsonPath('sale_amount', null);
+
+        Bus::assertDispatched(QueuedCommand::class, fn (QueuedCommand $command) =>
+            $command->displayName() === 'affiliate:sync-hyperlead'
+        );
     }
 
     public function test_hyperlead_get_payload_is_normalized_and_mapped_to_employee(): void
