@@ -64,7 +64,7 @@
                     x-bind:aria-label="passwordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
                 >
                     <svg x-show="! passwordVisible" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.7"/>
+                        <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6Z" stroke="currentColor" stroke-width="1.7"/>
                         <circle cx="12" cy="12" r="2.7" stroke="currentColor" stroke-width="1.7"/>
                     </svg>
                     <svg x-cloak x-show="passwordVisible" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -91,13 +91,27 @@
             wire:loading.attr="disabled"
             wire:target="authenticate"
         >
-            <span wire:loading.remove wire:target="authenticate">Đăng nhập</span>
+            <span wire:loading.remove wire:target="authenticate">Đăng nhập CRM</span>
             <svg wire:loading.remove wire:target="authenticate" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M5 12h14M14 7l5 5-5 5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <span class="crm-login-spinner" wire:loading wire:target="authenticate" aria-hidden="true"></span>
             <span wire:loading wire:target="authenticate">Đang xác thực...</span>
         </button>
+
+        <div style="margin: 16px 0 12px; display: flex; align-items: center; gap: 10px;">
+            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.12);"></div>
+            <span style="font-size: 11px; color: rgba(255,255,255,0.45); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">HOẶC</span>
+            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.12);"></div>
+        </div>
+
+        <a
+            href="https://sso.3rdvn.io.vn"
+            style="display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; height: 44px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px; color: #93c5fd; text-decoration: none; font-size: 13.5px; font-weight: 700; transition: all 0.2s;"
+        >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg>
+            <span>Đăng Nhập Bằng 3RD-VN SSO</span>
+        </a>
     </form>
 
     <p class="crm-login-secondary">

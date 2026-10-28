@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\CrmTeam;
 use App\Models\SalesProject;
 use App\Models\User;
 use App\Support\Permissions\RecordVisibility;
@@ -107,5 +108,71 @@ class RecordVisibilityHierarchyTest extends TestCase
             'assigned_sale_id',
             'assignedSale',
         ));
+    }
+
+    public function test_affiliate_team_leader_does_not_inherit_every_sale_from_the_am_shared_team(): void
+    {
+        foreach (['AM', 'Team Leader', 'Direct Sale'] as $role) {
+            Role::findOrCreate($role, 'web');
+        }
+
+        $am = User::withoutEvents(fn () => User::factory()->create([
+            'employee_code' => 'RD260117',
+            'employment_status' => 'active',
+        ]));
+        $am->assignRole('AM');
+
+        $team = CrmTeam::query()->create([
+            'name' => '3P - Ngo, Nha Dong',
+            'code' => '3P-NND',
+            'manager_id' => $am->getKey(),
+            'is_active' => true,
+        ]);
+
+        $leader = User::withoutEvents(fn () => User::factory()->create([
+            'employee_code' => 'RD260132',
+            'team_id' => $team->getKey(),
+            'am_id' => $am->getKey(),
+            'created_by_id' => $am->getKey(),
+            'employment_status' => 'active',
+        ]));
+        $leader->assignRole('Team Leader');
+
+        $saleOwnedByAm = User::withoutEvents(fn () => User::factory()->create([
+            'employee_code' => 'RD260133',
+            'team_id' => $team->getKey(),
+            'team_leader_id' => null,
+            'am_id' => $am->getKey(),
+            'created_by_id' => $am->getKey(),
+            'employment_status' => 'active',
+        ]));
+        $saleOwnedByAm->assignRole('Direct Sale');
+
+        $saleOwnedByLeader = User::withoutEvents(fn () => User::factory()->create([
+            'employee_code' => 'RD260134',
+            'team_id' => $team->getKey(),
+            'team_leader_id' => $leader->getKey(),
+            'am_id' => $am->getKey(),
+            'created_by_id' => $leader->getKey(),
+            'employment_status' => 'active',
+        ]));
+        $saleOwnedByLeader->assignRole('Direct Sale');
+
+        $login = $this->postJson('/api/integration/v1/affiliate-portal/login', [
+            'identifier' => $leader->employee_code,
+            'password' => 'password',
+        ])->assertOk();
+
+        $token = $login->json('token');
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/integration/v1/affiliate-portal/members?per_page=100')
+            ->assertOk();
+
+        $visibleIds = collect($response->json('data'))->pluck('id');
+
+        $this->assertTrue($visibleIds->contains($leader->getKey()));
+        $this->assertTrue($visibleIds->contains($saleOwnedByLeader->getKey()));
+        $this->assertFalse($visibleIds->contains($saleOwnedByAm->getKey()));
+        $this->assertFalse($visibleIds->contains($am->getKey()));
     }
 }

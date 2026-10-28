@@ -3,6 +3,7 @@
 namespace App\Support\Notifications;
 
 use App\Filament\Resources\Leads\LeadResource;
+use App\Jobs\SendWebPushNotification;
 use App\Models\Application;
 use App\Models\Lead;
 use App\Models\User;
@@ -11,7 +12,8 @@ use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class LeadNotificationSender
@@ -20,8 +22,8 @@ class LeadNotificationSender
     {
         self::sendToRecipients(
             lead: $lead,
-            eventLabel: 'Lead mới',
-            actorLabel: 'Người tạo',
+            eventLabel: 'Tiếp nhận hồ sơ',
+            actorLabel: 'Nhân sự phụ trách',
             status: 'warning',
             icon: Heroicon::OutlinedBellAlert,
             extraLine: null,
@@ -35,7 +37,7 @@ class LeadNotificationSender
 
         self::sendToRecipients(
             lead: $lead,
-            eventLabel: 'Cập nhật Lead',
+            eventLabel: 'Cập nhật hồ sơ',
             actorLabel: 'Người cập nhật',
             status: 'info',
             icon: Heroicon::OutlinedPencilSquare,
@@ -48,11 +50,11 @@ class LeadNotificationSender
     {
         self::sendToRecipients(
             lead: $lead,
-            eventLabel: 'Chuyển lead sang Dự án thành công',
+            eventLabel: 'Chuyển sang Dự án thành công',
             actorLabel: 'Người xử lý',
             status: 'success',
             icon: Heroicon::OutlinedCheckCircle,
-            extraLine: $application?->application_code ? 'Mã hồ sơ: '.$application->application_code : null,
+            extraLine: $application?->application_code ? 'Mã GD: '.$application->application_code : null,
             occurredAt: now()->format('H:i d/m/Y'),
         );
     }
@@ -67,21 +69,56 @@ class LeadNotificationSender
                 return;
             }
 
-            $title = self::title($lead);
-            $actor = auth()->user()?->name ?: $lead->createdBy?->name ?: 'Hệ thống';
-            $url = LeadResource::getUrl('view', ['record' => $lead]);
-            $body = self::body($eventLabel, $actorLabel, $actor, $occurredAt, $extraLine);
+            $payload = (array) ($lead->payload ?? []);
+            $isAffiliate = $lead->source === 'affiliate_landing' || !empty($payload['campaign_name']);
+            $campaignName = $payload['campaign_name'] ?? ($lead->salesProject?->name ?: 'Dự án');
 
-            $recipients->each(function (User $recipient) use ($title, $body, $occurredAt, $icon, $status, $url): void {
+            // Chuẩn hóa tên chiến dịch
+            if (str_contains(strtolower($campaignName), 'shb') || str_contains(strtolower($campaignName), 'hyperlead')) {
+                $campaignName = 'SHB Finance';
+            } elseif (str_contains(strtolower($campaignName), 'vpbank')) {
+                $campaignName = 'VPBank UPL';
+            }
+
+            $customerName = $lead->lead_name ?: 'Khách hàng';
+            $customerPhone = $lead->phone ?: '-';
+            $actor = auth()->user()?->name ?: $lead->createdBy?->name ?: $lead->assignedSale?->name ?: 'Hệ thống';
+            $caseId = $lead->lead_code ?: ('LD-' . $lead->id);
+
+            // Tiêu đề chuẩn CaseID
+            $title = "🔔 [CaseID: {$caseId}] {$customerName} - {$campaignName}";
+
+            // Nội dung thông báo thuần văn bản (Mã GD)
+            $bodyLines = [
+                "👤 Khách hàng: {$customerName}",
+                "📞 Số điện thoại: {$customerPhone}",
+                "📋 Dự án: {$campaignName}",
+                "🔢 Mã GD: {$caseId}",
+                "👨‍💼 {$actorLabel}: {$actor}",
+                "⏰ Thời gian: {$occurredAt}",
+            ];
+
+            if (filled($extraLine)) {
+                $bodyLines[] = "📌 {$extraLine}";
+            }
+
+            $bodyText = implode("\n", $bodyLines);
+
+            // Đường dẫn URL chuẩn CRM Apps2
+            $url = $isAffiliate
+                ? 'https://apps2.3rdvn.io.vn/applications/affiliate'
+                : 'https://apps2.3rdvn.io.vn/leads/' . $lead->id;
+
+            $recipients->each(function (User $recipient) use ($title, $bodyText, $occurredAt, $icon, $status, $url): void {
                 $notification = Notification::make()
                     ->title($title)
-                    ->body($body)
+                    ->body($bodyText)
                     ->date($occurredAt)
                     ->icon($icon)
                     ->{$status}()
                     ->actions([
                         Action::make('openLead')
-                            ->label('Mở Lead')
+                            ->label('Xem chi tiết')
                             ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                             ->button()
                             ->markAsRead()
@@ -91,6 +128,34 @@ class LeadNotificationSender
                 $recipient->notifyNow($notification->toDatabase());
                 DatabaseNotificationsSent::dispatch($recipient);
             });
+
+            // Gửi WebPush tới máy tính / thiết bị di động
+            try {
+                SendWebPushNotification::dispatch($recipients->modelKeys(), [
+                    'title' => $title,
+                    'body' => $bodyText,
+                    'icon' => 'https://3rdvn.io.vn/favicon.png',
+                    'data' => ['url' => $url],
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to dispatch Lead WebPush: ' . $e->getMessage());
+            }
+
+            // Bắn tín hiệu socket sang Cổng Affiliate (Port 3070)
+            try {
+                Http::timeout(1.5)->post('http://127.0.0.1:3070/api/portal/push-notification', [
+                    'user_ids' => $recipients->modelKeys(),
+                    'title' => $title,
+                    'message' => "Khách hàng {$customerName} ({$customerPhone}) đăng ký dự án {$campaignName}.",
+                    'type' => 'lead_created',
+                    'customer_name' => $customerName,
+                    'customer_phone' => $customerPhone,
+                    'campaign_name' => $campaignName,
+                    'lead_id' => $lead->id,
+                    'url' => $url,
+                ]);
+            } catch (\Throwable $e) {}
+
         } catch (Throwable $exception) {
             report($exception);
         }
@@ -112,31 +177,5 @@ class LeadNotificationSender
         return User::query()
             ->whereIn('id', $directIds->merge($adminIds)->unique()->values())
             ->get();
-    }
-
-    private static function title(Lead $lead): string
-    {
-        return implode(' - ', array_filter([
-            'Lead',
-            $lead->salesProject?->name ?: 'Dự án',
-            $lead->lead_code,
-            $lead->lead_name,
-        ], fn (?string $value): bool => filled($value)));
-    }
-
-    private static function body(string $eventLabel, string $actorLabel, string $actor, string $occurredAt, ?string $extraLine): HtmlString
-    {
-        $lines = [
-            '<span class="crm-notification-category" data-category="ho-so">Hồ sơ</span>',
-            '<strong>'.e($eventLabel).'</strong>',
-            'Thời gian: '.e($occurredAt),
-            e($actorLabel).': '.e($actor),
-        ];
-
-        if (filled($extraLine)) {
-            $lines[] = e($extraLine);
-        }
-
-        return new HtmlString(implode('<br>', $lines));
     }
 }

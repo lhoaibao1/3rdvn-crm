@@ -35,18 +35,25 @@ class FeolApplicationSync
                 ->firstOrNew(['application_id' => $application->getKey()]);
             $before = $integration->exists ? $integration->toArray() : [];
             $pollSeconds = max(5, (int) config('services.feol_bridge.poll_seconds', 5));
+            $idlePollSeconds = max($pollSeconds, (int) config('services.feol_bridge.idle_poll_seconds', 10));
 
             if (filled($data['error'] ?? null)) {
+                $isRepeatedError = $integration->exists
+                    && $integration->sync_state === FeolSyncState::FAILED
+                    && (string) $integration->last_error === (string) $data['error'];
+
                 $integration->fill([
                     'sync_state' => FeolSyncState::FAILED,
                     'last_error' => $data['error'],
                     'last_synced_at' => now(),
-                    'next_sync_at' => now()->addSeconds($pollSeconds),
-                    'raw_payload' => $data['raw_payload'] ?? null,
-                    'version' => ((int) $integration->version) + 1,
+                    'next_sync_at' => now()->addSeconds($isRepeatedError ? $idlePollSeconds : $pollSeconds),
+                    'raw_payload' => $isRepeatedError ? $integration->raw_payload : ($data['raw_payload'] ?? null),
+                    'version' => $isRepeatedError ? $integration->version : ((int) $integration->version) + 1,
                 ])->save();
 
-                $this->audit($application, 'feol_sync_failed', $before, $integration->fresh()->toArray());
+                if (! $isRepeatedError) {
+                    $this->audit($application, 'feol_sync_failed', $before, $integration->fresh()->toArray());
+                }
 
                 return $integration;
             }
@@ -59,10 +66,34 @@ class FeolApplicationSync
             }
 
             $deeplink = $data['deeplink_url'] ?? null;
-            if (filled($deeplink) && blank($integration->deeplink_url) && ! $status?->permitsFirstDeeplinkCapture()) {
+            if (filled($deeplink) && $status?->rejectsDeeplink()) {
                 throw ValidationException::withMessages([
-                    'deeplink_url' => 'Chỉ được ghi nhận deeplink lần đầu khi trạng thái là Eligible.',
+                    'deeplink_url' => 'Deeplink không hợp lệ khi hồ sơ đã bị từ chối hoặc không đủ điều kiện.',
                 ]);
+            }
+
+            $deeplinkToPersist = match (true) {
+                $status?->rejectsDeeplink() => null,
+                filled($deeplink) => $deeplink,
+                default => $integration->deeplink_url,
+            };
+
+            $incomingFingerprint = data_get($data, 'raw_payload._bridge.fingerprint');
+            $currentFingerprint = data_get($integration->raw_payload, '_bridge.fingerprint');
+            if (
+                filled($incomingFingerprint)
+                && $incomingFingerprint === $currentFingerprint
+                && ($status?->value ?? $integration->sub_status) === $integration->sub_status
+                && (($deeplinkToPersist ?: null) === ($integration->deeplink_url ?: null))
+            ) {
+                $integration->fill([
+                    'sync_state' => FeolSyncState::SYNCED,
+                    'last_error' => null,
+                    'last_synced_at' => now(),
+                    'next_sync_at' => $status?->isTerminal() ? null : now()->addSeconds($idlePollSeconds),
+                ])->save();
+
+                return $integration;
             }
 
             $integration->fill([
@@ -71,7 +102,7 @@ class FeolApplicationSync
                 'main_status' => $data['main_status'] ?? $integration->main_status,
                 'sub_status' => $status?->value ?? $integration->sub_status,
                 'b1_url' => $data['b1_url'] ?? $integration->b1_url,
-                'deeplink_url' => $deeplink ?? $integration->deeplink_url,
+                'deeplink_url' => $deeplinkToPersist,
                 'sync_state' => FeolSyncState::SYNCED,
                 'last_error' => null,
                 'last_synced_at' => now(),
@@ -133,7 +164,7 @@ class FeolApplicationSync
             if (in_array($status, [FeDeeplinkStatus::ELIGIBLE, FeDeeplinkStatus::INELIGIBLE, FeDeeplinkStatus::PRE_SCREENING_FAILURE], true)) {
                 ApplicationNotificationSender::feolEligibilityResult($fresh, $status === FeDeeplinkStatus::ELIGIBLE);
             } else {
-                ApplicationNotificationSender::statusChanged($fresh, $previousStatus, $newStatus);
+                ApplicationNotificationSender::feolStatusChanged($fresh, $previousStatus, $newStatus);
             }
         }
 

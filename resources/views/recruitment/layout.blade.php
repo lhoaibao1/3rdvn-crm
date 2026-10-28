@@ -4,7 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="description" content="Cổng tuyển dụng chính thức của 3RDVN">
+<meta name="description" content="3RDVN Tuyển Dụng (3rd-vn) - Cổng tuyển dụng việc làm nhân sự, chuyên viên tư vấn tài chính, CTV bán hàng với thu nhập hấp dẫn tại 3RDVN.">
+<meta name="keywords" content="3rdvn, 3rd-vn, 3rdvn tuyển dụng, việc làm 3rdvn, tuyển dụng 3rdvn, ung tuyen 3rdvn, ctv 3rdvn, tài chính 3rdvn">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://ungtuyen.3rdvn.io.vn/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="3RDVN Tuyển Dụng | Cơ Hội Việc Làm Hấp Dẫn">
+<meta property="og:description" content="Gia nhập đội ngũ 3RDVN với môi trường năng động, thu nhập hấp dẫn và lộ trình phát triển rõ ràng.">
+<meta property="og:image" content="https://3rdvn.io.vn/site/hero.jpg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "3RDVN Tuyển Dụng",
+  "alternateName": ["3rd-vn Tuyển Dụng", "Ung Tuyen 3RDVN"],
+  "url": "https://ungtuyen.3rdvn.io.vn",
+  "description": "Cổng thông tin tuyển dụng nhân sự chính thức của Công ty 3RDVN."
+}
+</script>
 <title>@yield('title') - 3RDVN</title>
 @if($settings->favicon_path)<link rel="icon" href="{{ asset('storage/'.$settings->favicon_path) }}">@endif
 <style>

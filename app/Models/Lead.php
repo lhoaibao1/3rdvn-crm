@@ -54,7 +54,9 @@ class Lead extends Model
 
         static::created(function (Lead $lead): void {
             $lead->writeChangeLog('created', self::snapshot($lead->getAttributes()));
-            LeadNotificationSender::leadCreated($lead);
+            if ($lead->source !== 'affiliate_landing') {
+                LeadNotificationSender::leadCreated($lead);
+            }
         });
 
         static::updated(function (Lead $lead): void {

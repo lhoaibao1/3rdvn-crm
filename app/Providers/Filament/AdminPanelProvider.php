@@ -7,6 +7,7 @@ use App\Filament\Pages\Dashboard as CrmDashboard;
 use App\Filament\Resources\ApiMappings\ApiMappingResource;
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Filament\Resources\AffiliateConversions\AffiliateConversionResource;
+use App\Filament\Resources\AffiliateCampaigns\AffiliateCampaignResource;
 use App\Filament\Resources\CandidateApplications\CandidateApplicationResource;
 use App\Filament\Resources\CbpApplications\CbpApplicationResource;
 use App\Filament\Resources\CrmLookups\CrmLookupResource;
@@ -42,6 +43,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use App\Http\Middleware\AuthenticateFromSsoCookie;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
@@ -92,6 +94,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.hooks.searchable-select-assets'))
             ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => $this->notificationPanelStyles())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->sidebarDefaultScript())
+            ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->tableHorizontalScrollScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->userFiltersToggleScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->repaymentPreviewScript())
             ->renderHook(PanelsRenderHook::SCRIPTS_BEFORE, fn () => $this->nd13ConsentScript())
@@ -118,6 +121,7 @@ class AdminPanelProvider extends PanelProvider
                 LotteFinanceApplicationResource::class,
                 FeDeeplinkApplicationResource::class,
                 AffiliateConversionResource::class,
+                AffiliateCampaignResource::class,
                 FeolBridgeLogResource::class,
                 ProjectReportResource::class,
                 SaleProfileResource::class,
@@ -147,6 +151,7 @@ class AdminPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
+                AuthenticateFromSsoCookie::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
@@ -155,6 +160,9 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
+                // This must run before Filament's guard. It hydrates the CRM
+                // session from the shared SSO cookie before access is checked.
+                AuthenticateFromSsoCookie::class,
                 Authenticate::class,
             ]);
     }
@@ -915,18 +923,61 @@ class AdminPanelProvider extends PanelProvider
         width: 100% !important;
     }
 
+    .fi-ta-content-ctn {
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        border: 1px solid var(--crm-border) !important;
+        border-radius: var(--crm-radius) !important;
+        background: #fff !important;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, .05) !important;
+    }
+
     .fi-ta-content {
-        overflow: auto !important;
-        max-height: min(68dvh, calc(100dvh - var(--crm-topbar-height) - 220px));
+        overflow-y: auto !important;
+        overflow-x: auto !important;
+        max-height: calc(100dvh - var(--crm-topbar-height) - 170px) !important;
         overscroll-behavior: contain !important;
-        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin !important;
+        scrollbar-color: #cbd5e1 transparent !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-x pan-y !important;
+    }
+
+    .fi-ta-content::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .fi-ta-content::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 999px;
     }
 
     .fi-ta-table {
         min-width: 1280px !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
     }
 
-    .fi-ta-header-cell,
+    .fi-ta-table thead,
+    .fi-ta-table thead tr {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 25 !important;
+    }
+
+    .fi-ta-table thead th,
+    .fi-ta-header-cell {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 25 !important;
+        background: #f8fafc !important;
+        box-shadow: inset 0 -1px 0 var(--crm-border), 0 2px 4px rgba(0, 0, 0, .04) !important;
+        white-space: nowrap !important;
+    }
+
     .fi-ta-cell {
         white-space: nowrap !important;
     }
@@ -2136,19 +2187,29 @@ class AdminPanelProvider extends PanelProvider
             white-space: nowrap !important;
         }
 
-        .fi-ta-ctn,
-        .fi-ta-content-ctn {
+        .fi-ta-ctn {
             max-width: 100% !important;
-            overflow-x: auto !important;
+            overflow-x: visible !important;
             overflow-y: visible !important;
         }
 
+        .fi-ta-content-ctn {
+            max-width: 100% !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+        }
+
         .fi-ta-content {
+            width: 100% !important;
+            min-width: 0 !important;
             max-width: 100% !important;
             max-height: min(62dvh, calc(100dvh - var(--crm-topbar-height) - 190px)) !important;
-            overflow: auto !important;
-            overscroll-behavior: contain !important;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            overscroll-behavior-x: auto !important;
+            overscroll-behavior-y: contain !important;
             -webkit-overflow-scrolling: touch !important;
+            touch-action: pan-x pan-y !important;
         }
 
         .fi-ta-table {
@@ -2243,6 +2304,136 @@ class AdminPanelProvider extends PanelProvider
 
 
 </style>
+HTML);
+    }
+
+    protected function tableHorizontalScrollScript(): HtmlString
+    {
+        return new HtmlString(<<<'HTML'
+<style>
+    .crm-table-x-scroll {
+        display: block;
+        flex: 0 0 18px;
+        width: 100%;
+        height: 18px;
+        overflow-x: scroll;
+        overflow-y: hidden;
+        border-bottom: 1px solid var(--crm-border, #e2e8f0);
+        background: #f8fafc;
+        scrollbar-color: #64748b #e2e8f0;
+        scrollbar-width: auto;
+        touch-action: pan-x;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .crm-table-x-scroll[hidden] {
+        display: none !important;
+    }
+
+    .crm-table-x-scroll::-webkit-scrollbar {
+        height: 14px;
+    }
+
+    .crm-table-x-scroll::-webkit-scrollbar-track {
+        background: #e2e8f0;
+        border-radius: 999px;
+    }
+
+    .crm-table-x-scroll::-webkit-scrollbar-thumb {
+        min-width: 48px;
+        border: 2px solid #e2e8f0;
+        border-radius: 999px;
+        background: #64748b;
+    }
+
+    .crm-table-x-scroll-spacer {
+        height: 1px;
+        pointer-events: none;
+    }
+</style>
+<script data-navigate-once>
+    (() => {
+        if (window.__crmTableHorizontalScrollBound) {
+            return;
+        }
+
+        window.__crmTableHorizontalScrollBound = true;
+        let bootQueued = false;
+
+        const mount = (content) => {
+            if (!(content instanceof HTMLElement) || content.dataset.crmHorizontalScroll === '1') {
+                return;
+            }
+
+            const container = content.parentElement;
+            if (!container?.classList.contains('fi-ta-content-ctn')) {
+                return;
+            }
+
+            const bar = document.createElement('div');
+            const spacer = document.createElement('div');
+            bar.className = 'crm-table-x-scroll';
+            bar.setAttribute('role', 'scrollbar');
+            bar.setAttribute('aria-label', 'Cuộn ngang để xem các cột còn lại');
+            spacer.className = 'crm-table-x-scroll-spacer';
+            bar.appendChild(spacer);
+            container.insertBefore(bar, content);
+            content.dataset.crmHorizontalScroll = '1';
+
+            let syncing = false;
+            const refresh = () => {
+                if (!content.isConnected || !bar.isConnected) {
+                    return;
+                }
+
+                spacer.style.width = `${content.scrollWidth}px`;
+                bar.hidden = content.scrollWidth <= content.clientWidth + 1;
+                bar.scrollLeft = content.scrollLeft;
+                bar.setAttribute('aria-valuemax', String(Math.max(0, content.scrollWidth - content.clientWidth)));
+                bar.setAttribute('aria-valuenow', String(Math.round(content.scrollLeft)));
+            };
+
+            bar.addEventListener('scroll', () => {
+                if (syncing) return;
+                syncing = true;
+                content.scrollLeft = bar.scrollLeft;
+                bar.setAttribute('aria-valuenow', String(Math.round(bar.scrollLeft)));
+                requestAnimationFrame(() => syncing = false);
+            }, { passive: true });
+
+            content.addEventListener('scroll', () => {
+                if (syncing) return;
+                syncing = true;
+                bar.scrollLeft = content.scrollLeft;
+                bar.setAttribute('aria-valuenow', String(Math.round(content.scrollLeft)));
+                requestAnimationFrame(() => syncing = false);
+            }, { passive: true });
+
+            const resizeObserver = new ResizeObserver(refresh);
+            resizeObserver.observe(content);
+            const table = content.querySelector('.fi-ta-table');
+            if (table) resizeObserver.observe(table);
+            refresh();
+        };
+
+        const boot = () => {
+            bootQueued = false;
+            document.querySelectorAll('.fi-ta-content').forEach(mount);
+        };
+
+        const queueBoot = () => {
+            if (bootQueued) return;
+            bootQueued = true;
+            requestAnimationFrame(boot);
+        };
+
+        document.addEventListener('DOMContentLoaded', queueBoot);
+        document.addEventListener('livewire:initialized', queueBoot);
+        document.addEventListener('livewire:navigated', queueBoot);
+        new MutationObserver(queueBoot).observe(document.documentElement, { childList: true, subtree: true });
+        queueBoot();
+    })();
+</script>
 HTML);
     }
 

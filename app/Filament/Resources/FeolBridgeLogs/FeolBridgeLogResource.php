@@ -82,14 +82,22 @@ class FeolBridgeLogResource extends Resource
                     ->color(fn (string $state): string => $state === 'feol_sync_failed' ? 'danger' : 'success'),
                 TextColumn::make('api_actor')
                     ->label('Người xử lý')
-                    ->state(fn (RecordChangeLog $record): string => $record->actor?->name ?: 'API Đồng bộ FEOL'),
+                    ->state(fn (RecordChangeLog $record): string => $record->actor?->name ?: 'Hệ thống FEOL'),
                 TextColumn::make('changes')
-                    ->label('Dữ liệu thay đổi')
-                    ->formatStateUsing(fn (mixed $state): string => collect((array) $state)
-                        ->keys()->map(fn (string $key): string => str($key)->replace('_', ' ')->headline()->toString())
-                        ->implode(', '))
-                    ->wrap()
-                    ->limit(120),
+                    ->label('Chuyển bước')
+                    ->state(function (RecordChangeLog $record): string {
+                        $changes = (array) $record->changes;
+                        $old = data_get($changes, 'sub_status.old') ?: data_get($changes, 'main_status.old') ?: '-';
+                        $new = data_get($changes, 'sub_status.new') ?: data_get($changes, 'main_status.new') ?: null;
+
+                        if ($record->action === 'feol_sync_failed') {
+                            return 'Đồng bộ lỗi';
+                        }
+
+                        return filled($new) && $old !== $new ? $old.' → '.$new : 'Đã kiểm tra, chưa đổi bước';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => str_contains($state, 'lỗi') ? 'danger' : 'info'),
             ])
             ->filters([])
             ->recordActions([])

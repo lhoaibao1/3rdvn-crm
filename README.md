@@ -1,3 +1,7 @@
+# 3RDVN App2 CRM — standalone archive
+
+Hướng dẫn bản độc lập và mở lại: [STANDALONE.md](STANDALONE.md).
+
 # 3RDVN CRM UI Pack - TailAdmin x Flowbite Style
 
 Copy đè vào Laravel project.

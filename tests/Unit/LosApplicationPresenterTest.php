@@ -11,6 +11,31 @@ use PHPUnit\Framework\TestCase;
 
 class LosApplicationPresenterTest extends TestCase
 {
+    public function test_it_shows_lotte_approved_amount_in_post_approval_status(): void
+    {
+        $application = new Application;
+        $application->forceFill([
+            'id' => 119,
+            'application_code' => 'APL0200252080',
+            'status' => 'lotte_post_approval',
+            'payload' => [
+                'fields' => ['loan_amount' => '100000000'],
+                'review' => ['approved_amount' => '100000000'],
+            ],
+        ]);
+        $application->setRelation('salesProject', (new SalesProject)->forceFill([
+            'name' => 'Lotte Finance',
+            'slug' => 'lotte-finance',
+        ]));
+        $application->setRelation('lead', null);
+        $application->setRelation('feolIntegration', null);
+
+        $result = LosApplicationPresenter::make($application);
+
+        $this->assertSame(100000000, $result['approved_loan_amount']);
+        $this->assertSame('100.000.000 VNĐ', $result['approved_loan_amount_label']);
+    }
+
     public function test_it_presents_lotte_application_fields_for_los(): void
     {
         $application = new Application;

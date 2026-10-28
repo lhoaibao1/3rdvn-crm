@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Không tìm thấy trang này | VietCredit</title>
+        <meta name="description" content="">
+        <meta name="robots" content="index, follow">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <link rel="icon" href="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/img/icons/favicon.ico">
+        <link rel="icon" href="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/img/icons/favicon-16x16.png" sizes="16x16">
+        <link rel="icon" href="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/img/icons/favicon-32x32.png" sizes="32x32">
+        <meta property="og:locale" content="en_EN">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="">
+        <meta property="og:url" content="">
+        <meta property="og:site_name" content="">
+        <link rel="stylesheet" href="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/css/style.css">
+        <link rel="stylesheet" type="text/css" href="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/css/responsive.css">
+        <link rel="stylesheet" type="text/css" href="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/style.css?v=1.02">
+        <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+    </head>
+    <body>
+    <!-- Main Header Start -->
+    <header class="main-navbar">
+        <!-- Header navbar start -->
+        <div class="header-navbar" id="navbar-main">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <nav class="navbar navbar-default">
+                            <div class="navbar-header">
+                                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                                    <span class="sr-only">Toggle navigation</span>
+                                    <span class="icon-bar"></span>
+                                    <span class="icon-bar"></span>
+                                    <span class="icon-bar"></span>
+                                </button>
+                                <a class="navbar-brand" href="https://www.vietcredit.com.vn"><img src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/images/logo/logo.png" alt="">
+                                </a>
+                            </div>
+                            <div class="head-info">
+                                <ul class="languages" style="opacity:1;">	<li class="lang-item lang-item-2 lang-item-vi lang-item-first current-lang no-translation"><a lang="vi" hreflang="vi" href="https://www.vietcredit.com.vn/">Tiếng Việt</a></li>
+	<li class="lang-item lang-item-5 lang-item-en no-translation"><a lang="en-US" hreflang="en-US" href="https://www.vietcredit.com.vn/en/home/">English</a></li>
+</ul>
+                                <div>
+                                                                        <a href="https://www.vietcredit.com.vn/chinh-sach-bao-mat-thong-tin/" class="policy">
+                                        <i class="fa fa-shield"></i>
+                                        <span>Chính sách bảo mật thông tin</span>
+                                    </a>
+                                    
+                                    <span class="hotline">
+                                        <i class="fa fa-phone"></i>
+                                        <span>Hotline: </span>
+                                        <span class="hotline-number policy">(028) 6285 8185</span>
+                                    </span>
+
+                                    <span class="hotline language">
+                                        <span>
+                                            <a href="https://www.vietcredit.com.vn/trang-chu"><img src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/images/vn.svg" width="30px" height="40px"></a>  
+                                        </span>
+                                        <span> 
+                                            <a href="https://www.vietcredit.com.vn/en/home"><img src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/images/en.svg" width="30px" height="40px" ></a> 
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" data-hover="dropdown" data-animations="fadeIn">
+                                <div class="menu-main-nav-vn-container"><ul id="menu-main-nav-vn" class="nav navbar-nav main-nav"><li id="menu-item-5517" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-5517"><a href="https://www.vietcredit.com.vn/">Trang Chủ</a></li>
+<li id="menu-item-5914" class="sub-1 menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-5914"><a href="#">Sản Phẩm</a>
+<ul class="sub-menu">
+	<li id="menu-item-6910" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-6910"><a href="https://www.vietcredit.com.vn/chung-chi-tien-gui/">Chứng chỉ tiền gửi</a></li>
+</ul>
+</li>
+<li id="menu-item-228" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-228"><a href="https://www.vietcredit.com.vn/doi-tac/">Đối tác</a></li>
+<li id="menu-item-1283" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-1283"><a href="https://www.vietcredit.com.vn/nha-dau-tu/">Nhà đầu tư</a>
+<ul class="sub-menu">
+	<li id="menu-item-1284" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1284"><a href="https://www.vietcredit.com.vn/?page_id=183">Thông tin cổ đông</a></li>
+</ul>
+</li>
+<li id="menu-item-229" class="sub-2 menu-item menu-item-type-custom menu-item-object-custom menu-item-229"><a href="#">Về VietCredit</a></li>
+<li id="menu-item-1245" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1245"><a href="https://www.vietcredit.com.vn/tin-tuc/">Tin tức</a></li>
+<li id="menu-item-800" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-800"><a href="http://tuyendung.vietcredit.com.vn">Tuyển dụng</a></li>
+<li id="menu-item-218" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-218"><a href="https://www.vietcredit.com.vn/lien-he/">Liên hệ</a></li>
+<li class="search-box"><a href="#" style="padding-bottom: 8px;"><i class="pe-7s-search"></i></a><form role="search" method="get" id="searchform" class="searchform" action="https://www.vietcredit.com.vn/"><input type="text" name="s" id="s" placeholder="Nhập từ khoá để tìm kiếm..." name="" class="search-input"></form></li></ul></div>                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+                                    <div class="sub-menu">
+                                                <div class="container sub-1">
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <div class="sub-menu-info">
+                                <i class="pe-7s-science"></i><br>
+                                <span>Sản Phẩm</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-9">
+                            <div class="row">
+                                                                <div class="col-sm-3">
+                                    <a class="sub-menu-item" href="https://www.vietcredit.com.vn/the-tin-dung/">
+                                        <span>Thẻ tín dụng</span>
+                                        <i class="fa fa-angle-right"></i>
+                                    </a>
+                                </div>
+                                                                <div class="col-sm-3">
+                                    <a class="sub-menu-item" href="https://www.vietcredit.com.vn/tien-gui-co-ky-han/">
+                                        <span>Tiền gửi có kỳ hạn</span>
+                                        <i class="fa fa-angle-right"></i>
+                                    </a>
+                                </div>
+                                                                <div class="col-sm-3">
+                                    <a class="sub-menu-item" href="https://www.vietcredit.com.vn/vay-tieu-dung-tieu-thuong/">
+                                        <span>Cho vay Tiểu thương trả góp</span>
+                                        <i class="fa fa-angle-right"></i>
+                                    </a>
+                                </div>
+                                                                <div class="col-sm-3">
+                                    <a class="sub-menu-item" href="https://www.vietcredit.com.vn/mua-truoc-tra-sau/">
+                                        <span>Mua trước trả sau</span>
+                                        <i class="fa fa-angle-right"></i>
+                                    </a>
+                                </div>
+                                                            </div>
+                        </div>
+                    </div>
+                </div>
+                                <div class="container sub-2">
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <div class="sub-menu-info">
+                                <i class="pe-7s-network"></i><br>
+                                <span>Về VietCredit</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-9">
+                            <div class="row">
+                                                                <div class="col-sm-3">
+                                    <a class="sub-menu-item" href="https://www.vietcredit.com.vn/tam-nhin-va-su-menh/">
+                                        <span>Tầm nhìn và Sứ mệnh</span>
+                                        <i class="fa fa-angle-right"></i>
+                                    </a>
+                                </div>
+                                                                <div class="col-sm-3">
+                                    <a class="sub-menu-item" href="https://www.vietcredit.com.vn/gioi-thieu-co-cau-to-chuc/">
+                                        <span>Giới thiệu và Cơ cấu tổ chức</span>
+                                        <i class="fa fa-angle-right"></i>
+                                    </a>
+                                </div>
+                                                                <div class="col-sm-3">
+                                    <a class="sub-menu-item" href="https://www.vietcredit.com.vn/lich-su-hinh-thanh/">
+                                        <span>Lịch sử hình thành</span>
+                                        <i class="fa fa-angle-right"></i>
+                                    </a>
+                                </div>
+                                                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            </div>
+                    </div>
+    </header>	<section class="breadcrumbs">
+	    <div class="container g-bg-cover__inner">
+	        <header class="g-mb-20">
+	            <h2 class="h1">404</h2>
+	        </header>
+	        <ul>
+	            <li>
+	                <a class="" href="https://www.vietcredit.com.vn">Trang Chủ</a>
+	                <i class="fa fa-angle-right"></i>
+	            </li>
+	            <li>
+	                <span>404</span>
+	            </li>
+	        </ul>
+	    </div>
+	</section>
+	<div class="content-area container">
+	    Không tìm thấy đường dẫn này!	</div>
+        <!-- Footer Start -->
+        <footer class="main-footer">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-5 col-sm-6">
+                        <div class="footer-col about">
+                            <h3>Địa chỉ liên hệ</h3>
+                            <p>Công Ty Tài Chính tổng hợp Cổ Phần Tín Việt</p>
+                            <ul>
+                                <li>
+                                    <i class="fa fa-map-marker" aria-hidden="true"></i>
+                                    Trụ Sở Chính: Tầng 9, Tòa nhà V.E.T, số 98 Hoàng Quốc Việt, phường Nghĩa Đô, Hà Nội                                </li>
+                                <li>
+                                    <i class="fa fa-map-marker" aria-hidden="true"></i>
+                                    Chi nhánh Hồ Chí Minh: Tầng 3, Tòa nhà An Phú, số 43-45 Đường Thảo Điền, Phường An Khánh, TP. Hồ Chí Minh                                </li>
+                                <li>
+                                    <i class="fa fa-envelope-o" aria-hidden="true"></i>
+                                    phucvu247@vietcredit.com.vn                                </li>
+                                <li>
+                                    <i class="fa fa-phone" aria-hidden="true"></i>
+                                    1900 6515                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="footer-col links"><h3>Sitemap</h3>
+                            <div class="menu-footer-menu-vn-container"><ul id="menu-footer-menu-vn" class="footer-menu"><li id="menu-item-5535" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-5535"><a href="https://www.vietcredit.com.vn/"><i class="fa fa-angle-right"></i> Trang Chủ</a></li>
+<li id="menu-item-675" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-675"><a href="#"><i class="fa fa-angle-right"></i> Sản Phẩm</a>
+<ul class="sub-menu">
+	<li id="menu-item-673" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-673"><a href="https://www.vietcredit.com.vn/the-tin-dung/">Thẻ tín dụng</a></li>
+	<li id="menu-item-672" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-672"><a href="https://www.vietcredit.com.vn/tien-gui-co-ky-han/">Tiền gửi có kỳ hạn</a></li>
+	<li id="menu-item-5536" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-5536"><a href="https://www.vietcredit.com.vn/vay-tieu-dung-tieu-thuong/">Cho vay Tiểu thương trả góp</a></li>
+</ul>
+</li>
+<li id="menu-item-572" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-572"><a href="https://www.vietcredit.com.vn/tin-tuc/"><i class="fa fa-angle-right"></i> Tin tức</a></li>
+<li id="menu-item-576" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-576"><a href="https://www.vietcredit.com.vn/doi-tac/"><i class="fa fa-angle-right"></i> Đối tác</a></li>
+<li id="menu-item-674" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-674"><a href="#"><i class="fa fa-angle-right"></i> Về VietCredit</a>
+<ul class="sub-menu">
+	<li id="menu-item-671" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-671"><a href="https://www.vietcredit.com.vn/tam-nhin-va-su-menh/">Tầm nhìn và Sứ mệnh</a></li>
+	<li id="menu-item-669" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-669"><a href="https://www.vietcredit.com.vn/gioi-thieu-co-cau-to-chuc/">Giới thiệu và Cơ cấu tổ chức</a></li>
+	<li id="menu-item-670" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-670"><a href="https://www.vietcredit.com.vn/lich-su-hinh-thanh/">Lịch sử hình thành</a></li>
+</ul>
+</li>
+<li id="menu-item-801" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-801"><a href="http://tuyendung.vietcredit.com.vn/home"><i class="fa fa-angle-right"></i> Tuyển dụng</a></li>
+<li id="menu-item-573" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-573"><a href="https://www.vietcredit.com.vn/lien-he/"><i class="fa fa-angle-right"></i> Liên hệ</a></li>
+</ul></div>                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        <div class="footer-col newsletter"><h3>Theo Dõi Chúng Tôi</h3>
+                            <div class="social-icon clearfix">
+                                <ul>
+                                    <li class="facebook"><a href="https://www.facebook.com/TheVayVietCredit/?ref=bookmarks"><i class="fa fa-facebook" aria-hidden="true"></i></a></li>
+                                    <li class="google-plus" style="display:none"><a href="#"><i class="fa fa-google-plus" aria-hidden="true"></i></a></li>
+                                    <li class="twitter" style="display:none"><a href="#"><i class="fa fa-twitter" aria-hidden="true"></i></a></li>
+                                    <li class="youtube"><a href="https://www.youtube.com/channel/UCt-STLlgLrbhqlqEUAT8ClA    "><i class="fa fa-youtube" aria-hidden="true"></i></a></li>
+                                </ul>                                <br/>
+                                <a href="wp-content/themes/vietcredit/assets/pdf/USEOFLOGOVN-062018.pdf" target="_blank">
+                                    <img style="height: 100%;width:200px" src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/images/logo/LOGO-CHUNG-CHI-UKAS.PNG">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Copyright Start -->
+        <section class="footer-copyright">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12 text-center">
+                        <p>©2018 VietCredit. All Rights Reserved.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- jQuery -->
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/jquery.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/bootstrap.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/bootstrap-dropdownhover.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/imagesloaded.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/jquery.filterizr.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/VideoPopUp.jquery.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/jquery.counterup.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/jquery.waypoints.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/owl.carousel.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/jarallax.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/lightbox.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/jquery.youtubebackground.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/jquery.scrollUp.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/wow.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/jquery.matchHeight-min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/datepicker.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/swiper.min.js"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/custom.js"></script>
+        <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAC9sj8gy6SzWxRWEMvzIKMj_TnUys_1IQ&amp;callback=initMap"></script>
+        <script src="https://www.vietcredit.com.vn/wp-content/themes/vietcredit/assets/js/map.js"></script>
+    </body>
+</html>

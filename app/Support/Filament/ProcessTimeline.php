@@ -22,7 +22,7 @@ class ProcessTimeline
             $actor = $log->actor ?? null;
             $isApiActivity = str_starts_with((string) ($log->action ?? ''), 'feol_')
                 || str_contains(mb_strtolower((string) ($log->user_agent ?? '')), 'feol bridge');
-            $actorName = (string) ($actor?->name ?: ($isApiActivity ? 'API Đồng bộ FEOL' : 'Hệ thống'));
+            $actorName = (string) ($actor?->name ?: ($isApiActivity ? 'Hệ thống FEOL' : 'Hệ thống'));
             $actorCode = (string) ($actor?->uid ?: ($actor?->employee_code ?: $actor?->email ?: ''));
             $title = trim((string) $titleResolver($log)) ?: '-';
             $body = trim(strip_tags((string) $bodyResolver($log)));

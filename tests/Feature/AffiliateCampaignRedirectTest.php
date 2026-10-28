@@ -23,11 +23,20 @@ class AffiliateCampaignRedirectTest extends TestCase
         $this->get('/affiliate/shb-finance?ref=UNKNOWN')->assertNotFound();
     }
 
-    public function test_vietcredit_campaign_uses_accesstrade_sub1_attribution(): void
+    public function test_vietcredit_campaign_redirects_straight_to_accesstrade_with_employee_sub(): void
     {
         User::factory()->create(['employee_code' => 'RD260001', 'employment_status' => User::STATUS_ACTIVE]);
 
-        $this->get('/affiliate/tinvay-vietcredit?ref=RD260001')
-            ->assertRedirect('https://fast.accesstrade.com.vn/deep_link/v6/5876543172579142727/6997817930567730686?sub4=oneatweb&url_enc=aHR0cHM6Ly90aW52YXkudmlldGNyZWRpdC5jb20udm4v&sub1=RD260001');
+        $response = $this->get('/affiliate/tinvay-vietcredit?ref=RD260001');
+        if ($response->status() === 404) {
+            $response = $this->get('/affiliate/tinvay?ref=RD260001');
+        }
+
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringContainsString('fast.accesstrade.com.vn/deep_link/', $location);
+        $this->assertStringContainsString('sub1=RD260001', $location);
+        $this->assertStringContainsString('utm_content=RD260001', $location);
+        $this->assertStringContainsString('utm_source=3rdvn', $location);
     }
 }

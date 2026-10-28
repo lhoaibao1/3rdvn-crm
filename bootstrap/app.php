@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\AuthenticateFromSsoCookie;
 use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -17,13 +18,31 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->validateCsrfTokens(except: [
-            'api/integration/*',
+        $middleware->encryptCookies(except: [
+            AuthenticateFromSsoCookie::COOKIE,
         ]);
 
-        $middleware->redirectGuestsTo(fn (Request $request): string => $request->getHost() === 'los.3rdvn.io.vn'
-            ? route('los.login')
-            : url('/authen/login'));
+        $middleware->web(append: [
+            AuthenticateFromSsoCookie::class,
+        ]);
+
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Auth\Middleware\Authenticate::class,
+            prepend: AuthenticateFromSsoCookie::class,
+        );
+
+        $middleware->validateCsrfTokens(except: [
+            'logout',
+            'api/*',
+            'api/integration/*',
+            'api/v1/*',
+            'api/affiliate/*',
+            'api/postback/*',
+            'affiliate/*/submit',
+            'aff/*/submit',
+        ]);
+
+        $middleware->redirectGuestsTo(fn (Request $request): string => route('filament.admin.auth.login'));
 
         $middleware->alias([
             'role' => RoleMiddleware::class,

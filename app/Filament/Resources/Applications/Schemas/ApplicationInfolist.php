@@ -199,13 +199,28 @@ class ApplicationInfolist
                                     TextEntry::make('feolIntegration.sync_state')
                                         ->label('Trạng thái đồng bộ')
                                         ->badge()
-                                        ->formatStateUsing(fn (mixed $state): string => $state instanceof FeolSyncState ? $state->label() : FeolSyncState::tryFrom((string) $state)?->label() ?? '-')
+                                        ->formatStateUsing(fn (mixed $state): string => match ((string) $state) {
+                                            'idle' => 'Chờ kích hoạt',
+                                            'pending' => 'Chờ đồng bộ',
+                                            'processing' => 'Đang đồng bộ',
+                                            'synced' => 'Đã đồng bộ',
+                                            'failed' => 'Đồng bộ lỗi',
+                                            'terminal' => 'Hoàn tất',
+                                            default => filled($state) ? (string)$state : '-',
+                                        })
                                         ->placeholder('-')
                                         ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
                                     TextEntry::make('feolIntegration.submit_state')
                                         ->label('Trạng thái gửi FEOL')
                                         ->badge()
-                                        ->formatStateUsing(fn (mixed $state): string => $state?->label() ?? '-')
+                                        ->formatStateUsing(fn (mixed $state): string => match ((string) $state) {
+                                            'awaiting_customer' => 'Chờ khách hàng nhập',
+                                            'queued' => 'Chờ gửi đối tác',
+                                            'processing' => 'Đang gửi đối tác',
+                                            'submitted' => 'Đã gửi đối tác',
+                                            'failed' => 'Gửi đối tác lỗi',
+                                            default => filled($state) ? (string)$state : '-',
+                                        })
                                         ->placeholder('-')
                                         ->visible(fn (Application $record): bool => $record->salesProject?->slug === 'fe-deeplink'),
                                     TextEntry::make('feolIntegration.deeplink_url')

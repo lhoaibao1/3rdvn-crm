@@ -1,18 +1,17 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
 
 Schedule::command('crm:mail-notifications')
     ->everyTenSeconds()
     ->withoutOverlapping();
 
 Schedule::command('affiliate:sync-hyperlead')
-    ->everyMinute()
+    ->everyFiveMinutes()
+    ->withoutOverlapping(5)
+    ->onOneServer();
+
+Schedule::command('affiliate:sync-accesstrade')
+    ->everyFiveMinutes()
     ->withoutOverlapping(5)
     ->onOneServer();

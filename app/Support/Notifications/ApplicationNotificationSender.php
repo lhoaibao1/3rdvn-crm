@@ -2,6 +2,7 @@
 
 namespace App\Support\Notifications;
 
+use App\Filament\Resources\Applications\ApplicationResource;
 use App\Jobs\SendWebPushNotification;
 use App\Models\Application;
 use App\Models\User;
@@ -11,148 +12,136 @@ use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Throwable;
 
 class ApplicationNotificationSender
 {
-    public static function created(Application $application, ?int $actorId = null): void
+    public static function created(Application $application): void
     {
-        self::send(
+        self::sendToRecipients(
             application: $application,
-            eventLabel: 'Hồ sơ mới',
-            detailLine: 'Trạng thái: '.self::statusLabel($application, $application->status),
-            tone: 'warning',
-            icon: Heroicon::OutlinedDocumentPlus,
-            actorId: $actorId,
+            eventLabel: 'Hồ sơ mới tạo',
+            actorLabel: 'Người tạo',
+            status: 'warning',
+            icon: Heroicon::OutlinedBellAlert,
+            detailLine: self::createdDetailLine($application),
+            occurredAt: $application->created_at?->format('H:i d/m/Y') ?: now()->format('H:i d/m/Y'),
         );
     }
 
-    public static function assigned(
-        Application $application,
-        ?int $previousAssigneeId,
-        ?int $assigneeId,
-        ?int $actorId = null,
-    ): void {
-        $userNames = User::query()
-            ->whereIn('id', array_values(array_filter([$previousAssigneeId, $assigneeId])))
-            ->pluck('name', 'id');
-
-        $previousAssignee = $previousAssigneeId
-            ? ($userNames[$previousAssigneeId] ?? 'Người xử lý cũ')
-            : 'Chưa phân bổ';
-        $assignee = $assigneeId
-            ? ($userNames[$assigneeId] ?? 'Người xử lý mới')
-            : 'Đã bỏ phân bổ';
-
-        self::send(
-            application: $application,
-            eventLabel: 'Phân bổ xử lý hồ sơ',
-            detailLine: 'Người xử lý: '.$previousAssignee.' → '.$assignee,
-            tone: 'info',
-            icon: Heroicon::OutlinedUserPlus,
-            actorId: $actorId,
-            extraRecipientIds: [$previousAssigneeId, $assigneeId],
-        );
-    }
-
-    public static function statusChanged(
-        Application $application,
-        ?string $previousStatus,
-        ?string $status,
-        ?int $actorId = null,
-    ): void {
-        self::send(
-            application: $application,
-            eventLabel: 'Chuyển bước hồ sơ',
-            detailLine: 'Trạng thái: '.self::statusLabel($application, $previousStatus)
-                .' → '.self::statusLabel($application, $status),
-            tone: 'success',
-            icon: Heroicon::OutlinedArrowsRightLeft,
-            actorId: $actorId,
-        );
-    }
-
-    public static function integrationFailed(Application $application, string $error): void
+    public static function updated(Application $application, array $changes = []): void
     {
-        self::send(
-            application: $application,
-            eventLabel: 'Node-RED đồng bộ thất bại',
-            detailLine: 'Lỗi: '.Str::limit($error, 500),
-            tone: 'danger',
-            icon: Heroicon::OutlinedExclamationTriangle,
-            actorId: null,
-        );
+        $statusNew = data_get($changes, 'status.new');
+        $statusOld = data_get($changes, 'status.old');
+
+        if (filled($statusNew) && $statusNew !== $statusOld) {
+            $newLabel = self::statusLabel($application, $statusNew);
+            $oldLabel = self::statusLabel($application, $statusOld);
+
+            self::sendToRecipients(
+                application: $application,
+                eventLabel: 'Cập nhật trạng thái',
+                actorLabel: 'Người cập nhật',
+                status: 'info',
+                icon: Heroicon::OutlinedPencilSquare,
+                detailLine: "Trạng thái: {$oldLabel} → {$newLabel}",
+                occurredAt: now()->format('H:i d/m/Y'),
+            );
+        }
     }
 
-    public static function feolEligibilityResult(Application $application, bool $eligible): void
+    public static function disbursed(Application $application): void
     {
-        $application->loadMissing('feolIntegration');
-        $customer = $application->applicant_name ?: 'Khách hàng';
-        $integration = $application->feolIntegration;
-        self::send(
+        $amountFormatted = $application->approved_amount && $application->approved_amount > 0
+            ? (number_format($application->approved_amount, 0, ',', '.') . ' VNĐ')
+            : ($application->loan_amount ? (number_format($application->loan_amount, 0, ',', '.') . ' VNĐ') : 'Thành công');
+
+        self::sendToRecipients(
             application: $application,
-            eventLabel: $eligible
-                ? 'FEOL - Khách hàng "'.$customer.'" thoả mãn điều kiện đăng ký hồ sơ vay. Vui lòng hướng dẫn Khách hàng thao tác app FE Online 2.0.'
-                : 'FEOL - Rất tiếc hồ sơ Khách hàng "'.$customer.'" không thoả mãn điều kiện kiểm tra sơ bộ.',
-            detailLine: 'Mã hồ sơ: '.$application->application_code.' · ID đối tác: '.($integration?->partner_lead_id ?: '-').' · Trạng thái: '.self::statusLabel($application, $application->status).' · Khách hàng: '.$customer.' · SĐT: '.($application->phone ?: '-'),
-            tone: $eligible ? 'success' : 'danger',
-            icon: $eligible ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedExclamationTriangle,
-            actorId: null,
+            eventLabel: 'Giải ngân thành công',
+            actorLabel: 'Người cập nhật',
+            status: 'success',
+            icon: Heroicon::OutlinedCheckCircle,
+            detailLine: "Số tiền giải ngân: {$amountFormatted}",
+            occurredAt: now()->format('H:i d/m/Y'),
         );
     }
 
-    private static function send(
+    public static function rejected(Application $application, ?string $reason = null): void
+    {
+        self::sendToRecipients(
+            application: $application,
+            eventLabel: 'Hồ sơ bị từ chối',
+            actorLabel: 'Người cập nhật',
+            status: 'danger',
+            icon: Heroicon::OutlinedXCircle,
+            detailLine: $reason ? "Lý do: {$reason}" : 'Không đủ điều kiện',
+            occurredAt: now()->format('H:i d/m/Y'),
+        );
+    }
+
+    private static function sendToRecipients(
         Application $application,
         string $eventLabel,
-        string $detailLine,
-        string $tone,
+        string $actorLabel,
+        string $status,
         Heroicon $icon,
-        ?int $actorId,
-        array $extraRecipientIds = [],
+        string $detailLine,
+        string $occurredAt,
     ): void {
         try {
-            $application->loadMissing([
-                'salesProject',
-                'createdBy',
-                'assignedSale',
-                'team',
-                'teamLeader',
-                'am',
-                'zd',
-            ]);
-
-            $recipients = self::recipients($application, $actorId, $extraRecipientIds);
+            $application->loadMissing(['salesProject', 'createdBy', 'assignedSale.courierManager', 'teamLeader', 'am', 'zd']);
+            $recipients = self::recipients($application);
 
             if ($recipients->isEmpty()) {
                 return;
             }
 
-            $occurredAt = now()->format('H:i d/m/Y');
-            $actor = filled($actorId)
-                ? User::query()->whereKey($actorId)->value('name')
-                : null;
-            $body = self::body(
-                $application,
-                $eventLabel,
-                $detailLine,
-                $actor ?: 'Hệ thống',
-                $occurredAt,
-            );
-            $title = self::title($application);
-            $url = self::url($application);
+            $actor = auth()->user()?->name ?: $application->createdBy?->name ?: 'Hệ thống';
+            $caseId = $application->application_code ?: ('#' . $application->getKey());
+            $customerName = $application->applicant_name ?: 'Khách hàng';
+            $projectName = $application->salesProject?->name ?: 'Hồ sơ tài chính';
 
-            $recipients->each(function (User $recipient) use ($title, $body, $occurredAt, $icon, $tone, $url): void {
+            $amount = (float) ($application->approved_amount ?: $application->loan_amount ?: 0);
+            $amountFormatted = $amount > 0 ? (number_format($amount, 0, ',', '.') . ' VNĐ') : null;
+
+            if ($status === 'success' && $amountFormatted) {
+                $title = "🎉 [CaseID: {$caseId}] Giải ngân {$amountFormatted} - {$customerName} ({$projectName})";
+            } elseif ($status === 'danger') {
+                $title = "❌ [CaseID: {$caseId}] Từ chối hồ sơ - {$customerName} ({$projectName})";
+            } else {
+                $title = "🔔 [CaseID: {$caseId}] {$customerName} - {$projectName}";
+            }
+
+            $bodyLines = [
+                "👤 Khách hàng: {$customerName}",
+                "🏢 Dự án: {$projectName}",
+                "🔢 Mã GD: {$caseId}",
+                "📋 {$eventLabel}",
+                "📌 {$detailLine}",
+            ];
+
+            if ($amountFormatted && ($status === 'success' || !str_contains($detailLine, 'giải ngân'))) {
+                $bodyLines[] = "💰 Số tiền: {$amountFormatted}";
+            }
+
+            $bodyLines[] = "👨‍💼 {$actorLabel}: {$actor}";
+            $bodyLines[] = "⏰ Thời gian: {$occurredAt}";
+
+            $bodyText = implode("\n", array_filter($bodyLines));
+            $url = ApplicationResource::getUrl('view', ['record' => $application]);
+
+            $recipients->each(function (User $recipient) use ($title, $bodyText, $occurredAt, $icon, $status, $url): void {
                 $notification = Notification::make()
                     ->title($title)
-                    ->body($body)
+                    ->body($bodyText)
                     ->date($occurredAt)
                     ->icon($icon)
-                    ->{$tone}()
+                    ->{$status}()
                     ->actions([
-                        Action::make('openApplication')
-                            ->label('Mở hồ sơ')
+                        Action::make('openApp')
+                            ->label('Xem chi tiết')
                             ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                             ->button()
                             ->markAsRead()
@@ -163,79 +152,26 @@ class ApplicationNotificationSender
                 DatabaseNotificationsSent::dispatch($recipient);
             });
 
-            $plainBody = html_entity_decode(
-                strip_tags(preg_replace('/<br\s*\/?\s*>/i', "\n", (string) $body) ?: (string) $body),
-                ENT_QUOTES | ENT_HTML5,
-                'UTF-8',
-            );
+            try {
+                SendWebPushNotification::dispatch($recipients->modelKeys(), [
+                    'title' => $title,
+                    'body' => $bodyText,
+                    'url' => $url,
+                    'tag' => 'app-'.$application->id.'-'.$status,
+                ]);
+            } catch (Throwable $e) {}
 
-            SendWebPushNotification::dispatch($recipients->modelKeys(), [
-                'title' => $title,
-                'body' => trim($plainBody),
-                'url' => $url,
-                'tag' => '3rdvn-crm-application-'.$application->getKey().'-'.sha1($eventLabel.$occurredAt),
-            ]);
         } catch (Throwable $exception) {
             report($exception);
         }
     }
 
-    private static function recipients(
-        Application $application,
-        ?int $actorId,
-        array $extraRecipientIds,
-    ): Collection {
-        $directIds = collect([
-            $application->created_by_id,
-            $application->assigned_sale_id,
-            $application->team?->manager_id,
-            $application->team_leader_id,
-            $application->am_id,
-            $application->zd_id,
-            $application->assignedSale?->courier_manager_id,
-            $actorId,
-            ...$extraRecipientIds,
-        ])
-            ->filter()
-            ->map(fn (mixed $id): int => (int) $id);
-
-        $managementIds = User::role(['Admin', 'Sales Admin'])->pluck('id');
-
-        return User::query()
-            ->whereIn('id', $directIds->merge($managementIds)->unique()->values())
-            ->get();
-    }
-
-    private static function title(Application $application): string
+    private static function createdDetailLine(Application $application): string
     {
-        return implode(' - ', array_filter([
-            'Hồ sơ',
-            $application->salesProject?->name ?: 'Application',
-            $application->application_code,
-            $application->applicant_name,
-        ], fn (?string $value): bool => filled($value)));
-    }
-
-    private static function body(
-        Application $application,
-        string $eventLabel,
-        string $detailLine,
-        string $actor,
-        string $occurredAt,
-    ): HtmlString {
-        $applicationLabel = $application->application_code
-            ?: $application->applicant_name
-            ?: '#'.$application->getKey();
-
-        return new HtmlString(implode('<br>', [
-            '<span class="crm-notification-category" data-category="ho-so">Hồ sơ</span>',
-            '<strong>'.e($eventLabel).'</strong>',
-            'Hồ sơ: '.e($applicationLabel),
-            'Dự án: '.e($application->salesProject?->name ?: 'Application'),
-            e($detailLine),
-            'Người thao tác: '.e($actor),
-            'Thời gian: '.e($occurredAt),
-        ]));
+        if ($application->loan_amount && $application->loan_amount > 0) {
+            return 'Nhu cầu vay: ' . number_format($application->loan_amount, 0, ',', '.') . ' VNĐ';
+        }
+        return 'Tạo mới trên hệ thống';
     }
 
     private static function statusLabel(Application $application, mixed $status): string
@@ -250,10 +186,21 @@ class ApplicationNotificationSender
             ?? Str::headline((string) $status);
     }
 
-    private static function url(Application $application): string
+    private static function recipients(Application $application): Collection
     {
-        $slug = $application->salesProject?->slug ?: 'acl-mix';
+        $directIds = collect([
+            $application->created_by_id,
+            $application->assigned_sale_id,
+            $application->team_leader_id,
+            $application->am_id,
+            $application->zd_id,
+            $application->assignedSale?->courier_manager_id,
+        ])->filter()->map(fn (mixed $id): int => (int) $id);
 
-        return url('applications/'.rawurlencode($slug).'/'.$application->getRouteKey());
+        $adminIds = User::role('Admin')->pluck('id');
+
+        return User::query()
+            ->whereIn('id', $directIds->merge($adminIds)->unique()->values())
+            ->get();
     }
 }

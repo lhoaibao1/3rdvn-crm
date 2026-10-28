@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Responses\LogoutResponse;
 use App\Models\ApiMapping;
 use App\Models\Application;
 use App\Models\CrmModule;
@@ -20,7 +21,11 @@ use App\Policies\RolePolicy;
 use App\Policies\SaleProfilePolicy;
 use App\Policies\UiSettingPolicy;
 use App\Policies\UserPolicy;
+use Filament\Auth\Http\Responses\Contracts\LogoutResponse as LogoutResponseContract;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Permission\Models\Role;
 
@@ -31,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(LogoutResponseContract::class, LogoutResponse::class);
     }
 
     /**
@@ -39,6 +44,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('completed-customers', function (Request $request): Limit {
+            $credential = $request->bearerToken() ?: 'anonymous';
+
+            return Limit::perMinute(60)->by(hash('sha256', $credential).'|'.$request->ip());
+        });
+
         Application::observe(ApplicationNotificationObserver::class);
 
         Gate::policy(Lead::class, LeadPolicy::class);
